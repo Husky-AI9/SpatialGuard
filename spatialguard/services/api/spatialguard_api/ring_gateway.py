@@ -1,9 +1,10 @@
 """Public surface for the development tunnel. Deliberately has no owner API or assets."""
 import html
 import json
+import os
 import threading
 import time as clock
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
@@ -64,7 +65,14 @@ def create_gateway(service=None):
     @app.post('/ring/link')
     async def claim(request: Request):
         origin = request.headers.get('origin', '')
-        if origin and origin.split('://')[-1] != request.headers.get('host'):
+        public_origin = os.environ.get('SPATIALGUARD_ORIGIN', '').rstrip('/')
+        allowed_hosts = {request.headers.get('host', '')}
+        if public_origin:
+            allowed_hosts.add(urlsplit(public_origin).netloc)
+        fetch_site = request.headers.get('sec-fetch-site', '')
+        if fetch_site and fetch_site not in {'same-origin', 'none'}:
+            raise HTTPException(403, 'Use the Ring linking page')
+        if origin and urlsplit(origin).netloc not in allowed_hosts:
             raise HTTPException(403, 'Use the Ring linking page')
         data = parse_qs((await read_body(request, 2048)).decode())
         try:

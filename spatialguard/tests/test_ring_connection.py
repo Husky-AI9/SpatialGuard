@@ -130,6 +130,21 @@ def test_gateway_has_no_owner_surface_and_validates_raw_signature(service):
     assert web.post('/ring/link',headers={'origin':'https://evil.test'}).status_code==403
 
 
+def test_gateway_accepts_public_origin_behind_host_rewriting(service, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://spatialguard.example')
+    web = TestClient(create_gateway(service))
+    # Missing fields prove the request passed the origin check. Railway may
+    # expose an internal Host while the browser uses the configured domain.
+    assert web.post(
+        '/ring/link',
+        headers={'origin': 'https://spatialguard.example', 'host': 'internal.railway'},
+    ).status_code == 400
+    assert web.post(
+        '/ring/link',
+        headers={'origin': 'https://spatialguard.example', 'sec-fetch-site': 'cross-site'},
+    ).status_code == 403
+
+
 def test_hosted_app_exposes_ring_gateway_on_the_same_public_port(service):
     web = TestClient(create_app(service.store.path, ring_service=service))
     assert web.get('/ring/home').status_code == 200
