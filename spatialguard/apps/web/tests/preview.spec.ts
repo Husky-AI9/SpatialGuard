@@ -129,15 +129,21 @@ test("home keeps CCTV and incidents in one right rail beside a full green 2D map
 
   const camera = rail.getByRole("button", { name: /Open .* feed and select it on map/ }).first();
   if (await camera.count()) {
-    await expect(camera.locator("img")).toBeVisible();
+    const hasLiveFeed = (await camera.getByText("Live available", { exact: true }).count()) > 0;
+    const thumbnail = camera.locator(".home-camera-thumb");
+    await expect(thumbnail).toBeVisible();
+    await expect(thumbnail.locator("img, svg")).toHaveCount(1);
     await camera.click();
     await expect(page.locator(".camera-marker[aria-pressed=true]")).toHaveCount(1);
-    await expect(rail.locator(".home-cctv-stage video")).toBeVisible();
-    await expect(rail.locator(".ring-video-actions")).toBeVisible();
+    const stageContent = hasLiveFeed
+      ? rail.locator(".ring-video-actions")
+      : rail.locator(".home-cctv-empty");
+    await expect(stageContent).toBeVisible();
+    if (hasLiveFeed) await expect(rail.locator(".home-cctv-stage video")).toBeVisible();
     await expect(map.locator(".map-camera-panel")).toHaveCount(0);
-    const fits = async () => rail.evaluate((element) => {
+    const fits = async () => rail.evaluate((element, contentSelector) => {
       const cctv = element.querySelector<HTMLElement>(".home-cctv")!;
-      const controls = element.querySelector<HTMLElement>(".ring-video-actions")!;
+      const controls = element.querySelector<HTMLElement>(contentSelector)!;
       const incidents = element.querySelector<HTMLElement>(".incident-list")!;
       const incidentRow = element.querySelector<HTMLElement>(".incident-row");
       const cctvBox = cctv.getBoundingClientRect();
@@ -154,7 +160,7 @@ test("home keeps CCTV and incidents in one right rail beside a full green 2D map
         controlsInside: controlBox.right <= cctvBox.right + 1 && controlBox.bottom <= cctvBox.bottom + 1,
         sectionsSeparate: cctvBox.bottom <= incidentBox.top + 1,
       };
-    });
+    }, hasLiveFeed ? ".ring-video-actions" : ".home-cctv-empty");
     const wideFit = await fits();
     expect(wideFit.horizontal.cctv[1]).toBeLessThanOrEqual(wideFit.horizontal.cctv[0]);
     expect(wideFit.horizontal.incidents[1]).toBeLessThanOrEqual(wideFit.horizontal.incidents[0]);
@@ -174,7 +180,7 @@ test("home keeps CCTV and incidents in one right rail beside a full green 2D map
     });
     await page.getByRole("button", { name: "3D", exact: true }).click();
     await expect(page.locator(".spatial-scene canvas")).toBeVisible();
-    await expect(rail.locator(".ring-video-actions")).toBeVisible();
+    await expect(stageContent).toBeVisible();
   }
 });
 
