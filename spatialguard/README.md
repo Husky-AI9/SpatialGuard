@@ -132,7 +132,7 @@ Use one connected, authorized USB device or emulator. The script builds, install
 
 In web **Settings → Android pairing**, create a code and enter it in Android. The code lasts three minutes and can be redeemed once. Re-establish ADB reverse after reconnecting USB. The PC and both backends must remain running. This is a local debug connection, not remote home monitoring.
 
-The Android credential is encrypted with an AES-GCM key in Android Keystore. It is never placed in browser storage or the APK. Device sessions can be revoked from Settings. Native logs are disabled to prevent bridge arguments from exposing credentials. HTTP is allowed only for the debug build's `127.0.0.1` destination. Release builds forbid cleartext and have no backend configured until hosted authentication is implemented.
+The Android credential is encrypted with an AES-GCM key in Android Keystore. It is never placed in browser storage or the APK. Device sessions can be revoked from Settings. Native logs are disabled to prevent bridge arguments from exposing credentials. HTTP is allowed only for the debug build's `127.0.0.1` destination. Release builds forbid cleartext and take the hosted HTTPS API origin from the `SPATIALGUARD_API_URL` Gradle property or environment variable, for example `SPATIALGUARD_API_URL=https://your-service.up.railway.app`.
 
 ## Boundaries and contracts
 

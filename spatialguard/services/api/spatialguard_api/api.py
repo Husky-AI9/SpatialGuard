@@ -1,4 +1,5 @@
 import json
+import os
 import secrets
 import time
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
@@ -11,7 +12,7 @@ from . import engine as tf
 from .engine import LayoutRejected, client, normalize_cameras, publish_layout
 
 COOKIE = "spatialguard_session"
-ORIGIN = "http://127.0.0.1:8010"
+ORIGIN = os.environ.get("SPATIALGUARD_ORIGIN", "http://127.0.0.1:8010")
 
 
 def create_app(db_path=None, engine=None, ring_service=None):
@@ -23,7 +24,13 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
     @app.middleware("http")
     async def security(request, call_next):
-        if request.headers.get("host") not in {"127.0.0.1:8010", "localhost:8010", "testserver"}:
+        allowed_hosts = {"127.0.0.1:8010", "localhost:8010", "testserver"}
+        configured_hosts = os.environ.get("SPATIALGUARD_ALLOWED_HOSTS", "")
+        allowed_hosts.update(host.strip() for host in configured_hosts.split(",") if host.strip())
+        # Railway's health probe may use an internal host before a public
+        # domain has been assigned. Keep the probe reachable while preserving
+        # the local host guard for application routes.
+        if request.url.path != "/health" and request.headers.get("host") not in allowed_hosts:
             return Response(status_code=400)
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"

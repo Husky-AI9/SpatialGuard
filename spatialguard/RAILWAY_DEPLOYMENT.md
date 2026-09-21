@@ -39,6 +39,13 @@ OPENAI_API_KEY
 SPATIALGUARD_CLASSIFIER_MODEL
 ```
 
+For the first Railway deployment, set `SPATIALGUARD_ALLOWED_HOSTS` to the
+generated Railway host including its port only when Railway displays one (for
+example, `spatialguard-production.up.railway.app`). Set
+`SPATIALGUARD_ORIGIN` to the same `https://` URL. The repository includes a
+`railway.toml` start command and `/health` check so Railway does not need to
+guess how to launch the Python service.
+
 After the API has a stable HTTPS domain, copy its account-link, token-exchange,
 app-home, and webhook URLs into the Ring private-app configuration.
 

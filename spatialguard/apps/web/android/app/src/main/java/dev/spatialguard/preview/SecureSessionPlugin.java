@@ -45,8 +45,8 @@ public class SecureSessionPlugin extends Plugin {
             }
             JSObject result = new JSObject();
             result.put("token", token);
-            // No release host exists yet. Release networking fails closed until hosted setup.
-            result.put("apiUrl", BuildConfig.DEBUG ? "http://127.0.0.1:8010" : "");
+            // Debug uses ADB reverse. Release receives the hosted HTTPS origin at build time.
+            result.put("apiUrl", BuildConfig.SPATIALGUARD_API_URL);
             call.resolve(result);
         } catch (Exception e) {
             prefs().edit().clear().commit();
