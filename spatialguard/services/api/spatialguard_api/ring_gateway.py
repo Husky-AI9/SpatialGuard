@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from starlette.concurrency import run_in_threadpool
 from .ring_service import RingService
-from .store import ROOT
+from .store import ROOT, digest
 
 
 _AUDIT_PATH = ROOT / '.data' / 'spatialguard' / 'ring-gateway-audit.jsonl'
@@ -57,9 +57,21 @@ def create_gateway(service=None):
         return page('<h2>Ring connection</h2><p>Manage your authorized cameras in SpatialGuard Settings.</p><p><a href="/workspace">Open SpatialGuard</a></p>')
 
     @app.get('/ring/link')
-    def link(nonce: str = '', time: str = ''):
+    def link(request: Request, nonce: str = '', time: str = ''):
         if len(nonce) != 43 or not time.isdigit() or len(time) > 15:
             return page('<p>Start connecting SpatialGuard from your private app in Ring. Then return here with the Ring link.</p>')
+        session_token = request.cookies.get('spatialguard_session', '')
+        with ring.store.connect() as db:
+            session = db.execute(
+                'SELECT s.owner,a.email FROM sessions s JOIN accounts a ON a.id=s.owner '
+                'WHERE s.digest=? AND s.expires>?', (digest(session_token), clock.time())
+            ).fetchone() if session_token else None
+        if session:
+            continuation = ring.continuation(session['owner'], nonce, time)
+            return page('<h2>Connect Ring to SpatialGuard</h2><p>Continue with the signed-in SpatialGuard account <strong>'+html.escape(session['email'])+'</strong>.</p>'
+                '<form method="post" action="/ring/link"><input type="hidden" name="nonce" value="'+html.escape(nonce, quote=True)+'"><input type="hidden" name="time" value="'+html.escape(time, quote=True)+'">'
+                '<input type="hidden" name="continuation" value="'+html.escape(continuation, quote=True)+'"><button>Continue and connect Ring</button></form>'
+                '<p><small>This one-time continuation expires in 10 minutes. Use the cross-device code fallback only when Ring and SpatialGuard are open on different devices.</small></p>')
         return page('<h2>Sign in to connect Ring</h2><p>In SpatialGuard, open Settings → Ring connection and create a sign-in code. Enter it below to authorize this account link.</p><p><a href="/workspace" target="_blank" rel="noopener">Open SpatialGuard to get a code</a></p>'
             '<form method="post" action="/ring/link"><input type="hidden" name="nonce" value="'+html.escape(nonce, quote=True)+'"><input type="hidden" name="time" value="'+html.escape(time, quote=True)+'">'
             '<label for="code">SpatialGuard sign-in code</label><input id="code" name="code" required minlength="16" maxlength="16" autocomplete="one-time-code"><button>Sign in and connect Ring</button></form><p><small>Use the SpatialGuard code, not your Ring password. The code expires in 10 minutes and works once.</small></p>')
@@ -77,15 +89,19 @@ def create_gateway(service=None):
             raise HTTPException(403, 'Use the Ring linking page')
         data = parse_qs((await read_body(request, 2048)).decode())
         try:
-            code, nonce, stamp = (data[k][0] for k in ('code','nonce','time'))
-            await run_in_threadpool(ring.claim, code, nonce, stamp)
+            nonce, stamp = (data[k][0] for k in ('nonce','time'))
+            continuation = (data.get('continuation') or [''])[0]
+            if continuation:
+                await run_in_threadpool(ring.claim_continuation, continuation, nonce, stamp)
+            else:
+                await run_in_threadpool(ring.claim, data['code'][0], nonce, stamp)
         except (KeyError, IndexError):
             raise HTTPException(400, 'Missing linking fields') from None
         except HTTPException as e:
             response = page('<h2>Connection not completed</h2><p>'+html.escape(str(e.detail))+'</p><p>Go back to retry, or start a new connection in Ring.</p>')
             response.status_code = e.status_code
             return response
-        return page('<h2>Ring account connected</h2><p>Your Ring account is now linked. In SpatialGuard Settings, refresh your cameras and assign each one to its position on your floor plan.</p><p><a href="/workspace">Open SpatialGuard</a></p>')
+        return page('<h2>Ring account connected</h2><p>Your authorized camera inventory is ready to refresh. Continue to choose devices and place them on your floor plan.</p><p><a href="/workspace?ring=connected">Continue to SpatialGuard</a></p>')
 
     @app.post('/ring/token')
     async def token(request: Request):

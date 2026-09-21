@@ -4,6 +4,8 @@ android {
     buildFeatures { buildConfig true }
     def hostedApiUrl = (project.findProperty('SPATIALGUARD_API_URL') ?: System.getenv('SPATIALGUARD_API_URL') ?: 'https://spatialguard-production.up.railway.app')
         .toString().replace('\\', '\\\\').replace('"', '\\"')
+    def debugApiUrl = (project.findProperty('SPATIALGUARD_DEBUG_API_URL') ?: System.getenv('SPATIALGUARD_DEBUG_API_URL') ?: 'http://127.0.0.1:8010')
+        .toString().replace('\\', '\\\\').replace('"', '\\"')
     def releaseKeystore = System.getenv('SPATIALGUARD_ANDROID_KEYSTORE')
     def releaseStorePassword = System.getenv('SPATIALGUARD_ANDROID_KEYSTORE_PASSWORD')
     def releaseKeyAlias = System.getenv('SPATIALGUARD_ANDROID_KEY_ALIAS')
@@ -39,7 +41,7 @@ android {
     }
     buildTypes {
         debug {
-            buildConfigField "String", "SPATIALGUARD_API_URL", '"http://127.0.0.1:8010"'
+            buildConfigField "String", "SPATIALGUARD_API_URL", "\"${debugApiUrl}\""
         }
         release {
             buildConfigField "String", "SPATIALGUARD_API_URL", "\"${hostedApiUrl}\""

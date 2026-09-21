@@ -115,7 +115,8 @@ const EMPTY_PLACE = {
 } as unknown as Site;
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("Home"),
+  const returnedFromRing = new URLSearchParams(window.location.search).get("ring") === "connected";
+  const [tab, setTab] = useState<Tab>(returnedFromRing ? "Settings" : "Home"),
     [site, setSite] = useState<Site | null>(null),
     [incidents, setIncidents] = useState<Incident[]>([]),
     [selected, setSelected] = useState<Incident | null>(null),
@@ -163,6 +164,16 @@ export default function App() {
   const environmentLabel = hostedWeb ? "Hosted preview" : "Local preview";
   activeRef.current = activeSite;
   runRef.current = run;
+  useEffect(() => {
+    const reset = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    reset();
+    const frame = window.requestAnimationFrame(reset);
+    const timer = window.setTimeout(reset, 0);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [tab]);
   const handleError = useCallback((e: unknown) => {
     setError(e instanceof Error ? e.message : "Connection failed");
     if (e instanceof ApiError && e.status === 401) {
@@ -1512,7 +1523,7 @@ export default function App() {
                 </p>
               </section>
               {accountPreferences?.ring_data_consent ? (
-                <RingConnection sites={sites} />
+                <RingConnection sites={sites} refreshOnReturn={returnedFromRing} />
               ) : (
                 <section>
                   <h2>Ring connection</h2>

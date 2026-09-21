@@ -87,6 +87,26 @@ test("Ring setup shows real endpoint URLs and single-use sign-in instructions", 
   ).toBeVisible();
 });
 
+test("returning from Ring opens Settings and refreshes the authorized inventory", async ({ page }) => {
+  await allowRingData(page);
+  let refreshes = 0;
+  await page.route("**/v1/ring", route => route.fulfill({ json: {
+    configured: true,
+    state: "connected",
+    public_url: "https://gateway.example.test",
+  } }));
+  await page.route("**/v1/ring/devices/refresh", route => {
+    refreshes += 1;
+    return route.fulfill({ json: [] });
+  });
+
+  await page.goto("/?ring=connected");
+
+  await expect(page.getByRole("heading", { name: "Ring connection", exact: true })).toBeVisible();
+  await expect.poll(() => refreshes).toBe(1);
+  await expect.poll(() => new URL(page.url()).searchParams.has("ring")).toBe(false);
+});
+
 test("phone Ring inventory handles mapping and provider errors without fake live video", async ({
   page,
 }) => {

@@ -84,6 +84,8 @@ class RingService:
             CREATE UNIQUE INDEX IF NOT EXISTS ring_one_owner ON ring_accounts(owner) WHERE owner IS NOT NULL;
             CREATE TABLE IF NOT EXISTS ring_codes(digest TEXT PRIMARY KEY, owner TEXT NOT NULL, expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS ring_nonces(digest TEXT PRIMARY KEY, expires REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS ring_link_continuations(digest TEXT PRIMARY KEY, owner TEXT NOT NULL,
+                nonce_digest TEXT NOT NULL, stamp TEXT NOT NULL, expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS ring_grants(digest TEXT PRIMARY KEY, expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS ring_devices(account TEXT NOT NULL, device TEXT NOT NULL, data TEXT NOT NULL,
                 site TEXT, camera TEXT, PRIMARY KEY(account,device), UNIQUE(site,camera));
@@ -179,6 +181,16 @@ class RingService:
             db.execute('INSERT INTO ring_codes VALUES (?,?,?)', (digest(code), owner, time.time()+600))
         return {'code': code, 'expires_at': time.time()+600}
 
+    def continuation(self, owner, nonce, stamp):
+        """Create a one-use, owner-session-bound Ring linking continuation."""
+        self._validate_link_request(nonce, stamp)
+        token = secrets.token_urlsafe(32)
+        with self.store.connect() as db:
+            db.execute('DELETE FROM ring_link_continuations WHERE owner=? OR expires<?', (owner, time.time()))
+            db.execute('INSERT INTO ring_link_continuations VALUES (?,?,?,?,?)',
+                       (digest(token), owner, digest(nonce), stamp, time.time()+600))
+        return token
+
     def throttle(self, key, limit=20):
         blocked = False
         with self.store.connect() as db:
@@ -258,6 +270,75 @@ class RingService:
                 raise
             with self.store.connect() as db:
                 if not db.execute("UPDATE ring_accounts SET state='connected' WHERE account=? AND state='linking'", (match['account'],)).rowcount:
+                    raise HTTPException(409, 'Ring revoked this link during setup. Start again in Ring.')
+                audit(db, owner, 'ring.linked', 'ring')
+
+    def _validate_link_request(self, nonce, stamp):
+        if not isinstance(nonce, str) or len(nonce) != 43:
+            raise HTTPException(400, 'Ring link is invalid. Start the connection again in Ring.')
+        try:
+            delta = time.time() - int(stamp)/1000
+            if not 0 <= delta <= 600: raise ValueError()
+        except (TypeError, ValueError):
+            raise HTTPException(400, 'Ring link expired. Start the connection again in Ring.') from None
+
+    def claim_continuation(self, continuation, nonce, stamp):
+        """Claim an unclaimed Ring grant for the already signed-in owner."""
+        self.throttle('session-claim', 10)
+        self._validate_link_request(nonce, stamp)
+        with self.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute(
+                'SELECT * FROM ring_link_continuations WHERE digest=? AND expires>?',
+                (digest(continuation), time.time()),
+            ).fetchone()
+            if (not row or row['nonce_digest'] != digest(nonce) or row['stamp'] != stamp or
+                    not db.execute('DELETE FROM ring_link_continuations WHERE digest=?',
+                                   (digest(continuation),)).rowcount):
+                raise HTTPException(401, 'This signed-in continuation is invalid or expired')
+            owner = row['owner']
+            candidates = db.execute(
+                "SELECT * FROM ring_accounts WHERE state='unclaimed' AND expires>?", (time.time(),)
+            ).fetchall()
+        key = self.provider.creds['hmac signature key'].encode()
+        match = next((r for r in candidates if hmac.compare_digest(
+            nonce,
+            base64.urlsafe_b64encode(hmac.new(
+                key, f'{stamp}:{r["account"]}'.encode(), hashlib.sha256
+            ).digest()).rstrip(b'=').decode(),
+        )), None)
+        if not match:
+            raise HTTPException(409, 'Waiting for matching Ring credentials. Retry, or start linking again in Ring.')
+        with account_lock(self.store, match['account']):
+            with self.store.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+                if db.execute('SELECT 1 FROM ring_accounts WHERE owner=? AND account<>?',
+                              (owner, match['account'])).fetchone():
+                    raise HTTPException(409, 'Disconnect your existing Ring account first')
+                if db.execute('SELECT 1 FROM ring_nonces WHERE digest=?', (digest(nonce),)).fetchone():
+                    raise HTTPException(409, 'This Ring link was already used')
+                if not db.execute(
+                    "UPDATE ring_accounts SET owner=?,state='linking' WHERE account=? AND state='unclaimed'",
+                    (owner, match['account']),
+                ).rowcount:
+                    raise HTTPException(409, 'Ring link already claimed')
+                db.execute('INSERT INTO ring_nonces VALUES (?,?)', (digest(nonce), time.time()+600))
+            try:
+                token = self.vault.open(match['tokens'])['access_token']
+                self.provider.api(token, '/v1/accounts/me/app-integrations', 'POST', {
+                    'account_identifier': 'SpatialGuard signed-in owner', 'nonce': nonce,
+                })
+                self.provider.api(token, '/v1/accounts/me/app-integrations', 'PATCH', {'status': 'completed'})
+            except Exception:
+                with self.store.connect() as db:
+                    db.execute("UPDATE ring_accounts SET state='relink_required' WHERE account=? AND state='linking'",
+                               (match['account'],))
+                raise
+            with self.store.connect() as db:
+                if not db.execute(
+                    "UPDATE ring_accounts SET state='connected' WHERE account=? AND state='linking'",
+                    (match['account'],),
+                ).rowcount:
                     raise HTTPException(409, 'Ring revoked this link during setup. Start again in Ring.')
                 audit(db, owner, 'ring.linked', 'ring')
 
@@ -731,6 +812,7 @@ class RingService:
             db.execute("DELETE FROM ring_accounts WHERE state='unclaimed' AND expires<?", (time.time(),))
             db.execute('DELETE FROM ring_codes WHERE expires<?', (time.time(),))
             db.execute('DELETE FROM ring_nonces WHERE expires<?', (time.time(),))
+            db.execute('DELETE FROM ring_link_continuations WHERE expires<?', (time.time(),))
         for row in rows:
             try: self.close_stream(row['owner'], row['id'])
             except HTTPException: pass # retry cleanup; Ring also imposes its own bounded expiry

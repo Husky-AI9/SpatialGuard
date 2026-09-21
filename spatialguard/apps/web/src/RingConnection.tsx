@@ -92,18 +92,26 @@ export function LiveVideo({
     void (async () => {
       pc.addTransceiver("video", { direction: "recvonly" });
       await pc.setLocalDescription(await pc.createOffer());
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         if (pc.iceGatheringState === "complete") return resolve();
-        const timeout = setTimeout(() => {
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timeout);
           pc.removeEventListener("icegatheringstatechange", check);
-          reject(new Error("Video connection timed out. Retry."));
-        }, 10000);
+          resolve();
+        };
+        const timeout = setTimeout(() => {
+          // Android WebView can keep ICE gathering open while it waits for a
+          // STUN response even though its usable candidates are already in
+          // localDescription. Ring accepts this non-trickle SDP offer, so use
+          // the candidates collected so far instead of failing before the API
+          // ever receives the request.
+          finish();
+        }, 6000);
         function check() {
-          if (pc.iceGatheringState === "complete") {
-            clearTimeout(timeout);
-            pc.removeEventListener("icegatheringstatechange", check);
-            resolve();
-          }
+          if (pc.iceGatheringState === "complete") finish();
         }
         pc.addEventListener("icegatheringstatechange", check);
       });
@@ -216,19 +224,19 @@ export function LiveVideo({
   );
 }
 
-export default function RingConnection({ sites }: { sites: Site[] }) {
+export default function RingConnection({ sites, refreshOnReturn = false }: { sites: Site[]; refreshOnReturn?: boolean }) {
   const [status, setStatus] = useState<Status | null>(null),
     [devices, setDevices] = useState<Device[]>([]);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [code, setCode] = useState<components["schemas"]["PairCode"] | null>(null);
   const [view, setView] = useState<Device | null>(null);
-  const load = async () => {
+  const load = async (refreshInventory = false) => {
     const s = await request<Status>("/v1/ring");
     setStatus(s);
     setDevices(
       s.state === "connected"
-        ? await request<Device[]>("/v1/ring/devices")
+        ? await request<Device[]>(refreshInventory ? "/v1/ring/devices/refresh" : "/v1/ring/devices", refreshInventory ? "POST" : "GET")
         : [],
     );
   };
@@ -244,7 +252,14 @@ export default function RingConnection({ sites }: { sites: Site[] }) {
     }
   };
   useEffect(() => {
-    void act(load);
+    void act(async () => {
+      await load(refreshOnReturn);
+      if (refreshOnReturn) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("ring");
+        window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      }
+    });
   }, []);
   return (
     <section className="ring-connection">

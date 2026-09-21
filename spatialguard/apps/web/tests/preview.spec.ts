@@ -497,6 +497,11 @@ test("phone navigation, pairing and disconnected state", async ({
     path: path.join(output, "web-phone.png"),
     fullPage: true,
   });
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Cameras", level: 2 }),

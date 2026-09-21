@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 import pytest
@@ -174,6 +175,34 @@ def test_hosted_link_form_claims_only_valid_signed_ring_account(service, monkeyp
     assert service.status('owner')['state'] == 'connected'
     assert service.status('owner')['public_url'] == origin
     assert web.post('/ring/link', data=data, headers={'origin': origin}).status_code == 401
+
+
+def test_hosted_link_uses_one_time_signed_in_continuation(service, monkeypatch):
+    origin = 'https://spatialguard.example'
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', origin)
+    monkeypatch.setenv('SPATIALGUARD_ALLOWED_HOSTS', 'spatialguard.example')
+    web = TestClient(create_app(service.store.path, ring_service=service), base_url=origin)
+    browser_token = 'signed-in-browser-token'
+    with service.store.connect() as db:
+        db.execute('INSERT INTO accounts(id,email,password_hash,created,email_verified) VALUES (?,?,?,?,1)',
+                   ('owner', 'owner@example.test', 'unused', now()))
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
+                   ('session-owner', 'owner', digest(browser_token), 'Browser', 'browser', time.time()+600))
+    web.cookies.set('spatialguard_session', browser_token)
+    service.exchange('one-time-ring-grant')
+    stamp = str(int(time.time()*1000)-50)
+    signed_nonce = nonce(service, stamp)
+    form = web.get('/ring/link', params={'nonce': signed_nonce, 'time': stamp})
+    assert 'owner@example.test' in form.text
+    assert 'Continue and connect Ring' in form.text
+    continuation = re.search(r'name="continuation" value="([^"]+)"', form.text).group(1)
+    data = {'continuation': continuation, 'nonce': signed_nonce, 'time': stamp}
+    result = web.post('/ring/link', data=data, headers={'origin': origin, 'sec-fetch-site': 'same-origin'})
+    assert result.status_code == 200
+    assert '/workspace?ring=connected' in result.text
+    assert service.status('owner')['state'] == 'connected'
+    replay = web.post('/ring/link', data=data, headers={'origin': origin, 'sec-fetch-site': 'same-origin'})
+    assert replay.status_code == 401
 
 
 def test_ring_transport_identifies_itself_and_allows_documented_device_query(monkeypatch):
