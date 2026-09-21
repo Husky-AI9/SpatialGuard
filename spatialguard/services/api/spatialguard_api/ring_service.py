@@ -160,7 +160,9 @@ class RingService:
             a = db.execute('SELECT state FROM ring_accounts WHERE owner=?', (owner,)).fetchone()
             public = db.execute("SELECT value FROM settings WHERE key='ring_public_url'").fetchone()
             return {'configured': configured, 'state': a['state'] if a else 'not_connected',
-                    'public_url': public[0] if public else None}
+                    'public_url': (os.environ.get('SPATIALGUARD_ORIGIN', '').rstrip('/')
+                                   if os.environ.get('SPATIALGUARD_ORIGIN', '').startswith('https://')
+                                   else public[0] if public else None)}
 
     def code(self, owner):
         code = secrets.token_hex(8).upper()

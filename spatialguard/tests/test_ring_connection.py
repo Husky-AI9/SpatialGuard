@@ -149,6 +149,30 @@ def test_hosted_app_exposes_ring_gateway_on_the_same_public_port(service):
     web = TestClient(create_app(service.store.path, ring_service=service))
     assert web.get('/ring/home').status_code == 200
     assert web.get('/ring/link').status_code == 200
+    assert web.get('/ring/link').headers['referrer-policy'] == 'strict-origin'
+    assert web.get('/health').headers['referrer-policy'] == 'no-referrer'
+
+
+def test_hosted_link_form_claims_only_valid_signed_ring_account(service, monkeypatch):
+    origin = 'https://spatialguard.example'
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', origin)
+    monkeypatch.setenv('SPATIALGUARD_ALLOWED_HOSTS', 'spatialguard.example')
+    web = TestClient(create_app(service.store.path, ring_service=service), base_url=origin)
+    service.exchange('one-time-ring-grant')
+    stamp = str(int(time.time()*1000)-50)
+    data = {'code': service.code('owner')['code'], 'nonce': nonce(service, stamp), 'time': stamp}
+    form = web.get('/ring/link', params={'nonce': data['nonce'], 'time': stamp})
+    assert form.headers['referrer-policy'] == 'strict-origin'
+    assert 'Open SpatialGuard to get a code' in form.text
+    for bad_origin in ['null', 'http://spatialguard.example', 'https://evil.test']:
+        assert web.post('/ring/link', data=data, headers={'origin': bad_origin}).status_code == 403
+    assert service.status('owner')['state'] == 'not_connected'
+    result = web.post('/ring/link', data=data, headers={'origin': origin, 'sec-fetch-site': 'same-origin'})
+    assert result.status_code == 200
+    assert 'Ring account connected' in result.text
+    assert service.status('owner')['state'] == 'connected'
+    assert service.status('owner')['public_url'] == origin
+    assert web.post('/ring/link', data=data, headers={'origin': origin}).status_code == 401
 
 
 def test_ring_transport_identifies_itself_and_allows_documented_device_query(monkeypatch):

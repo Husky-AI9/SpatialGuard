@@ -265,7 +265,8 @@ export default function RingConnection({ sites }: { sites: Site[] }) {
         )}
       {error && <p role="alert">{error}</p>}
       {status?.public_url ? (
-        <>
+        <details>
+          <summary>Developer connection settings</summary>
           <p>
             Enter these HTTPS addresses in your private Ring app’s
             account-linking configuration:
@@ -285,17 +286,14 @@ export default function RingConnection({ sites }: { sites: Site[] }) {
               </div>
             ))}
           </dl>
-        </>
-      ) : (
-        <p>
-          Start the Ring development tunnel to obtain the four public HTTPS
-          addresses.
-        </p>
-      )}
+        </details>
+      ) : null}
       <p>
-        In Ring’s private-app Connect step, allowlist your Ring account,
-        authorize SpatialGuard, and select your cameras. On the SpatialGuard
-        sign-in page, enter a code created below.
+        Open the Ring Appstore, choose SpatialGuard, and authorize your cameras.
+        In this private preview, the app is listed as “test” under Staging Apps
+        and your Ring account must already be invited. When the linking page
+        asks for a code, create one here and paste it there. Then return here
+        and check the connection.
       </p>
       <div className="button-row">
         <button
@@ -313,10 +311,10 @@ export default function RingConnection({ sites }: { sites: Site[] }) {
         </button>
         <button
           onClick={() =>
-            void openExternal("https://developer.amazon.com/ring/console/apps")
+            void openExternal("https://ring.com/appstore")
           }
         >
-          Open Ring developer portal
+          Open Ring Appstore
         </button>
       </div>
       {code && (
