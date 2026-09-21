@@ -15,11 +15,11 @@ test("desktop landing restores the spatial 3D-house experience", async ({ page }
   expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBeTruthy();
 
   await page.getByRole("button", { name: /Local replay preview/ }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:8010/signin");
+  await expect(page).toHaveURL(/\/signin$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.getByRole("link", { name: "Back to SpatialGuard" }).click();
   await page.getByRole("button", { name: "Create account" }).first().click();
-  await expect(page).toHaveURL("http://127.0.0.1:8010/signup");
+  await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
   await page.screenshot({ path: path.join(output, "landing-desktop.png"), fullPage: true });
 });
@@ -36,7 +36,7 @@ test("landing fits a phone and preserves glass contrast", async ({ page }) => {
   await expect(page.getByRole("img", { name: /Detailed protected home/ })).toBeVisible();
   expect(await page.locator(".sg-mobile-scene").evaluate((element) => getComputedStyle(element).backdropFilter)).not.toBe("none");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:8010/signin");
+  await expect(page).toHaveURL(/\/signin$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await expect(page.getByLabel("Email")).toBeVisible();
   await page.screenshot({ path: path.join(output, "landing-phone-one-screen.png") });
@@ -45,7 +45,7 @@ test("landing fits a phone and preserves glass contrast", async ({ page }) => {
 test("try it out opens the local workspace", async ({ page }) => {
   await page.goto("/landing");
   await page.getByRole("link", { name: "Try SpatialGuard" }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:8010/workspace");
+  await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.locator(".lp-desktop")).toHaveCount(0);
 });
 

@@ -1,0 +1,42 @@
+name: SpatialGuard release checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: python -m pip install --upgrade pip && pip install -r requirements.lock
+      - run: npm ci
+      - run: python -m pytest spatialguard/tests -q
+      - run: python spatialguard/scripts/contracts.py && npm run contracts --workspace spatialguard-web && git diff --exit-code -- packages/contracts spatialguard/apps/web/src/generated.ts
+      - run: npm run build --workspace spatialguard-web
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          docker build -t spatialguard-ci .
+          docker run -d --name spatialguard-ci -p 8010:8010 \
+            -e SPATIALGUARD_ALLOWED_HOSTS=127.0.0.1:8010 \
+            -e SPATIALGUARD_ORIGIN=http://127.0.0.1:8010 spatialguard-ci
+          for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8010/health && break; sleep 2; done
+          curl -fsS http://127.0.0.1:8010/health
+          npm run test --workspace spatialguard-web
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21", cache: gradle }
+      - run: npm run android:sync --workspace spatialguard-web
+      - run: cd spatialguard/apps/web/android && ./gradlew assembleDebug
+      - run: npm audit --omit=dev --audit-level=high
+      - run: python -m pip install pip-audit bandit pip-licenses
+      - run: pip-audit -r requirements.lock
+      - run: bandit -q -r spatialguard/services/api/spatialguard_api -x spatialguard/tests
+      - run: pip-licenses --format=json --output-file=.data-python-licenses.json
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

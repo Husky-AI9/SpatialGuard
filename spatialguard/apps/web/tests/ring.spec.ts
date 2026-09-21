@@ -24,7 +24,7 @@ test("camera wall is available from Home and Cameras while Operations stays task
   await page.route("**/v1/ring/operations", route => route.fulfill({ json: operations }));
   await page.goto("/");
   await page.getByRole("button", { name: "Operations", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Know what is online and changing." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Know what is online." })).toBeVisible();
   await expect(page.getByText("99.8%")).toBeVisible();
   await expect(page.getByText("Front Door")).toBeVisible();
   await page.getByRole("tab", { name: "Time-lapse" }).click();

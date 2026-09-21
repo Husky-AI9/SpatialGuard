@@ -33,7 +33,7 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
   const [data, setData] = useState<WallData>({ devices: [], wall: [], motion_events: [] });
   const [wall, setWall] = useState<string[]>([]);
   const [dragging, setDragging] = useState("");
-  const [closed, setClosed] = useState<string[]>([]);
+  const [active, setActive] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +83,7 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
       <div>
         <span className="eyebrow">Live cameras</span>
         <h3>Camera wall</h3>
-        {!compact && <p>Watch authorized Ring cameras together. Drag tiles to save their order.</p>}
+        {!compact && <p>Arrange up to 16 authorized cameras, then open one bounded live session at a time.</p>}
       </div>
       <div className="camera-wall-heading-actions">
         <span>{wall.length}/16</span>
@@ -106,9 +106,9 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
         void saveWall(next);
       }} className="camera-wall-tile">
         <div className="wall-tile-head"><GripVertical size={16} /><span className={device.online ? "online" : "offline"}>{device.online ? "Online" : "Offline"}</span></div>
-        {closed.includes(device.id)
-          ? <div className="wall-paused"><Camera size={24} /><p>View paused</p><button onClick={() => setClosed(items => items.filter(id => id !== device.id))}>Start live view</button></div>
-          : <LiveVideo device={device as never} embedded autoReconnect close={() => setClosed(items => [...items, device.id])} />}
+        {active !== device.id
+          ? <div className="wall-paused"><Camera size={24} /><p>{active ? "Another camera is active" : "Live view closed"}</p><button disabled={!device.online} onClick={() => setActive(device.id)}>{device.online ? "Start live view" : "Camera offline"}</button></div>
+          : <LiveVideo device={device as never} embedded autoReconnect={false} close={() => setActive("")} />}
       </article>)}
     </div>
     {!wall.length && <div className="operations-empty"><Video size={25} /><h3>Your camera wall is empty</h3><p>Select up to 16 authorized Ring cameras.</p></div>}

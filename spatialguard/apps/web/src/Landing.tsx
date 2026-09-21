@@ -35,6 +35,7 @@ function Brand() {
 }
 
 export default function Landing() {
+  const deletionReceipt = sessionStorage.getItem("spatialguard_deletion_receipt");
   const workspaceHref = native ? "/?workspace=1" : "/workspace";
   const hostedWeb = !native && !localWeb;
   const accountRequired = hostedWeb || native;
@@ -54,6 +55,7 @@ export default function Landing() {
 
   return (
     <>
+      {deletionReceipt && <div className="deletion-receipt" role="status"><Check size={17} /><span><strong>Account deletion completed</strong><small>Receipt {deletionReceipt}. Save this non-sensitive reference for your records.</small></span><button aria-label="Dismiss deletion receipt" onClick={(event) => { sessionStorage.removeItem("spatialguard_deletion_receipt"); event.currentTarget.parentElement?.remove(); }}>×</button></div>}
       <DesktopLanding
         hostedWeb={accountRequired}
         openSignIn={() => openAuth("signin")}

@@ -40,6 +40,7 @@ import CameraWall from "./CameraWall";
 import HomeCctv from "./HomeCctv";
 import Operations from "./Operations";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
+import AccountSecurity from "./AccountSecurity";
 import type { TestTrack } from "./TestVideoReplay";
 import type { components } from "./generated";
 import type {
@@ -69,6 +70,7 @@ type EventPage = components["schemas"]["EventPage"];
 type Page = components["schemas"]["IncidentPage"];
 type ClassifierStatus = components["schemas"]["ClassifierStatus"];
 type IncidentClassification = components["schemas"]["IncidentClassification"];
+type ProductCapabilities = components["schemas"]["ProductCapabilities"];
 import { ActivityIcon, actorFromClassification, DEFAULT_ACTOR, type ActorPresentation } from "./activityPresentation";
 const tabs = [
   { name: "Home", icon: House },
@@ -149,6 +151,7 @@ export default function App() {
     [deletePassword, setDeletePassword] = useState(""),
     [deleteConfirmation, setDeleteConfirmation] = useState(""),
     [deleteError, setDeleteError] = useState("");
+  const [features, setFeatures] = useState<ProductCapabilities>({ profile: "preview", classification: true, timelapse: true, uptime_history: true, offline_alerts: true, test_video: true, synthetic_replay: true, reviewer_diagnostics: false });
   const cursor = useRef(0),
     activeRef = useRef(""),
     current = useRef({ tab, selected }),
@@ -245,6 +248,8 @@ export default function App() {
           }
         }
         const preferences = await request<AccountPreferences>("/v1/account/preferences");
+        const releaseFeatures = await request<ProductCapabilities>("/v1/product-capabilities");
+        if (live) setFeatures(releaseFeatures);
         if (live) {
           setAccountPreferences(preferences);
           setOnboardingOpen(!preferences.onboarding_completed && (native || !localWeb));
@@ -416,10 +421,11 @@ export default function App() {
     setBusy(true);
     setDeleteError("");
     try {
-      await request("/v1/account", "DELETE", {
+      const receipt = await request<{ reference: string }>("/v1/account", "DELETE", {
         password: deletePassword,
         confirmation: deleteConfirmation,
       });
+      sessionStorage.setItem("spatialguard_deletion_receipt", receipt.reference);
       await clearToken();
       window.location.assign(native ? "/" : "/landing");
     } catch (problem) {
@@ -1346,7 +1352,7 @@ export default function App() {
               }}
             />
           )}
-          {tab === "Operations" && <Operations />}
+          {tab === "Operations" && <Operations features={features} />}
           {tab === "Settings" && (
             <div className="settings-page">
               <section>
@@ -1586,6 +1592,7 @@ export default function App() {
                 </p>
                 <p>Application version 0.1 · TwinForge schema 0.1</p>
               </section>
+              {currentSession?.email && <AccountSecurity ringDataConsent={!!accountPreferences?.ring_data_consent} onSessionsChanged={() => void request<Session[]>("/v1/sessions").then(setSessions)} />}
               {currentSession?.email && (
                 <section className="danger-zone">
                   <h2>Delete account</h2>

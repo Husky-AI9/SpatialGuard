@@ -11,17 +11,25 @@ export const native = Capacitor.isNativePlatform();
 export const localWeb = !native && ["127.0.0.1", "localhost"].includes(window.location.hostname);
 let credential = "",
   apiUrl = "";
+let platformInitialization: Promise<boolean> | null = null;
 export async function initializePlatform() {
-  if (native) {
-    const value = await secure.read();
-    credential = value.token;
-    apiUrl = value.apiUrl;
-    if (!apiUrl)
-      throw new Error(
-        "This release has no hosted backend configured. Use the local debug preview.",
-      );
-  }
-  return !native || credential.length > 0;
+  if (!platformInitialization)
+    platformInitialization = (async () => {
+      if (native) {
+        const value = await secure.read();
+        credential = value.token;
+        apiUrl = value.apiUrl;
+        if (!apiUrl)
+          throw new Error(
+            "This release has no hosted backend configured. Use the local debug preview.",
+          );
+      }
+      return !native || credential.length > 0;
+    })().catch((error) => {
+      platformInitialization = null;
+      throw error;
+    });
+  return platformInitialization;
 }
 export async function storeToken(token: string) {
   await secure.write({ token });
@@ -45,6 +53,7 @@ export async function request<T>(
   body?: unknown,
   timeoutMs = 15000,
 ): Promise<T> {
+  if (native && !apiUrl) await initializePlatform();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(native
@@ -142,6 +151,23 @@ export async function ringSnapshot(siteId: string, cameraId: string) {
 export async function openExternal(url: string) {
   if (native) await Browser.open({ url });
   else window.open(url, "_blank", "noopener,noreferrer");
+}
+const appLinkRoutes = new Set(["/verify-email", "/reset-password"]);
+export async function installAppLinkNavigation() {
+  if (!native) return () => {};
+  const listener = await App.addListener("appUrlOpen", ({ url }) => {
+    try {
+      const target = new URL(url);
+      const hosted = target.protocol === "https:" && target.hostname === "spatialguard-production.up.railway.app";
+      const custom = target.protocol === "spatialguard:" && target.hostname === "auth";
+      const route = custom ? `/${target.pathname.replace(/^\//, "")}` : target.pathname;
+      if ((hosted || custom) && appLinkRoutes.has(route))
+        window.location.assign(`${route}${target.search}`);
+    } catch {
+      // Ignore malformed or untrusted links instead of forwarding them to WebView.
+    }
+  });
+  return () => void listener.remove();
 }
 export async function lifecycle(onResume: () => void, onBack: () => boolean) {
   if (!native) return () => {};

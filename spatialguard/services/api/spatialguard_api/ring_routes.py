@@ -5,7 +5,8 @@ from typing import Literal
 from .models import ClassifierStatus, Incident, Model, PairCode
 from .ring_service import RingService
 from .classifier import ClassifierUnavailable, classify_image, status as classifier_status
-from .store import account_preferences, audit, event
+from .store import account_preferences, audit, access_log, event
+from .release import capabilities, require_feature
 
 
 class RingStatus(Model):
@@ -89,6 +90,8 @@ def install(app, store, principal, service=None):
 
     @app.get('/v1/classifier', response_model=ClassifierStatus)
     def classification_status(p=Depends(principal)):
+        if not capabilities()['classification']:
+            return {'configured': False, 'model': 'Disabled for this release'}
         return classifier_status()
 
     @app.post('/v1/ring/sign-in-code', response_model=PairCode)
@@ -109,11 +112,21 @@ def install(app, store, principal, service=None):
     @app.get('/v1/ring/operations')
     def operations(p=Depends(principal)):
         require_ring_consent(p['owner'])
-        return ring.operations(p['owner'])
+        result = ring.operations(p['owner'])
+        flags = capabilities()
+        if not flags['uptime_history']:
+            for device in result.get('devices', []):
+                device['history'] = []
+        if not flags['offline_alerts']:
+            result['alerts'] = []
+        if not flags['timelapse']:
+            result['timelapses'] = []
+        return result
 
     @app.patch('/v1/ring/operations/preferences', status_code=204)
     def operations_preferences(body: OperationsPreferences, p=Depends(principal)):
         require_ring_consent(p['owner'])
+        require_feature('offline_alerts')
         ring.update_operations_preferences(p['owner'], body.model_dump())
 
     @app.put('/v1/ring/operations/wall', status_code=204)
@@ -124,33 +137,39 @@ def install(app, store, principal, service=None):
     @app.post('/v1/ring/operations/alerts/{alert_id}/acknowledge', status_code=204)
     def acknowledge_alert(alert_id: str, p=Depends(principal)):
         require_ring_consent(p['owner'])
+        require_feature('offline_alerts')
         ring.acknowledge_alert(p['owner'], alert_id)
 
     @app.post('/v1/ring/timelapses', status_code=201)
     def create_timelapse(body: TimelapseInput, p=Depends(principal)):
         require_ring_consent(p['owner'])
+        require_feature('timelapse')
         return {'id': ring.create_timelapse(p['owner'], body.model_dump())}
 
     @app.post('/v1/ring/timelapses/{project_id}/capture', status_code=201)
     def capture_timelapse(project_id: str, p=Depends(principal)):
         require_ring_consent(p['owner'])
+        require_feature('timelapse')
         return {'id': ring.capture_timelapse(p['owner'], project_id)}
 
     @app.get('/v1/ring/timelapses/{project_id}/frames/{frame_id}', response_class=Response)
     def timelapse_frame(project_id: str, frame_id: str, p=Depends(principal)):
         require_ring_consent(p['owner'])
+        require_feature('timelapse')
         content, media_type = ring.timelapse_frame(p['owner'], project_id, frame_id)
         return Response(content, media_type=media_type, headers={'Cache-Control':'private, max-age=300'})
 
     @app.get('/v1/ring/timelapses/{project_id}/reel', response_class=Response)
     def timelapse_reel(project_id: str, p=Depends(principal)):
         require_ring_consent(p['owner'])
+        require_feature('timelapse')
         return Response(ring.timelapse_reel(p['owner'], project_id), media_type='image/gif',
                         headers={'Content-Disposition':f'attachment; filename="spatialguard-{project_id}.gif"'})
 
     @app.delete('/v1/ring/timelapses/{project_id}', status_code=204)
     def delete_timelapse(project_id: str, p=Depends(principal)):
         require_ring_consent(p['owner'])
+        require_feature('timelapse')
         ring.delete_timelapse(p['owner'], project_id)
 
     @app.put('/v1/ring/devices/{device}/mapping', status_code=204)
@@ -166,12 +185,16 @@ def install(app, store, principal, service=None):
     def snapshot(site: str, camera: str, p=Depends(principal)):
         require_ring_consent(p['owner'])
         image, content_type, metadata = ring.snapshot(p['owner'], site, camera)
+        with store.connect() as db:
+            access_log(db, p['owner'], p.get('name', 'Signed-in session'), 'snapshot.viewed',
+                       'Mapped Ring camera', 'Show the latest authorized camera image')
         headers = {'Cache-Control': 'private, max-age=30'}
         headers.update(metadata)
         return Response(content=image, media_type=content_type, headers=headers)
 
     @app.post('/v1/incidents/{incident_id}/classify', response_model=Incident)
     def classify_incident(incident_id: str, p=Depends(principal)):
+        require_feature('classification')
         require_classification_consent(p['owner'])
         with store.connect() as db:
             row = db.execute(
@@ -209,16 +232,67 @@ def install(app, store, principal, service=None):
                        (updated.model_dump_json(), incident_id))
             event(db, incident.site_id, 'incident.classified', incident_id)
             audit(db, p['owner'], 'incident.classified', incident_id)
+            access_log(db, p['owner'], p.get('name', 'Signed-in session'), 'snapshot.classified',
+                       'Mapped Ring camera', 'Explain an owner-selected incident')
         return updated
 
     @app.post('/v1/ring/devices/{device}/streams', response_model=StreamAnswer)
     def stream(device: str, body: StreamOffer, p=Depends(principal)):
         require_ring_consent(p['owner'])
-        return ring.stream(p['owner'], device, body.sdp)
+        answer = ring.stream(p['owner'], device, body.sdp)
+        with store.connect() as db:
+            access_log(db, p['owner'], p.get('name', 'Signed-in session'), 'live_view.opened',
+                       'Authorized Ring camera', 'Owner requested a live view')
+        return answer
 
     @app.delete('/v1/ring/streams/{sid}', status_code=204)
     def close(sid: str, p=Depends(principal)):
         ring.close_stream(p['owner'], sid)
+        with store.connect() as db:
+            access_log(db, p['owner'], p.get('name', 'Signed-in session'), 'live_view.closed',
+                       'Authorized Ring camera', 'Owner ended a live view')
+
+    @app.get('/v1/ring/event-deliveries')
+    def event_deliveries(p=Depends(principal)):
+        """Sanitized provider processing state; payloads and provider IDs stay hidden."""
+        require_ring_consent(p['owner'])
+        with store.connect() as db:
+            rows = db.execute(
+                "SELECT i.kind,i.received,i.state,i.attempts,i.error,i.provider_request FROM ring_inbox i "
+                "JOIN ring_accounts a ON a.account=i.account WHERE a.owner=? "
+                "ORDER BY i.rowid DESC LIMIT 100", (p['owner'],),
+            ).fetchall()
+        return [{
+            'event_type': row['kind'], 'request_id': (row['provider_request'] or '')[:12], 'received_at': row['received'],
+            'state': row['state'], 'attempts': row['attempts'],
+            'failure': 'Provider event could not be processed' if row['error'] else None,
+        } for row in rows]
+
+    @app.get('/v1/ring/pipeline-metrics')
+    def pipeline_metrics(p=Depends(principal)):
+        require_ring_consent(p['owner'])
+        from datetime import datetime
+        with store.connect() as db:
+            rows = db.execute(
+                "SELECT i.received,i.processed,i.state,i.attempts FROM ring_inbox i "
+                "JOIN ring_accounts a ON a.account=i.account WHERE a.owner=? ORDER BY i.rowid DESC LIMIT 500",
+                (p['owner'],),
+            ).fetchall()
+        durations = []
+        for row in rows:
+            if row['processed']:
+                durations.append(max(0, (datetime.fromisoformat(row['processed']) - datetime.fromisoformat(row['received'])).total_seconds() * 1000))
+        return {
+            'sample_size': len(rows),
+            'processed': sum(row['state'] in {'succeeded','ignored'} for row in rows),
+            'failed': sum(row['state'] == 'failed' for row in rows),
+            'retrying': sum(row['state'] == 'running' and row['attempts'] > 0 for row in rows),
+            'duplicate_suppression': 'provider request and event IDs are idempotent',
+            'processing_latency_ms': {
+                'average': round(sum(durations) / len(durations), 1) if durations else None,
+                'maximum': round(max(durations), 1) if durations else None,
+            },
+        }
 
     @app.get('/v1/ring/streams/{sid}', response_model=StreamState)
     def stream_state(sid: str, p=Depends(principal)):

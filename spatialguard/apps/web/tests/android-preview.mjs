@@ -3,8 +3,13 @@ import { chromium, request, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+const packageId = "app.spatialguard.mobile";
+const component = `${packageId}/dev.spatialguard.preview.MainActivity`;
+const device = execFileSync("adb", ["devices"], { encoding: "utf8", windowsHide: true })
+  .split(/\r?\n/).slice(1).map(line => line.trim().split(/\s+/)).find(parts => parts[1] === "device")?.[0];
+if (!device) throw new Error("No authorized Android emulator or device is attached");
 const adb = (...args) =>
-  execFileSync("adb", ["-s", "emulator-5554", ...args], {
+  execFileSync("adb", ["-s", device, ...args], {
     encoding: "utf8",
     windowsHide: true,
     timeout: 20000,
@@ -23,15 +28,16 @@ const web = await request.newContext({
 });
 await web.post("/v1/local-session");
 adb("reverse", "tcp:8010", "tcp:8010");
+adb("shell", "pm", "clear", packageId);
 adb(
   "shell",
   "am",
   "start",
   "-W",
   "-n",
-  "dev.spatialguard.preview/.MainActivity",
+  component,
 );
-const pid = adb("shell", "pidof", "dev.spatialguard.preview");
+const pid = adb("shell", "pidof", packageId);
 adb("forward", "tcp:9223", `localabstract:webview_devtools_remote_${pid}`);
 try {
   await expect
@@ -53,30 +59,42 @@ try {
   const page = context.pages()[0];
   page.setDefaultTimeout(15000);
   page.setDefaultNavigationTimeout(15000);
-  await expect(
-    page
-      .getByLabel("Pairing code", { exact: true })
-      .or(page.getByRole("heading", { name: "Home", exact: true })),
-  ).toBeVisible({ timeout: 30000 });
-  if (await page.getByLabel("Pairing code", { exact: true }).count()) {
-    const code = (await (await web.post("/v1/pairing")).json()).code;
-    await page.getByLabel("Pairing code", { exact: true }).fill(code);
-    await page.getByRole("button", { name: "Pair device" }).click();
-  }
+  await expect(page.getByRole("heading", { name: /See what happened/ })).toBeVisible({ timeout: 30000 });
+  record("Mobile landing is the first screen");
+  await page.getByRole("button", { name: /Sign up/ }).first().click();
+  const email = `android-${Date.now()}@example.test`;
+  const password = "SpatialGuard-test-12345";
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByLabel("Confirm password").fill(password);
+  await page.getByRole("button", { name: /Create account/ }).click();
   await expect(
     page.getByRole("heading", { name: "Home", exact: true }),
   ).toBeVisible({ timeout: 30000 });
-  record("Native pairing and authenticated API passed");
+  record("Native signup and authenticated API passed");
   const encrypted = adb(
     "shell",
     "run-as",
-    "dev.spatialguard.preview",
+    packageId,
     "cat",
     "shared_prefs/secure_session.xml",
   );
   if (!encrypted.includes("ciphertext") || encrypted.includes('name="token"'))
     throw new Error("Credential storage check failed");
   record("Credential is stored as Keystore-encrypted ciphertext");
+  // New accounts correctly start empty. Pair to the seeded local owner only for
+  // the remainder of this synthetic replay/device regression.
+  const pairing = await (await web.post("/v1/pairing")).json();
+  const paired = await (await web.post("/v1/pairing/redeem", {
+    data: { code: pairing.code, name: "Android emulator regression" },
+    headers: { "X-SpatialGuard-Client": "android" },
+  })).json();
+  await page.evaluate(async (token) => {
+    await globalThis.Capacitor.Plugins.SecureSession.write({ token });
+    window.location.assign("/?workspace=1");
+  }, paired.token);
+  await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible({ timeout: 30000 });
+  record("Single-use Android pairing opened the seeded replay workspace");
   await page
     .getByRole("button", { name: "Run replay", exact: true })
     .first()
@@ -106,7 +124,7 @@ try {
     path.join(output, "android-detail.png"),
     execFileSync(
       "adb",
-      ["-s", "emulator-5554", "exec-out", "screencap", "-p"],
+      ["-s", device, "exec-out", "screencap", "-p"],
       { windowsHide: true },
     ),
   );
@@ -118,7 +136,7 @@ try {
     path.join(output, "android-3d.png"),
     execFileSync(
       "adb",
-      ["-s", "emulator-5554", "exec-out", "screencap", "-p"],
+      ["-s", device, "exec-out", "screencap", "-p"],
       { windowsHide: true },
     ),
   );
@@ -152,7 +170,7 @@ try {
     "start",
     "-W",
     "-n",
-    "dev.spatialguard.preview/.MainActivity",
+    component,
   );
   await expect(
     page.getByRole("heading", { name: "Home", exact: true }),
@@ -177,7 +195,7 @@ try {
     path.join(output, "android-home.png"),
     execFileSync(
       "adb",
-      ["-s", "emulator-5554", "exec-out", "screencap", "-p"],
+      ["-s", device, "exec-out", "screencap", "-p"],
       { windowsHide: true },
     ),
   );

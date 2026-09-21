@@ -21,6 +21,40 @@
         }
       }
     },
+    "/status": {
+      "get": {
+        "summary": "Public Status",
+        "operationId": "public_status_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/product-capabilities": {
+      "get": {
+        "summary": "Product Capabilities",
+        "operationId": "product_capabilities_v1_product_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCapabilities"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/signup": {
       "post": {
         "summary": "Signup",
@@ -97,6 +131,154 @@
         }
       }
     },
+    "/v1/account/verification": {
+      "get": {
+        "summary": "Verification Status",
+        "operationId": "verification_status_v1_account_verification_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/verification/request": {
+      "post": {
+        "summary": "Request Verification",
+        "operationId": "request_verification_v1_account_verification_request_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/email/verify": {
+      "post": {
+        "summary": "Verify Email",
+        "operationId": "verify_email_v1_auth_email_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/password/request": {
+      "post": {
+        "summary": "Request Password Reset",
+        "operationId": "request_password_reset_v1_auth_password_request_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/password/reset": {
+      "post": {
+        "summary": "Reset Password",
+        "operationId": "reset_password_v1_auth_password_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordReset"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/signout": {
       "post": {
         "summary": "Signout",
@@ -138,6 +320,179 @@
                 "schema": {
                   "$ref": "#/components/schemas/Session"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/password": {
+      "post": {
+        "summary": "Change Password",
+        "operationId": "change_password_v1_account_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMessage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions/revoke-all": {
+      "post": {
+        "summary": "Revoke All Sessions",
+        "operationId": "revoke_all_sessions_v1_sessions_revoke_all_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/v1/account/security-activity": {
+      "get": {
+        "summary": "Security Activity",
+        "operationId": "security_activity_v1_account_security_activity_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/access-log": {
+      "get": {
+        "summary": "Account Access Log",
+        "operationId": "account_access_log_v1_account_access_log_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccessRecord"
+                  },
+                  "type": "array",
+                  "title": "Response Account Access Log V1 Account Access Log Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/notifications": {
+      "get": {
+        "summary": "Notification Preferences",
+        "operationId": "notification_preferences_v1_account_notifications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Notification Preferences",
+        "operationId": "update_notification_preferences_v1_account_notifications_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/notification-history": {
+      "get": {
+        "summary": "Notification History",
+        "operationId": "notification_history_v1_account_notification_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/export": {
+      "get": {
+        "summary": "Export Account",
+        "operationId": "export_account_v1_account_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           }
@@ -342,8 +697,54 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/deletion-receipts/{reference}": {
+      "get": {
+        "summary": "Deletion Receipt",
+        "operationId": "deletion_receipt_v1_deletion_receipts__reference__get",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Reference"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionReceipt"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -2053,6 +2454,39 @@
         }
       }
     },
+    "/v1/ring/event-deliveries": {
+      "get": {
+        "summary": "Event Deliveries",
+        "description": "Sanitized provider processing state; payloads and provider IDs stay hidden.",
+        "operationId": "event_deliveries_v1_ring_event_deliveries_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/pipeline-metrics": {
+      "get": {
+        "summary": "Pipeline Metrics",
+        "operationId": "pipeline_metrics_v1_ring_pipeline_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/test-videos": {
       "get": {
         "summary": "Test Videos",
@@ -2252,6 +2686,50 @@
   },
   "components": {
     "schemas": {
+      "AccessRecord": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "device": {
+            "type": "string",
+            "title": "Device"
+          },
+          "purpose": {
+            "type": "string",
+            "title": "Purpose"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "actor",
+          "action",
+          "device",
+          "purpose",
+          "result",
+          "at"
+        ],
+        "title": "AccessRecord"
+      },
       "AccountCredentials": {
         "properties": {
           "email": {
@@ -2384,6 +2862,20 @@
           "unobserved_gap_seconds"
         ],
         "title": "Association"
+      },
+      "AuthMessage": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "title": "AuthMessage"
       },
       "AuthSession": {
         "properties": {
@@ -2739,6 +3231,43 @@
           "model"
         ],
         "title": "ClassifierStatus"
+      },
+      "DeletionReceipt": {
+        "properties": {
+          "reference": {
+            "type": "string",
+            "title": "Reference"
+          },
+          "requested_at": {
+            "type": "string",
+            "title": "Requested At"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories"
+          },
+          "downstream": {
+            "type": "string",
+            "title": "Downstream"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reference",
+          "requested_at",
+          "completed_at",
+          "categories",
+          "downstream"
+        ],
+        "title": "DeletionReceipt"
       },
       "Event": {
         "properties": {
@@ -3383,6 +3912,33 @@
         ],
         "title": "Monitoring"
       },
+      "NotificationPreferences": {
+        "properties": {
+          "incident_email": {
+            "type": "boolean",
+            "title": "Incident Email",
+            "default": true
+          },
+          "operational_email": {
+            "type": "boolean",
+            "title": "Operational Email",
+            "default": true
+          },
+          "weekly_summary": {
+            "type": "boolean",
+            "title": "Weekly Summary",
+            "default": false
+          },
+          "marketing": {
+            "type": "boolean",
+            "title": "Marketing",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "NotificationPreferences"
+      },
       "Observation": {
         "properties": {
           "schema_version": {
@@ -3551,6 +4107,68 @@
           "code"
         ],
         "title": "PairInput"
+      },
+      "PasswordChange": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChange"
+      },
+      "PasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "PasswordRequest"
+      },
+      "PasswordReset": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 24,
+            "title": "Token"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "PasswordReset"
       },
       "PlanAccept": {
         "properties": {
@@ -3949,6 +4567,60 @@
         "type": "object",
         "title": "Preferences",
         "description": "Which place the owner last looked at, so a reload reopens it."
+      },
+      "ProductCapabilities": {
+        "properties": {
+          "profile": {
+            "type": "string",
+            "enum": [
+              "preview",
+              "reviewer",
+              "certification"
+            ],
+            "title": "Profile"
+          },
+          "classification": {
+            "type": "boolean",
+            "title": "Classification"
+          },
+          "timelapse": {
+            "type": "boolean",
+            "title": "Timelapse"
+          },
+          "uptime_history": {
+            "type": "boolean",
+            "title": "Uptime History"
+          },
+          "offline_alerts": {
+            "type": "boolean",
+            "title": "Offline Alerts"
+          },
+          "test_video": {
+            "type": "boolean",
+            "title": "Test Video"
+          },
+          "synthetic_replay": {
+            "type": "boolean",
+            "title": "Synthetic Replay"
+          },
+          "reviewer_diagnostics": {
+            "type": "boolean",
+            "title": "Reviewer Diagnostics"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile",
+          "classification",
+          "timelapse",
+          "uptime_history",
+          "offline_alerts",
+          "test_video",
+          "synthetic_replay",
+          "reviewer_diagnostics"
+        ],
+        "title": "ProductCapabilities"
       },
       "Provenance": {
         "properties": {
@@ -4701,6 +5373,22 @@
           "end_hour"
         ],
         "title": "TimelapseInput"
+      },
+      "TokenConfirmation": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 24,
+            "title": "Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "TokenConfirmation"
       },
       "UnknownLocation": {
         "properties": {

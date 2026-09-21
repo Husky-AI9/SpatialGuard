@@ -20,6 +20,7 @@ SPATIALGUARD_DATA_DIR=/data
 SPATIALGUARD_DB=/data/spatialguard.sqlite3
 TWINFORGE_DB=/data/twinforge.sqlite3
 SPATIALGUARD_TOKEN_KEY=<a Fernet key>
+SPATIALGUARD_RELEASE_PROFILE=certification
 ```
 
 Generate the token-encryption key locally, then put its output only in Railway
@@ -32,10 +33,36 @@ Variables:
 SpatialGuard stores salted scrypt password verifiers and gives each account an
 isolated owner ID. The browser stores only a Secure, HttpOnly, SameSite cookie;
 Android receives a separate revocable bearer session after email/password sign
-in. Railway deployments create the isolated hackathon test account documented
-on the sign-in page by default. Set `SPATIALGUARD_ENABLE_TEST_ACCOUNT=false` to
-disable it. The test account does not have access to another owner's site or
-Ring connection.
+in. Railway deployments can create the isolated reviewer account when
+`SPATIALGUARD_ENABLE_TEST_ACCOUNT=true`; its credentials are intentionally not
+shown in the app. Set the variable to `false` for a public release. The reviewer
+account does not inherit another owner's site or Ring connection.
+
+To use that private account with a real test camera, sign in with its credentials,
+seed its demo place with `spatialguard/scripts/judge-demo.py`, then complete the
+normal **Settings → Ring connection** flow while signed into the intended Ring
+account. Map only the dedicated camera used for review. Ring authorization is an
+interactive owner action; never copy encrypted Ring tokens between accounts.
+
+Transactional verification and password-reset messages use any SMTP provider
+reachable from Railway. Configure `SPATIALGUARD_SMTP_HOST`,
+`SPATIALGUARD_SMTP_PORT`, `SPATIALGUARD_SMTP_FROM`, and, when required,
+`SPATIALGUARD_SMTP_USER` / `SPATIALGUARD_SMTP_PASSWORD`. Tokens are random,
+stored only as SHA-256 digests, single-use, and expire after 24 hours for email
+verification or 30 minutes for password reset.
+
+`SPATIALGUARD_RELEASE_PROFILE=certification` disables snapshot classification,
+time-lapse, uptime history, offline alerts, and private test-video tools by
+default. Enable only a reviewed feature with its corresponding variable:
+`SPATIALGUARD_FEATURE_CLASSIFICATION`, `SPATIALGUARD_FEATURE_TIMELAPSE`,
+`SPATIALGUARD_FEATURE_UPTIME_HISTORY`, or
+`SPATIALGUARD_FEATURE_OFFLINE_ALERTS`. The server enforces these flags.
+
+For a judge workspace, set `SPATIALGUARD_DEMO_READ_ONLY=true` and a long random
+`SPATIALGUARD_REVIEWER_KEY`. An operator can reseed only the isolated test
+account with `python spatialguard/scripts/judge-demo.py <Railway URL>` while the
+key is present in the local process environment. The script does not access an
+owner's Ring connection.
 
 ## Ring configuration
 
@@ -79,6 +106,8 @@ development and its codes are single-use and expire in three minutes.
 
 This is a durable hosted preview when the `/data` volume is attached. It uses
 individual email accounts, one service replica, and SQLite WAL on that volume.
-It does not yet provide verified email, password reset, PostgreSQL, backups,
-object storage, hosted push notifications, or a high-availability worker.
-Those are required before treating it as a production security service.
+It now provides email verification, password reset, owner data export, deletion
+receipts, notification preferences, and Ring-data access history. It does not
+yet provide PostgreSQL, backup/restore automation, private object storage,
+hosted push notifications, or a high-availability worker. Those remain required
+before treating it as a production security service.

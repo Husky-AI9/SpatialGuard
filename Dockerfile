@@ -28,6 +28,7 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 COPY services/api/twinforge services/api/twinforge
 COPY packages/sdk-python packages/sdk-python
 COPY spatialguard/services/api spatialguard/services/api
+COPY spatialguard/fixtures spatialguard/fixtures
 COPY spatialguard/scripts/container-start.sh spatialguard/scripts/container-start.sh
 COPY --from=web-build /app/spatialguard/apps/web/dist spatialguard/apps/web/dist
 

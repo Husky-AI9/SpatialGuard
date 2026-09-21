@@ -1,0 +1,708 @@
+{
+  "schema_version": "1",
+  "source": "TwinForge synthetic fixture export",
+  "revision_id": "rev_demo_bundle_v1",
+  "layout": {
+    "schema_version": "0.1",
+    "units": "meters",
+    "world_frame": "RH_Xright_Yforward_Zup",
+    "scale_status": "verified",
+    "scale_anchors": [
+      {
+        "points": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            8.0,
+            0.0
+          ]
+        ],
+        "distance_m": 8.0,
+        "source": "Synthetic horizontal dimension"
+      },
+      {
+        "points": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            8.5
+          ]
+        ],
+        "distance_m": 8.5,
+        "source": "Synthetic vertical check"
+      }
+    ],
+    "floors": [
+      {
+        "id": "floor_0",
+        "name": "Ground floor",
+        "elevation_m": 0.0
+      }
+    ],
+    "rooms": [
+      {
+        "id": "room_living",
+        "floor_id": "floor_0",
+        "name": "Living room",
+        "polygon_xy_m": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            4.0,
+            0.0
+          ],
+          [
+            4.0,
+            4.0
+          ],
+          [
+            0.0,
+            4.0
+          ]
+        ],
+        "height_m": 2.6,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "room_kitchen",
+        "floor_id": "floor_0",
+        "name": "Kitchen",
+        "polygon_xy_m": [
+          [
+            4.0,
+            0.0
+          ],
+          [
+            8.0,
+            0.0
+          ],
+          [
+            8.0,
+            4.0
+          ],
+          [
+            4.0,
+            4.0
+          ]
+        ],
+        "height_m": 2.6,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "room_hall",
+        "floor_id": "floor_0",
+        "name": "Hallway",
+        "polygon_xy_m": [
+          [
+            0.0,
+            4.0
+          ],
+          [
+            8.0,
+            4.0
+          ],
+          [
+            8.0,
+            5.5
+          ],
+          [
+            0.0,
+            5.5
+          ]
+        ],
+        "height_m": 2.6,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "room_study",
+        "floor_id": "floor_0",
+        "name": "Study",
+        "polygon_xy_m": [
+          [
+            0.0,
+            5.5
+          ],
+          [
+            4.0,
+            5.5
+          ],
+          [
+            4.0,
+            8.5
+          ],
+          [
+            0.0,
+            8.5
+          ]
+        ],
+        "height_m": 2.6,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "room_approach",
+        "floor_id": "floor_0",
+        "name": "Front approach",
+        "polygon_xy_m": [
+          [
+            8.0,
+            4.0
+          ],
+          [
+            11.0,
+            4.0
+          ],
+          [
+            11.0,
+            5.5
+          ],
+          [
+            8.0,
+            5.5
+          ]
+        ],
+        "height_m": 0.15,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      }
+    ],
+    "zones": [
+      {
+        "id": "zone_entry",
+        "floor_id": "floor_0",
+        "name": "Entry zone",
+        "purpose": "entry",
+        "polygon_xy_m": [
+          [
+            6.0,
+            4.0
+          ],
+          [
+            8.0,
+            4.0
+          ],
+          [
+            8.0,
+            5.5
+          ],
+          [
+            6.0,
+            5.5
+          ]
+        ],
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      }
+    ],
+    "portals": [
+      {
+        "id": "portal_living_hall",
+        "name": "Living doorway",
+        "from_room_id": "room_living",
+        "to_room_id": "room_hall",
+        "segment_xy_m": [
+          [
+            2.8,
+            4.0
+          ],
+          [
+            3.8,
+            4.0
+          ]
+        ],
+        "width_m": 1.0,
+        "state": "unknown",
+        "state_observed_at": null,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "portal_kitchen_hall",
+        "name": "Kitchen doorway",
+        "from_room_id": "room_kitchen",
+        "to_room_id": "room_hall",
+        "segment_xy_m": [
+          [
+            5.0,
+            4.0
+          ],
+          [
+            6.0,
+            4.0
+          ]
+        ],
+        "width_m": 1.0,
+        "state": "unknown",
+        "state_observed_at": null,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "portal_study_hall",
+        "name": "Study doorway",
+        "from_room_id": "room_study",
+        "to_room_id": "room_hall",
+        "segment_xy_m": [
+          [
+            2.8,
+            5.5
+          ],
+          [
+            3.8,
+            5.5
+          ]
+        ],
+        "width_m": 1.0,
+        "state": "unknown",
+        "state_observed_at": null,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "portal_entry",
+        "name": "Front door",
+        "from_room_id": "room_hall",
+        "to_room_id": "room_approach",
+        "segment_xy_m": [
+          [
+            8.0,
+            4.2
+          ],
+          [
+            8.0,
+            5.2
+          ]
+        ],
+        "width_m": 1.0,
+        "state": "unknown",
+        "state_observed_at": null,
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      }
+    ],
+    "cameras": [
+      {
+        "id": "camera_front",
+        "name": "Front camera",
+        "floor_id": "floor_0",
+        "position_m": [
+          8.2,
+          5.3,
+          2.2
+        ],
+        "heading_degrees": -25.0,
+        "pitch_degrees": 0.0,
+        "fov_degrees": 70.0,
+        "range_m": 3.2,
+        "configuration_hash": "synthetic-front-v1",
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      },
+      {
+        "id": "camera_hall",
+        "name": "Hallway camera",
+        "floor_id": "floor_0",
+        "position_m": [
+          0.3,
+          4.8,
+          2.2
+        ],
+        "heading_degrees": 0.0,
+        "pitch_degrees": 0.0,
+        "fov_degrees": 65.0,
+        "range_m": 7.3,
+        "configuration_hash": "synthetic-hall-v1",
+        "provenance": {
+          "kind": "manual",
+          "source_ids": [],
+          "confirmed": true,
+          "explanation": "Authored synthetic fixture; dimensions are defined, not a real-world measurement."
+        }
+      }
+    ],
+    "asset_ids": [],
+    "floor_plan": null
+  },
+  "observations": [
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_000",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_front",
+      "observed_at": "2026-09-13T18:00:00Z",
+      "received_at": "2026-09-13T18:00:01Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          10.3,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_001",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_front",
+      "observed_at": "2026-09-13T18:00:03Z",
+      "received_at": "2026-09-13T18:00:04Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          9.7,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_002",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_front",
+      "observed_at": "2026-09-13T18:00:06Z",
+      "received_at": "2026-09-13T18:00:07Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          9.1,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_003",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_front",
+      "observed_at": "2026-09-13T18:00:09Z",
+      "received_at": "2026-09-13T18:00:10Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          8.5,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_004",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_front",
+      "observed_at": "2026-09-13T18:00:12Z",
+      "received_at": "2026-09-13T18:00:13Z",
+      "category": "person",
+      "location": {
+        "kind": "unknown",
+        "reason": "Synthetic coverage gap; no coordinate evidence"
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_005",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_hall",
+      "observed_at": "2026-09-13T18:00:15Z",
+      "received_at": "2026-09-13T18:00:16Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          7.3,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_006",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_hall",
+      "observed_at": "2026-09-13T18:00:18Z",
+      "received_at": "2026-09-13T18:00:19Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          6.3,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_007",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_hall",
+      "observed_at": "2026-09-13T18:00:21Z",
+      "received_at": "2026-09-13T18:00:22Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          5.3,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_008",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_hall",
+      "observed_at": "2026-09-13T18:00:24Z",
+      "received_at": "2026-09-13T18:00:25Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          4.3,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_009",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_hall",
+      "observed_at": "2026-09-13T18:00:27Z",
+      "received_at": "2026-09-13T18:00:28Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          3.3,
+          4.8
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_010",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_hall",
+      "observed_at": "2026-09-13T18:00:30Z",
+      "received_at": "2026-09-13T18:00:31Z",
+      "category": "person",
+      "location": {
+        "kind": "unknown",
+        "reason": "Synthetic coverage gap; no coordinate evidence"
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    },
+    {
+      "schema_version": "0.1",
+      "observation_id": "rev_demo_bundle_v1_replay_011",
+      "site_id": "site_demo_template",
+      "revision_id": "rev_demo_bundle_v1",
+      "source_id": "camera_hall",
+      "observed_at": "2026-09-13T18:00:33Z",
+      "received_at": "2026-09-13T18:00:34Z",
+      "category": "person",
+      "location": {
+        "kind": "floor_point",
+        "floor_id": "floor_0",
+        "xy_m": [
+          3.3,
+          3.4
+        ],
+        "uncertainty_radius_m": 0.25
+      },
+      "evidence": {
+        "mode": "replay"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [],
+        "confirmed": false,
+        "explanation": "Deterministic synthetic replay location, not camera inference"
+      }
+    }
+  ]
+}

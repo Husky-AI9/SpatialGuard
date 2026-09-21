@@ -89,7 +89,8 @@ class RingService:
                 site TEXT, camera TEXT, PRIMARY KEY(account,device), UNIQUE(site,camera));
             CREATE TABLE IF NOT EXISTS ring_inbox(id TEXT PRIMARY KEY, account TEXT NOT NULL, device TEXT NOT NULL,
                 kind TEXT NOT NULL, at TEXT NOT NULL, received TEXT NOT NULL, subtype TEXT NOT NULL,
-                state TEXT NOT NULL, snapshot TEXT, attempts INTEGER NOT NULL DEFAULT 0, lease REAL NOT NULL DEFAULT 0);
+                state TEXT NOT NULL, snapshot TEXT, attempts INTEGER NOT NULL DEFAULT 0, lease REAL NOT NULL DEFAULT 0,
+                processed TEXT, error TEXT, provider_request TEXT);
             CREATE TABLE IF NOT EXISTS ring_streams(id TEXT PRIMARY KEY, account TEXT NOT NULL, device TEXT NOT NULL,
                 owner TEXT NOT NULL, path TEXT, expires REAL NOT NULL, state TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS ring_health(account TEXT NOT NULL, device TEXT NOT NULL,
@@ -109,6 +110,13 @@ class RingService:
             CREATE TABLE IF NOT EXISTS timelapse_frames(id TEXT PRIMARY KEY, project TEXT NOT NULL,
                 at REAL NOT NULL, path TEXT NOT NULL, media_type TEXT NOT NULL);
             ''')
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(ring_inbox)')}
+            if 'processed' not in columns:
+                db.execute('ALTER TABLE ring_inbox ADD COLUMN processed TEXT')
+            if 'error' not in columns:
+                db.execute('ALTER TABLE ring_inbox ADD COLUMN error TEXT')
+            if 'provider_request' not in columns:
+                db.execute('ALTER TABLE ring_inbox ADD COLUMN provider_request TEXT')
 
     def _record_health(self, db, account, device, online, source, at=None):
         at = float(at or time.time())
@@ -415,8 +423,8 @@ class RingService:
                     if site['monitoring']['enabled'] and mapping['camera'] in site['monitoring']['camera_ids']:
                         snapshot = dump({'site':site['id'], 'revision':site['revision_id'], 'camera':mapping['camera'],
                                          'monitoring_version':site.get('monitoring_version',0), 'generation':a['generation']})
-            db.execute('INSERT INTO ring_inbox(id,account,device,kind,at,received,subtype,state,snapshot) VALUES (?,?,?,?,?,?,?,?,?)',
-                       (event_id, account, device, kind, stamp, now(), subtype, 'queued', snapshot))
+            db.execute('INSERT INTO ring_inbox(id,account,device,kind,at,received,subtype,state,snapshot,provider_request) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                       (event_id, account, device, kind, stamp, now(), subtype, 'queued', snapshot, digest(rid)))
             if kind == 'app_integration_removed':
                 db.execute("UPDATE ring_accounts SET state='revoked',tokens=NULL,generation=generation+1 WHERE account=?", (account,))
                 db.execute('DELETE FROM ring_devices WHERE account=?', (account,))

@@ -47,7 +47,7 @@ No real signed motion/doorbell webhook was triggered during this verification. T
 - Pins are keyboard-accessible buttons that select the corresponding camera and CCTV card. Selection and workspace refresh preserve the current orbit/zoom when the building extent is unchanged.
 - SpatialGuard production build passed. Two browser workflows passed: mouse/keyboard pin selection, preserved zoom and view switching; and existing person-exit/retained-path behavior across 2D/3D. Inspected the resulting screenshot under ignored `.data/spatialguard/3d-camera-pins.png`.
 
-## September 21, 2026 — evidence, onboarding, and privacy
+## September 21, 2026 â€” evidence, onboarding, and privacy
 
 - Unknown-location Ring events now render as camera evidence nodes in 2D and 3D. Cross-camera associations use a possible-continuation link with a distinct unknown segment. The browser regression verifies that this live case renders no person actor.
 - Added a responsive four-step first-run guide, explicit Ring-data and snapshot-classification choices, configurable incident/audit retention, public privacy/terms/deletion pages, and password-plus-`DELETE` account removal. Email verification and password reset are deferred.
@@ -55,3 +55,20 @@ No real signed motion/doorbell webhook was triggered during this verification. T
 - Browser suite: **35 passed in 47.4 s**, covering the new graph, phone guide, legal routes, and the existing Ring, replay, camera, activity-icon, and floor-plan workflows.
 - SpatialGuard and TwinForge production builds passed with the existing Three.js chunk advisory. Capacitor sync and the Android debug build completed successfully: **154 tasks**, 27 executed and 127 up-to-date.
 - Visually inspected `.data/spatialguard/onboarding-phone.png` and `.data/spatialguard/spatial-evidence-graph.png`. These checks use synthetic/mocked events and do not establish person-tracking accuracy, identity matching, or Ring Appstore approval. No Android device or emulator was attached for installation in this run.
+
+## September 21, 2026 â€” release hardening
+
+- Added server-enforced preview/reviewer/certification profiles. The certification profile disables unapproved classification, time-lapse, uptime history, offline alerts, and private test-video tooling unless each feature is explicitly enabled.
+- Added hashed, single-use email-verification and password-reset tokens; neutral reset responses; password change; sign-out-all; session activity; granular notification preferences; JSON account export; deletion receipts; and an owner-visible Ring data access log.
+- Live incident grouping now stores a digest of its source Ring account and rejects candidates from every other Ring customer account. Site lookup also requires the connected Ring account owner.
+- Added sanitized provider-delivery and processing metrics APIs, request correlation, expanded browser security headers, an isolated read-only reviewer mode, a one-command synthetic judge seed, and GitHub CI for contracts, backend, browser, Android, dependency, static, license, secret-history, and Docker checks.
+- Verification after the changes: **81 backend tests passed**, **35 Playwright tests passed**, the TypeScript/Vite production build passed, `npm audit --omit=dev --audit-level=high` reported **0 vulnerabilities**, and the Android debug build completed successfully (**154 tasks**, 27 executed).
+- These are repository and synthetic/provider-fixture checks. They do not replace Ring certification, real motion-trigger validation, SMTP delivery validation, accessibility review, penetration testing, backup/restore testing, or physical-device testing.
+
+### Mobile-first release and hosted reviewer workspace
+
+- Android now uses the permanent `app.spatialguard.mobile` application ID and version `0.2.0` (code 2). Release builds default to the Railway HTTPS origin; cleartext remains restricted to the debug loopback configuration.
+- Added verified Android App Link routes for email verification and password reset, a Railway Digital Asset Links endpoint, release APK/bundle build paths, and environment-only signing configuration. The release APK completed Android lint and assembled successfully; the release signing key and certificate fingerprint remain owner-supplied release inputs.
+- Removed the reviewer email, password, and autofill control from the sign-in interface. The private reviewer account remains isolated and must be disabled or have its password rotated before public release.
+- Added an immutable TwinForge synthetic demo export for Railway when the separate TwinForge service is unavailable. Tests prove two owners receive distinct site IDs and that replay observations remain pinned to the correct tenant and revision.
+- Backend verification after the fallback: **82 tests passed**. The production web build passed. The API 36 emulator passed landing, native signup, Keystore ciphertext inspection, one-time pairing, replay/evidence review, 3D rendering, hardware back, rotation, and background/resume. The automated offline/restart tail did not complete and remains to be rerun; this is not marked as a complete physical-device result.

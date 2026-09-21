@@ -246,6 +246,64 @@ class AccountDeletion(Model):
     confirmation: Literal["DELETE"]
 
 
+class PasswordRequest(Model):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class PasswordReset(Model):
+    token: str = Field(min_length=24, max_length=300)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class TokenConfirmation(Model):
+    token: str = Field(min_length=24, max_length=300)
+
+
+class PasswordChange(Model):
+    current_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class AuthMessage(Model):
+    message: str
+
+
+class AccessRecord(Model):
+    id: int
+    actor: str
+    action: str
+    device: str
+    purpose: str
+    result: str
+    at: str
+
+
+class NotificationPreferences(Model):
+    incident_email: bool = True
+    operational_email: bool = True
+    weekly_summary: bool = False
+    marketing: bool = False
+
+
+class ProductCapabilities(Model):
+    profile: Literal["preview", "reviewer", "certification"]
+    classification: bool
+    timelapse: bool
+    uptime_history: bool
+    offline_alerts: bool
+    test_video: bool
+    synthetic_replay: bool
+    reviewer_diagnostics: bool
+
+
+class DeletionReceipt(Model):
+    reference: str
+    requested_at: str
+    completed_at: str
+    categories: list[str]
+    downstream: str
+
+
 class PairCode(Model):
     code: str
     expires_at: float

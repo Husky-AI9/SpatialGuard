@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 60000,
   workers: 1,
   use: {
-    baseURL: "http://127.0.0.1:8010",
+    baseURL: process.env.SPATIALGUARD_TEST_URL ?? "http://127.0.0.1:8010",
     headless: true,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",

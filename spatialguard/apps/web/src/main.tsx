@@ -8,10 +8,14 @@ import Landing from "./Landing";
 import AuthPage from "./AuthPage";
 import LegalPage from "./LegalPage";
 import "./style.css";
-import { native } from "./platform";
+import { installAppLinkNavigation, native } from "./platform";
+if (native) void installAppLinkNavigation();
 const path = window.location.pathname.replace(/\/$/, "");
 const authQuery = new URLSearchParams(window.location.search).get("auth");
-const authMode = path === "/signin" || authQuery === "signin"
+const authMode = path === "/verify-email" ? "verify"
+  : path === "/forgot-password" ? "forgot"
+  : path === "/reset-password" ? "reset"
+  : path === "/signin" || authQuery === "signin"
   ? "signin"
   : path === "/signup" || authQuery === "signup" ? "signup" : null;
 const nativeWorkspaceRequested = new URLSearchParams(window.location.search).has("workspace");
@@ -22,7 +26,7 @@ const isLanding = !legalKind && !authMode && (path === "/landing" || (native && 
 document.body.classList.toggle("landing-body", isLanding || !!authMode || !!legalKind);
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    {legalKind ? <LegalPage kind={legalKind} /> : authMode ? <AuthPage mode={authMode} /> : isLanding ? <Landing /> : <App />}
+    {legalKind ? <LegalPage kind={legalKind} /> : authMode ? <AuthPage mode={authMode as "signin" | "signup" | "forgot" | "reset" | "verify"} /> : isLanding ? <Landing /> : <App />}
   </React.StrictMode>,
 );
 if (!native && !isLanding && !legalKind && "serviceWorker" in navigator)

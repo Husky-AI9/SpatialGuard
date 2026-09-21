@@ -53,10 +53,6 @@ body.landing-body { padding: 0; background: var(--surface); }
 .sg-auth-submit:hover { background: #4f43df; }
 .sg-auth-submit:disabled { cursor: default; opacity: .55; }
 .sg-auth-error { margin: 6px 0 0; color: #a02e3d; font-size: 13px; }
-.sg-auth-test { margin-top: 17px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; padding: 11px 13px; border-left: 3px solid #8c84e8; background: #efeff9; }
-.sg-auth-test span { grid-column: 1 / -1; color: #676b84; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-.sg-auth-test code { color: #34364b; font-size: 12px; }
-.sg-auth-test button { min-height: 30px; padding: 3px 8px; border: 1px solid #b7b4e6; border-radius: 6px; color: #5045ce; background: #fff; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
 .sg-auth-switch { margin: 24px 0 0; color: #656981; font-size: 14px; text-align: center; }
 .sg-auth-switch a { color: #5045ce; font-weight: 700; text-underline-offset: 3px; }
 .sg-auth-privacy { margin: 22px 0 0; color: #85899d; font-size: 11px; line-height: 1.5; text-align: center; }
@@ -976,6 +972,9 @@ body.landing-body {
 
 /* Keep the native/mobile entry separate from the restored desktop experience. */
 .sg-entry.sg-mobile-entry { display: none; }
+.sg-auth-success { padding: 10px 12px; border-radius: 10px; color: #24603d; background: #e7f5ec; }
+.deletion-receipt { position: fixed; z-index: 1000; top: 16px; left: 50%; transform: translateX(-50%); width: min(520px, calc(100% - 28px)); display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid rgba(97, 84, 220, .35); border-radius: 12px; color: #272446; background: rgba(255,255,255,.96); box-shadow: 0 12px 32px rgba(34,29,91,.18); }
+.deletion-receipt span { display: grid; flex: 1; } .deletion-receipt small { color: #666984; } .deletion-receipt button { border: 0; background: transparent; font-size: 22px; }
 @media(max-width:520px) {
   .sg-entry.sg-mobile-entry { display: block; }
 }

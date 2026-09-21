@@ -32,12 +32,14 @@ function sevenDays(device: Device) {
   });
 }
 
-export default function Operations() {
+type FeatureFlags = { uptime_history: boolean; offline_alerts: boolean; timelapse: boolean };
+export default function Operations({ features }: { features: FeatureFlags }) {
   const [data, setData] = useState<OperationsData>(blank);
   const [section, setSection] = useState<"Health" | "Time-lapse">("Health");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ device: "", name: "", cadence_minutes: 60, start_hour: 7, end_hour: 19, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Phoenix" });
+  const sections: ("Health" | "Time-lapse")[] = features.timelapse ? ["Health", "Time-lapse"] : ["Health"];
   const load = async (refresh = false) => {
     setLoading(true); setError("");
     try {
@@ -92,25 +94,24 @@ export default function Operations() {
 
   return <section className="operations-page" aria-label="Ring operations">
     <header className="operations-heading">
-      <div><span className="eyebrow">Ring operations</span><h2>Know what is online and changing.</h2><p>Device health uses connectivity only. Time-lapse stores authorized still snapshots without audio or AI. Live views are available from Home and Cameras.</p></div>
+      <div><span className="eyebrow">Ring operations</span><h2>Know what is online.</h2><p>Current device status comes from the authorized Ring inventory. Optional history, alerts, and time-lapse appear only when enabled for this release.</p></div>
       <button onClick={() => void load(true)} disabled={loading}><RefreshCw size={16} />Refresh devices</button>
     </header>
     <div className="operations-tabs" role="tablist" aria-label="Operations tools">
-      {(["Health", "Time-lapse"] as const).map(name => <button key={name} role="tab" aria-selected={section === name} onClick={() => setSection(name)}>{name === "Health" ? <Wifi size={16} /> : <Timer size={16} />}{name}</button>)}
+      {sections.map(name => <button key={name} role="tab" aria-selected={section === name} onClick={() => setSection(name)}>{name === "Health" ? <Wifi size={16} /> : <Timer size={16} />}{name}</button>)}
     </div>
     {error && <p role="alert" className="operations-error">{error}</p>}
 
     {section === "Health" && <div className="health-layout">
       <div className="health-main">
-        <div className="section-title"><div><h3>Camera health</h3><p>Seven-day connectivity history from Ring status refreshes and provider events.</p></div><span>{data.devices.filter(device => device.online).length}/{data.devices.length} online</span></div>
+        <div className="section-title"><div><h3>Camera status</h3><p>{features.uptime_history ? "Seven-day connectivity history from Ring status refreshes and provider events." : "Latest connectivity state reported by Ring."}</p></div><span>{data.devices.filter(device => device.online).length}/{data.devices.length} online</span></div>
         <div className="health-list">{data.devices.length ? data.devices.map(device => <article className="health-device" key={device.id}>
           <span className={`health-light ${device.online ? "online" : "offline"}`}>{device.online ? <Wifi size={17} /> : <WifiOff size={17} />}</span>
           <div className="health-copy"><h4>{device.name}</h4><p>{device.online ? "Online" : "Offline"} · checked {new Date(device.checked_at).toLocaleString()}</p></div>
-          <div className="uptime-strip" aria-label={`${device.name} seven-day status`}>{sevenDays(device).map((online, index) => <span key={index} className={online === null ? "unknown" : online ? "online" : "offline"} title={online === null ? "No data" : online ? "Online" : "Offline"} />)}</div>
-          <strong>{device.uptime_percent === null ? "New" : `${device.uptime_percent}%`}</strong>
+          {features.uptime_history && <><div className="uptime-strip" aria-label={`${device.name} seven-day status`}>{sevenDays(device).map((online, index) => <span key={index} className={online === null ? "unknown" : online ? "online" : "offline"} title={online === null ? "No data" : online ? "Online" : "Offline"} />)}</div><strong>{device.uptime_percent === null ? "New" : `${device.uptime_percent}%`}</strong></>}
         </article>) : <div className="operations-empty"><Camera size={24} /><h3>No Ring cameras connected</h3><p>Connect Ring in Settings, then refresh the authorized inventory.</p></div>}</div>
       </div>
-      <aside className="health-side">
+      {features.offline_alerts && <aside className="health-side">
         <div className="ops-card"><h3><Bell size={17} /> Alert delivery</h3>
           <label>Wait before offline alert<select value={data.preferences.delay_seconds} onChange={event => setData(current => ({ ...current, preferences: { ...current.preferences, delay_seconds: Number(event.target.value) } }))}><option value="0">Immediately</option><option value="60">1 minute</option><option value="300">5 minutes</option><option value="900">15 minutes</option></select></label>
           <label className="check-row"><input type="checkbox" checked={!!data.preferences.browser_enabled} onChange={event => setData(current => ({ ...current, preferences: { ...current.preferences, browser_enabled: Number(event.target.checked) } }))} />Browser alerts while SpatialGuard is open</label>
@@ -123,10 +124,10 @@ export default function Operations() {
           <small>Email delivery requires SMTP configuration on the SpatialGuard server. Alerts are convenience notices, not security or life-safety monitoring.</small>
         </div>
         <div className="ops-card"><h3>Recent status alerts</h3>{data.alerts.length ? data.alerts.slice(0, 8).map(alert => <div className={`health-alert ${alert.kind}`} key={alert.id}><span>{alert.kind === "offline" ? <WifiOff size={15} /> : <Check size={15} />}</span><div><strong>{data.devices.find(device => device.id === alert.device)?.name ?? "Ring device"}</strong><small>{alert.kind === "offline" ? "Went offline" : "Came back online"} · {new Date(alert.at * 1000).toLocaleString()}</small></div>{!alert.acknowledged && <button aria-label="Acknowledge alert" onClick={() => void request(`/v1/ring/operations/alerts/${alert.id}/acknowledge`, "POST").then(() => load())}><X size={14} /></button>}</div>) : <p className="muted">No status changes recorded.</p>}</div>
-      </aside>
+      </aside>}
     </div>}
 
-    {section === "Time-lapse" && <div className="timelapse-layout">
+    {features.timelapse && section === "Time-lapse" && <div className="timelapse-layout">
       <div className="timelapse-main"><div className="section-title"><div><h3>Time-lapse projects</h3><p>Scheduled still snapshots become a private browser reel. No live video, audio or AI is used.</p></div><span>{data.projects.length}/8 projects</span></div>
         <div className="project-grid">{data.projects.map(project => <article className="timelapse-project" key={project.id}><div className="project-head"><div><h4>{project.name}</h4><p>Every {project.cadence_minutes} min · {String(project.start_hour).padStart(2,"0")}:00–{String(project.end_hour).padStart(2,"0")}:00</p></div><button aria-label={`Delete ${project.name}`} onClick={() => void request(`/v1/ring/timelapses/${project.id}`, "DELETE").then(() => load())}><X size={15} /></button></div>
           <div className="frame-strip">{project.frames.length ? project.frames.slice(0, 4).map(frame => <img key={frame.id} src={`/v1/ring/timelapses/${project.id}/frames/${frame.id}`} alt={`Captured ${new Date(frame.at * 1000).toLocaleString()}`} />) : <div><Clock3 size={22} /><span>No frames yet</span></div>}</div>

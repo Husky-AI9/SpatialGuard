@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
-  appId: "dev.spatialguard.preview",
+  appId: "app.spatialguard.mobile",
   appName: "SpatialGuard",
   webDir: "dist",
   loggingBehavior: "none",

@@ -137,7 +137,7 @@ class Store:
             PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE,
-                password_hash TEXT NOT NULL, created TEXT NOT NULL);
+                password_hash TEXT NOT NULL, created TEXT NOT NULL, email_verified INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE IF NOT EXISTS account_preferences (
                 owner TEXT PRIMARY KEY,
                 onboarding_completed INTEGER NOT NULL DEFAULT 0,
@@ -157,6 +157,9 @@ class Store:
                 attempts INTEGER NOT NULL DEFAULT 0, error TEXT, UNIQUE(site_id,request_id));
             CREATE TABLE IF NOT EXISTS incidents (seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT UNIQUE NOT NULL,
                 site_id TEXT NOT NULL, run_id TEXT UNIQUE NOT NULL, data TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS live_incident_accounts (
+                incident_id TEXT PRIMARY KEY, account_digest TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS plans (job_id TEXT PRIMARY KEY, owner TEXT NOT NULL,
                 engine_site TEXT NOT NULL, name TEXT NOT NULL, at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS evidence (id TEXT PRIMARY KEY, site_id TEXT NOT NULL, data TEXT NOT NULL);
@@ -164,7 +167,35 @@ class Store:
                 kind TEXT NOT NULL, resource TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL,
                 action TEXT NOT NULL, resource TEXT NOT NULL, at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS auth_tokens (
+                digest TEXT PRIMARY KEY, owner TEXT NOT NULL, purpose TEXT NOT NULL,
+                expires REAL NOT NULL, used_at TEXT, created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS data_access_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL,
+                actor TEXT NOT NULL, action TEXT NOT NULL, device TEXT NOT NULL,
+                purpose TEXT NOT NULL, result TEXT NOT NULL, at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS deletion_receipts (
+                reference TEXT PRIMARY KEY, requested_at TEXT NOT NULL,
+                completed_at TEXT NOT NULL, categories TEXT NOT NULL,
+                downstream TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS notification_preferences (
+                owner TEXT PRIMARY KEY, incident_email INTEGER NOT NULL DEFAULT 1,
+                operational_email INTEGER NOT NULL DEFAULT 1,
+                weekly_summary INTEGER NOT NULL DEFAULT 0,
+                marketing INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS notification_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL,
+                category TEXT NOT NULL, channel TEXT NOT NULL, state TEXT NOT NULL,
+                detail TEXT NOT NULL, at TEXT NOT NULL
+            );
             ''')
+            account_columns = {row['name'] for row in db.execute('PRAGMA table_info(accounts)')}
+            if 'email_verified' not in account_columns:
+                db.execute('ALTER TABLE accounts ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0')
 
     @contextmanager
     def connect(self):
@@ -183,3 +214,11 @@ def event(db, site, kind, resource):
 
 def audit(db, owner, action, resource):
     db.execute("INSERT INTO audit(owner,action,resource,at) VALUES (?,?,?,?)", (owner, action, resource, now()))
+
+
+def access_log(db, owner, actor, action, device, purpose, result="allowed"):
+    """Append an owner-visible, token-free record of sensitive data access."""
+    db.execute(
+        "INSERT INTO data_access_log(owner,actor,action,device,purpose,result,at) VALUES (?,?,?,?,?,?,?)",
+        (owner, actor, action, device, purpose, result, now()),
+    )

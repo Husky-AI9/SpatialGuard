@@ -8,11 +8,12 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from twinforge.fixture import synthetic_layout
-from spatialguard_api.store import Store, dump, now
+from spatialguard_api.store import Store, digest, dump, now
 from spatialguard_api.ring_service import RingService, hardware_model
 from spatialguard_api.ring_provider import Provider, WindowsVault
 from spatialguard_api.ring_gateway import create_gateway
-from spatialguard_api.ring_worker import process_one
+from spatialguard_api.ring_worker import _candidate_incident, process_one
+from twinforge.models import Observation
 from spatialguard_api.api import create_app
 from spatialguard_api.models import IncidentClassification
 
@@ -388,6 +389,21 @@ def test_live_multicamera_events_share_fixed_five_minute_incident(service):
     assert [e['kind'] for e in emitted]==[
         'incident.created','incident.updated','incident.updated','incident.created'
     ]
+
+
+def test_live_incidents_never_correlate_across_ring_accounts(service):
+    mapped(service); engine=Engine()
+    service.webhook(*delivery(service))
+    assert process_one(service, engine)
+    with service.store.connect() as db:
+        incident = json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
+        observation = Observation.model_validate(incident['observations'][0])
+        same_id, _ = _candidate_incident(db, 'site_demo', 'rev_demo', observation, 'account-a')
+        other_id, _ = _candidate_incident(db, 'site_demo', 'rev_demo', observation, 'account-b')
+        assert same_id == incident['id']
+        assert other_id is None
+        stored = db.execute('SELECT account_digest FROM live_incident_accounts').fetchone()[0]
+        assert stored == digest('account-a') and 'account-a' not in stored
 
 
 def test_live_grouping_is_site_scoped_and_new_evidence_reopens_review(service):

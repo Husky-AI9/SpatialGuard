@@ -4,8 +4,9 @@ import time
 from datetime import datetime
 from .models import Association, Incident
 from twinforge.models import Observation
-from .store import account_preferences, event, now
+from .store import account_preferences, digest, event, now
 from .classifier import classify_image
+from .release import capabilities
 
 LIVE_INCIDENT_WINDOW_SECONDS = 5 * 60
 
@@ -14,16 +15,19 @@ def _at(value):
     return datetime.fromisoformat(value).timestamp()
 
 
-def _candidate_incident(db, site_id, revision_id, observation):
+def _candidate_incident(db, site_id, revision_id, observation, provider_account):
     """Find the newest live incident whose total event span stays within five minutes."""
     at = _at(observation.observed_at.isoformat())
     rows = db.execute(
-        "SELECT id,data FROM incidents WHERE site_id=? ORDER BY seq DESC LIMIT 100",
+        "SELECT i.id,i.data,a.account_digest FROM incidents i "
+        "JOIN live_incident_accounts a ON a.incident_id=i.id "
+        "WHERE i.site_id=? ORDER BY i.seq DESC LIMIT 100",
         (site_id,),
     ).fetchall()
     for row in rows:
         candidate = Incident.model_validate_json(row['data'])
-        if candidate.evidence_mode != 'live' or candidate.revision_id != revision_id:
+        if (candidate.evidence_mode != 'live' or candidate.revision_id != revision_id
+                or row['account_digest'] != digest(provider_account)):
             continue
         times = [_at(item.observed_at.isoformat()) for item in candidate.observations]
         if times and max(max(times), at) - min(min(times), at) <= LIVE_INCIDENT_WINDOW_SECONDS:
@@ -88,7 +92,7 @@ def process_one(service, engine, classifier=classify_image):
         def current(db):
             if not snapshot or row['kind'] not in ('motion_detected','button_press'): return False
             a = db.execute("SELECT owner FROM ring_accounts WHERE account=? AND state='connected' AND generation=?", (row['account'], snapshot['generation'])).fetchone()
-            s = db.execute('SELECT data FROM sites WHERE id=?', (snapshot['site'],)).fetchone()
+            s = db.execute('SELECT data FROM sites WHERE id=? AND owner=?', (snapshot['site'], a['owner'])).fetchone()
             d = db.execute('SELECT 1 FROM ring_devices WHERE account=? AND device=? AND site=? AND camera=?', (row['account'], row['device'], snapshot['site'], snapshot['camera'])).fetchone()
             if not a or not s or not d: return False
             if not account_preferences(db, a['owner'])['ring_data_consent']:
@@ -99,7 +103,7 @@ def process_one(service, engine, classifier=classify_image):
             active = current(db)
         if not active:
             with store.connect() as db:
-                db.execute("UPDATE ring_inbox SET state='ignored' WHERE id=?", (row['id'],))
+                db.execute("UPDATE ring_inbox SET state='ignored',processed=?,error=NULL WHERE id=?", (now(), row['id']))
             return True
         classification = None
         classification_status = 'not_requested'
@@ -112,7 +116,7 @@ def process_one(service, engine, classifier=classify_image):
         site = json.loads(site_row[0])
         with store.connect() as db:
             privacy = account_preferences(db, account_row['owner'])
-        if (site['monitoring'].get('classification_enabled', False)
+        if (capabilities()['classification'] and site['monitoring'].get('classification_enabled', False)
                 and privacy['ring_data_consent'] and privacy['classification_consent']):
             classification_status = 'unavailable'
             try:
@@ -143,7 +147,7 @@ def process_one(service, engine, classifier=classify_image):
             db.execute('BEGIN IMMEDIATE')
             if current(db):
                 existing_id, existing = _candidate_incident(
-                    db, incident.site_id, incident.revision_id, obs
+                    db, incident.site_id, incident.revision_id, obs, row['account']
                 )
                 if existing:
                     merged = _merge_incident(
@@ -155,9 +159,15 @@ def process_one(service, engine, classifier=classify_image):
                 else:
                     inserted = db.execute('INSERT OR IGNORE INTO incidents(id,site_id,run_id,data) VALUES (?,?,?,?)',
                         (incident.id, incident.site_id, incident.run_id, incident.model_dump_json())).rowcount
-                    if inserted: event(db, incident.site_id, 'incident.created', incident.id)
-            db.execute("UPDATE ring_inbox SET state='succeeded' WHERE id=?", (row['id'],))
+                    if inserted:
+                        db.execute('INSERT INTO live_incident_accounts VALUES (?,?)',
+                                   (incident.id, digest(row['account'])))
+                        event(db, incident.site_id, 'incident.created', incident.id)
+            db.execute("UPDATE ring_inbox SET state='succeeded',processed=?,error=NULL WHERE id=?", (now(), row['id']))
     except Exception:
         with store.connect() as db:
-            db.execute('UPDATE ring_inbox SET state=?,lease=? WHERE id=?', ('failed' if row['attempts']>=2 else 'running',time.time()+5,row['id']))
+            final = row['attempts'] >= 2
+            db.execute('UPDATE ring_inbox SET state=?,lease=?,processed=?,error=? WHERE id=?',
+                       ('failed' if final else 'running', time.time()+5, now() if final else None,
+                        'Processing failed; retry is bounded' if final else 'Retry scheduled', row['id']))
     return True

@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 from twinforge.fixture import synthetic_layout, replay
 from twinforge.geometry import query_layout, validate_layout
 from twinforge.models import Layout, PointQuery
-from spatialguard_api.api import create_app
+from spatialguard_api.api import TEST_ACCOUNT_EMAIL, create_app
 from spatialguard_api.engine import RING_FOV_DEGREES, relens
 from spatialguard_api.store import cleanup_retention, dump, digest, Store
 from spatialguard_api.worker import process_one
@@ -261,6 +261,106 @@ def test_hosted_email_signup_signin_and_signout_use_a_same_origin_cookie(tmp_pat
     assert client.post('/v1/hosted-session', json={'access_code': 'old-code'}).status_code == 404
 
 
+def test_password_reset_is_neutral_single_use_and_revokes_sessions(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    app = create_app(tmp_path/'reset.sqlite', Engine())
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    credentials = {'email': 'owner@example.com', 'password': 'old-password'}
+    assert client.post('/v1/auth/signup', json=credentials).status_code == 201
+    unknown = client.post('/v1/auth/password/request', json={'email':'missing@example.com'})
+    known = client.post('/v1/auth/password/request', json={'email':credentials['email']})
+    assert known.json() == unknown.json()
+    with app.state.store.connect() as db:
+        row = db.execute("SELECT * FROM auth_tokens WHERE purpose='password_reset'").fetchone()
+        assert row and len(row['digest']) == 64
+        # Tests cannot reverse a digest; replace it with a known token digest.
+        db.execute("UPDATE auth_tokens SET digest=? WHERE purpose='password_reset'", (digest('known-reset-token-value-123456'),))
+    reset = client.post('/v1/auth/password/reset', json={
+        'token':'known-reset-token-value-123456', 'password':'new-password',
+    })
+    assert reset.status_code == 200
+    assert client.get('/v1/me').status_code == 401
+    assert client.post('/v1/auth/password/reset', json={
+        'token':'known-reset-token-value-123456', 'password':'another-password',
+    }).status_code == 400
+    assert client.post('/v1/auth/signin', json={
+        'email':credentials['email'], 'password':'new-password',
+    }).status_code == 200
+
+
+def test_email_verification_token_is_hashed_single_use(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    app = create_app(tmp_path/'verify.sqlite', Engine())
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    assert client.post('/v1/auth/signup', json={
+        'email':'owner@example.com', 'password':'secure-password',
+    }).status_code == 201
+    assert client.get('/v1/account/verification').json()['verified'] is False
+    with app.state.store.connect() as db:
+        row = db.execute("SELECT * FROM auth_tokens WHERE purpose='email_verification'").fetchone()
+        assert row and len(row['digest']) == 64
+        db.execute("UPDATE auth_tokens SET digest=?", (digest('known-verification-token-1234'),))
+    assert client.post('/v1/auth/email/verify', json={
+        'token':'known-verification-token-1234',
+    }).status_code == 200
+    assert client.get('/v1/account/verification').json()['verified'] is True
+    assert client.post('/v1/auth/email/verify', json={
+        'token':'known-verification-token-1234',
+    }).status_code == 400
+
+
+def test_export_access_log_notification_controls_and_security_headers(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    app = create_app(tmp_path/'security.sqlite', Engine())
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    assert client.post('/v1/auth/signup', json={'email':'owner@example.com','password':'secure-password'}).status_code == 201
+    preferences = client.get('/v1/account/notifications').json()
+    assert preferences['marketing'] is False
+    preferences['weekly_summary'] = True
+    assert client.put('/v1/account/notifications', json=preferences).json()['weekly_summary'] is True
+    exported = client.get('/v1/account/export')
+    assert exported.json()['format'] == 'spatialguard-account-export-v1'
+    assert exported.json()['account']['email'] == 'owner@example.com'
+    assert client.get('/v1/account/access-log').json() == []
+    assert exported.headers['strict-transport-security'].startswith('max-age=')
+    assert exported.headers['x-frame-options'] == 'DENY'
+    assert 'camera=()' in exported.headers['permissions-policy']
+    status = client.get('/status').json()
+    assert status['application'] == 'SpatialGuard' and status['database'] == 'available'
+
+
+def test_certification_profile_disables_optional_processing_server_side(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_RELEASE_PROFILE', 'certification')
+    app = create_app(tmp_path/'certification.sqlite', Engine())
+    client = TestClient(app)
+    features = client.get('/v1/product-capabilities').json()
+    assert features['profile'] == 'certification'
+    assert features['synthetic_replay'] is True
+    for name in ('classification','timelapse','uptime_history','offline_alerts','test_video'):
+        assert features[name] is False
+
+
+def test_reviewer_account_can_be_read_only_with_secret_operator_bypass(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    monkeypatch.setenv('SPATIALGUARD_ENABLE_TEST_ACCOUNT', 'true')
+    monkeypatch.setenv('SPATIALGUARD_DEMO_READ_ONLY', 'true')
+    monkeypatch.setenv('SPATIALGUARD_REVIEWER_KEY', 'operator-secret')
+    app = create_app(tmp_path/'reviewer.sqlite', Engine())
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    assert client.post('/v1/auth/signin', json={'email':TEST_ACCOUNT_EMAIL, 'password':'test12345'}).status_code == 200
+    assert client.get('/v1/sites').status_code == 200
+    assert client.post('/v1/sample-site').status_code == 403
+    assert client.post('/v1/sample-site', headers={'X-SpatialGuard-Reviewer-Key':'operator-secret'}).status_code == 201
+
+
 def test_signup_claims_only_the_authenticated_legacy_workspace(tmp_path, monkeypatch):
     monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
     app = create_app(tmp_path/'claim.sqlite', Engine())
@@ -336,9 +436,12 @@ def test_account_privacy_consent_and_permanent_deletion(tmp_path, monkeypatch):
     assert client.request('DELETE', '/v1/account', json={
         'password': 'wrong-password', 'confirmation': 'DELETE',
     }).status_code == 401
-    assert client.request('DELETE', '/v1/account', json={
+    deleted = client.request('DELETE', '/v1/account', json={
         'password': credentials['password'], 'confirmation': 'DELETE',
-    }).status_code == 204
+    })
+    assert deleted.status_code == 200
+    receipt = client.get('/v1/deletion-receipts/' + deleted.json()['reference'])
+    assert receipt.status_code == 200 and 'Ring connection' in receipt.json()['categories']
     assert engine.deleted == ['private_site']
     with app.state.store.connect() as db:
         assert db.execute('SELECT 1 FROM accounts WHERE id=?', (owner,)).fetchone() is None
@@ -691,6 +794,46 @@ def test_a_fresh_workspace_is_empty_until_the_owner_adds_a_place(tmp_path):
     assert c.get("/v1/preferences").json() == {"active_site_id": site["id"]}
     assert c.post("/v1/sample-site").json()["id"] == site["id"]
     assert len(c.get("/v1/sites").json()) == 1
+
+
+def test_hosted_demo_bundle_is_tenant_scoped_when_twinforge_is_offline(tmp_path):
+    class OfflineEngine:
+        def request(self, *args, **kwargs):
+            raise OSError("offline")
+
+    app = create_app(tmp_path / "offline-demo.sqlite", OfflineEngine())
+    client = TestClient(app)
+
+    def android_owner(email):
+        signup = client.post(
+            "/v1/auth/signup",
+            headers={"X-SpatialGuard-Client": "android"},
+            json={"email": email, "password": "SpatialGuard-test-12345"},
+        )
+        assert signup.status_code == 201, signup.text
+        token = signup.json()["token"]
+        return TestClient(app, headers={"Authorization": "Bearer " + token})
+
+    first, second = android_owner("first@example.test"), android_owner("second@example.test")
+    first_site = first.post("/v1/sample-site")
+    second_site = second.post("/v1/sample-site")
+    assert first_site.status_code == second_site.status_code == 201
+    assert first_site.json()["id"] != second_site.json()["id"]
+    assert len(first_site.json()["layout"]["cameras"]) == 2
+    assert first.get("/v1/sites").json()[0]["id"] == first_site.json()["id"]
+    assert second.get("/v1/sites").json()[0]["id"] == second_site.json()["id"]
+
+    replay = first.post(
+        f"/v1/sites/{first_site.json()['id']}/replay",
+        json={"request_id": "offline-demo-replay"},
+    )
+    assert replay.status_code == 202, replay.text
+    with app.state.store.connect() as db:
+        payload = json.loads(db.execute(
+            "SELECT payload FROM runs WHERE id=?", (replay.json()["id"],)
+        ).fetchone()[0])
+    assert len(payload["observations"]) == 12
+    assert {item["site_id"] for item in payload["observations"]} == {first_site.json()["id"]}
 
 
 def test_the_last_opened_place_is_remembered_across_sessions(setup):

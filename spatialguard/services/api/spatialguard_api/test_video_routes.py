@@ -11,6 +11,7 @@ from .classifier import ClassifierUnavailable, classify_images
 from .models import IncidentClassification, TestVideo, TestVideoTrack
 from .person_tracking import MODEL, PersonDetectorUnavailable, track_video
 from .store import DATA
+from .release import require_feature
 
 
 VIDEO_ROOT = DATA / "test-ring-video"
@@ -117,10 +118,12 @@ def person_track_for(video_id: str) -> TestVideoTrack:
 def install(app, principal):
     @app.get("/v1/test-videos", response_model=list[TestVideo])
     def test_videos(p=Depends(principal)):
+        require_feature("test_video")
         return [video for key, video in CATALOG.items() if (VIDEO_ROOT / f"{key}.mp4").is_file()]
 
     @app.get("/v1/test-videos/{video_id}/media", response_class=FileResponse)
     def test_video_media(video_id: str, p=Depends(principal)):
+        require_feature("test_video")
         return FileResponse(
             path_for(video_id),
             media_type="video/mp4",
@@ -131,6 +134,7 @@ def install(app, principal):
 
     @app.get("/v1/test-videos/{video_id}/track", response_model=TestVideoTrack)
     def test_video_track(video_id: str, p=Depends(principal)):
+        require_feature("test_video")
         try:
             return person_track_for(video_id)
         except PersonDetectorUnavailable as exc:
@@ -141,6 +145,8 @@ def install(app, principal):
         response_model=IncidentClassification,
     )
     def classify_test_video(video_id: str, p=Depends(principal)):
+        require_feature("test_video")
+        require_feature("classification")
         try:
             return classify_images(classification_frames(video_id), "image/jpeg")
         except ClassifierUnavailable as exc:

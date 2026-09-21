@@ -3,6 +3,7 @@ import os
 import secrets
 import sqlite3
 import time
+import logging
 from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,12 +19,15 @@ from .store import (
     dump,
     event,
     audit,
+    access_log,
     now,
 )
 from .auth import normalize_email, password_hash, password_matches
 from . import models as m
 from . import engine as tf
 from .engine import LayoutRejected, client, normalize_cameras, publish_layout
+from .release import capabilities, require_feature
+from .mail import send as send_mail
 
 COOKIE = "spatialguard_session"
 TEST_ACCOUNT_EMAIL = "test12345@gmail.com"
@@ -46,7 +50,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
     if enable_test_account:
         with store.connect() as db:
             db.execute(
-                "INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)",
+                "INSERT OR IGNORE INTO accounts(id,email,password_hash,created,email_verified) VALUES (?,?,?,?,1)",
                 ("acct_test_preview", TEST_ACCOUNT_EMAIL, TEST_ACCOUNT_HASH, now()),
             )
     app = FastAPI(title="SpatialGuard", version="0.1.0")
@@ -56,6 +60,10 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
     @app.middleware("http")
     async def security(request, call_next):
+        started = time.perf_counter()
+        request_id = request.headers.get("x-request-id", "")
+        if not request_id or len(request_id) > 80 or not all(ch.isalnum() or ch in "-_" for ch in request_id):
+            request_id = secrets.token_hex(12)
         allowed_hosts = {"127.0.0.1:8010", "localhost:8010", "testserver"}
         configured_hosts = os.environ.get("SPATIALGUARD_ALLOWED_HOSTS", "")
         allowed_hosts.update(host.strip() for host in configured_hosts.split(",") if host.strip())
@@ -65,9 +73,23 @@ def create_app(db_path=None, engine=None, ring_service=None):
         if request.url.path != "/health" and request.headers.get("host") not in allowed_hosts:
             return Response(status_code=400)
         response = await call_next(request)
+        route = request.scope.get("route")
+        route_name = getattr(route, "path", "unmatched")
+        logging.getLogger("spatialguard.request").info(
+            "request_complete method=%s route=%s status=%s duration_ms=%s request_id=%s",
+            request.method, route_name, response.status_code,
+            round((time.perf_counter() - started) * 1000, 1), request_id,
+        )
+        response.headers["X-Request-ID"] = request_id
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        if configured_origin().startswith("https://"):
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
         return response
 
@@ -108,6 +130,14 @@ def create_app(db_path=None, engine=None, ring_service=None):
             row = db.execute("SELECT * FROM sessions WHERE digest=? AND expires>?", (digest(token), time.time())).fetchone()
         if not row:
             raise HTTPException(401, "Sign in or pair this device")
+        reviewer_key = os.environ.get("SPATIALGUARD_REVIEWER_KEY", "")
+        reviewer_bypass = bool(reviewer_key) and secrets.compare_digest(
+            request.headers.get("x-spatialguard-reviewer-key", ""), reviewer_key,
+        )
+        if (row["owner"] == "acct_test_preview" and request.method not in {"GET", "HEAD"}
+                and os.environ.get("SPATIALGUARD_DEMO_READ_ONLY", "").lower() in {"1", "true", "yes"}
+                and not reviewer_bypass):
+            raise HTTPException(403, "This replay workspace is read-only")
         return dict(row)
 
     def owned(db, site_id, p):
@@ -204,6 +234,24 @@ def create_app(db_path=None, engine=None, ring_service=None):
     def health():
         return {"status": "ok", "application": "spatialguard"}
 
+    @app.get("/status")
+    def public_status():
+        flags = capabilities()
+        return {
+            "status": "operational",
+            "application": "SpatialGuard",
+            "version": os.environ.get("RAILWAY_GIT_COMMIT_SHA", "development")[:12],
+            "release_profile": flags["profile"],
+            "evidence_modes": ["live", "replay"] if flags["synthetic_replay"] else ["live"],
+            "database": "available",
+            "ring_adapter": "configured" if os.environ.get("RING_CLIENT_ID") else "not_configured",
+            "twinforge": "configured" if os.environ.get("SPATIALGUARD_TWINFORGE_URL") else "local_default",
+        }
+
+    @app.get("/v1/product-capabilities", response_model=m.ProductCapabilities)
+    def product_capabilities():
+        return capabilities()
+
     @app.post("/v1/auth/signup", response_model=m.AuthSession, status_code=201)
     def signup(body: m.AccountCredentials, request: Request, response: Response):
         kind = auth_kind(request)
@@ -217,14 +265,22 @@ def create_app(db_path=None, engine=None, ring_service=None):
             db.execute("BEGIN IMMEDIATE")
             old_owner = legacy_owner(db, request)
             try:
-                db.execute("INSERT INTO accounts VALUES (?,?,?,?)", (owner, email, verifier, now()))
+                db.execute("INSERT INTO accounts(id,email,password_hash,created,email_verified) VALUES (?,?,?,?,0)", (owner, email, verifier, now()))
             except sqlite3.IntegrityError:
                 raise HTTPException(409, "An account with this email already exists") from None
             db.execute("INSERT OR IGNORE INTO account_preferences(owner) VALUES (?)", (owner,))
             if old_owner:
                 claim_legacy_workspace(db, old_owner, owner)
             result = issue(db, owner, kind, "Android app" if kind == "android" else "Web browser")
+            verification_token = create_auth_token(db, owner, "email_verification", 86400)
             audit(db, owner, "account.created", owner)
+        try:
+            send_mail(
+                "Verify your SpatialGuard email", email,
+                "Verify this address within 24 hours:\n\n" + configured_origin() + "/verify-email?token=" + verification_token,
+            )
+        except Exception:
+            pass
         return auth_result(result, kind, response)
 
     @app.post("/v1/auth/signin", response_model=m.AuthSession)
@@ -234,6 +290,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         attempt_key = "signin:" + request.client.host + ":" + digest(email)[:16]
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
+            throttle(db, "signin-ip:" + request.client.host, 30)
             throttle(db, attempt_key, 10)
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -246,9 +303,100 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 raise HTTPException(401, "Email or password is incorrect")
             db.execute("DELETE FROM attempts WHERE peer=?", (attempt_key,))
             db.execute("DELETE FROM sessions WHERE expires<=?", (time.time(),))
+            previous_token = request.cookies.get(COOKIE, "")
+            if previous_token:
+                db.execute("DELETE FROM sessions WHERE digest=?", (digest(previous_token),))
             result = issue(db, account["id"], kind, "Android app" if kind == "android" else "Web browser")
             audit(db, account["id"], "account.signed_in", result.session.id)
         return auth_result(result, kind, response)
+
+    def create_auth_token(db, owner, purpose, ttl=1800):
+        token = secrets.token_urlsafe(32)
+        db.execute(
+            "INSERT INTO auth_tokens(digest,owner,purpose,expires,created_at) VALUES (?,?,?,?,?)",
+            (digest(token), owner, purpose, time.time() + ttl, now()),
+        )
+        return token
+
+    @app.get("/v1/account/verification")
+    def verification_status(p=Depends(principal)):
+        with store.connect() as db:
+            row = db.execute("SELECT email,email_verified FROM accounts WHERE id=?", (p["owner"],)).fetchone()
+        return {"email": row["email"] if row else None, "verified": bool(row and row["email_verified"])}
+
+    @app.post("/v1/account/verification/request", response_model=m.AuthMessage)
+    def request_verification(p=Depends(principal)):
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            account = db.execute("SELECT email,email_verified FROM accounts WHERE id=?", (p["owner"],)).fetchone()
+            if not account or account["email_verified"]:
+                return {"message": "This email is already verified."}
+            db.execute("DELETE FROM auth_tokens WHERE owner=? AND purpose='email_verification'", (p["owner"],))
+            token = create_auth_token(db, p["owner"], "email_verification", 86400)
+            audit(db, p["owner"], "email_verification.requested", "account")
+        try:
+            delivered = send_mail("Verify your SpatialGuard email", account["email"],
+                "Verify this address within 24 hours:\n\n" + configured_origin() + "/verify-email?token=" + token)
+        except Exception:
+            delivered = False
+        return {"message": "Verification email sent." if delivered else "Email delivery is not configured yet. Try again later."}
+
+    @app.post("/v1/auth/email/verify", response_model=m.AuthMessage)
+    def verify_email(body: m.TokenConfirmation):
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT * FROM auth_tokens WHERE digest=? AND purpose='email_verification' AND used_at IS NULL AND expires>?",
+                (digest(body.token), time.time()),
+            ).fetchone()
+            if not row:
+                raise HTTPException(400, "This verification link is invalid or expired")
+            db.execute("UPDATE accounts SET email_verified=1 WHERE id=?", (row["owner"],))
+            db.execute("UPDATE auth_tokens SET used_at=? WHERE digest=?", (now(), row["digest"]))
+            audit(db, row["owner"], "email.verified", "account")
+        return {"message": "Email verified. You can return to SpatialGuard."}
+
+    @app.post("/v1/auth/password/request", response_model=m.AuthMessage)
+    def request_password_reset(body: m.PasswordRequest, request: Request):
+        email = normalize_email(body.email)
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            throttle(db, "reset:" + request.client.host + ":" + digest(email)[:16], 5)
+            account = db.execute("SELECT id FROM accounts WHERE email=? COLLATE NOCASE", (email,)).fetchone()
+            if account:
+                db.execute("DELETE FROM auth_tokens WHERE owner=? AND purpose='password_reset'", (account["id"],))
+                token = create_auth_token(db, account["id"], "password_reset")
+                audit(db, account["id"], "password_reset.requested", "account")
+                reset_url = configured_origin() + "/reset-password?token=" + token
+                try:
+                    delivered = send_mail(
+                        "Reset your SpatialGuard password", email,
+                        "Use this single-use link within 30 minutes:\n\n" + reset_url,
+                    )
+                except Exception:
+                    delivered = False
+                db.execute(
+                    "INSERT INTO notification_history(owner,category,channel,state,detail,at) VALUES (?,?,?,?,?,?)",
+                    (account["id"], "security", "email", "sent" if delivered else "failed", "Password reset", now()),
+                )
+        return {"message": "If that email has an account, password reset instructions have been sent."}
+
+    @app.post("/v1/auth/password/reset", response_model=m.AuthMessage)
+    def reset_password(body: m.PasswordReset, request: Request):
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            throttle(db, "reset-use:" + request.client.host, 10)
+            row = db.execute(
+                "SELECT * FROM auth_tokens WHERE digest=? AND purpose='password_reset' AND used_at IS NULL AND expires>?",
+                (digest(body.token), time.time()),
+            ).fetchone()
+            if not row:
+                raise HTTPException(400, "This reset link is invalid or expired")
+            db.execute("UPDATE accounts SET password_hash=? WHERE id=?", (password_hash(body.password), row["owner"]))
+            db.execute("UPDATE auth_tokens SET used_at=? WHERE digest=?", (now(), row["digest"]))
+            db.execute("DELETE FROM sessions WHERE owner=?", (row["owner"],))
+            audit(db, row["owner"], "password_reset.completed", "account")
+        return {"message": "Password changed. Sign in with the new password."}
 
     @app.post("/v1/auth/signout", status_code=204)
     def signout(response: Response, p=Depends(principal)):
@@ -276,6 +424,99 @@ def create_app(db_path=None, engine=None, ring_service=None):
     @app.get("/v1/me", response_model=m.Session)
     def me(p=Depends(principal)):
         return session_data(p)
+
+    @app.post("/v1/account/password", response_model=m.AuthMessage)
+    def change_password(body: m.PasswordChange, p=Depends(principal)):
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            account = db.execute("SELECT * FROM accounts WHERE id=?", (p["owner"],)).fetchone()
+            if not account or not password_matches(body.current_password, account["password_hash"]):
+                raise HTTPException(401, "Current password is incorrect")
+            db.execute("UPDATE accounts SET password_hash=? WHERE id=?", (password_hash(body.new_password), p["owner"]))
+            db.execute("DELETE FROM sessions WHERE owner=? AND id<>?", (p["owner"], p["id"]))
+            audit(db, p["owner"], "password.changed", "account")
+            email = account["email"]
+        try:
+            delivered = send_mail("Your SpatialGuard password changed", email,
+                "Your SpatialGuard password was changed. If this was not you, reset it and contact support.")
+        except Exception:
+            delivered = False
+        with store.connect() as db:
+            db.execute("INSERT INTO notification_history(owner,category,channel,state,detail,at) VALUES (?,?,?,?,?,?)",
+                       (p["owner"], "security", "email", "sent" if delivered else "failed", "Password changed", now()))
+        return {"message": "Password changed. Other devices were signed out."}
+
+    @app.post("/v1/sessions/revoke-all", status_code=204)
+    def revoke_all_sessions(p=Depends(principal)):
+        with store.connect() as db:
+            db.execute("DELETE FROM sessions WHERE owner=? AND id<>?", (p["owner"], p["id"]))
+            audit(db, p["owner"], "sessions.revoked_all", "account")
+
+    @app.get("/v1/account/security-activity")
+    def security_activity(p=Depends(principal)):
+        with store.connect() as db:
+            rows = db.execute(
+                "SELECT action,at FROM audit WHERE owner=? AND (action LIKE 'account.%' OR action LIKE 'password_%' OR action LIKE 'session%') ORDER BY id DESC LIMIT 50",
+                (p["owner"],),
+            ).fetchall()
+            return [{"action": row["action"], "at": row["at"]} for row in rows]
+
+    @app.get("/v1/account/access-log", response_model=list[m.AccessRecord])
+    def account_access_log(p=Depends(principal)):
+        with store.connect() as db:
+            return [dict(row) for row in db.execute(
+                "SELECT id,actor,action,device,purpose,result,at FROM data_access_log WHERE owner=? ORDER BY id DESC LIMIT 200",
+                (p["owner"],),
+            )]
+
+    @app.get("/v1/account/notifications", response_model=m.NotificationPreferences)
+    def notification_preferences(p=Depends(principal)):
+        with store.connect() as db:
+            row = db.execute("SELECT * FROM notification_preferences WHERE owner=?", (p["owner"],)).fetchone()
+            if not row:
+                db.execute("INSERT INTO notification_preferences(owner) VALUES (?)", (p["owner"],))
+                row = db.execute("SELECT * FROM notification_preferences WHERE owner=?", (p["owner"],)).fetchone()
+            return {key: bool(row[key]) for key in ("incident_email", "operational_email", "weekly_summary", "marketing")}
+
+    @app.put("/v1/account/notifications", response_model=m.NotificationPreferences)
+    def update_notification_preferences(body: m.NotificationPreferences, p=Depends(principal)):
+        values = body.model_dump()
+        with store.connect() as db:
+            db.execute(
+                "INSERT OR REPLACE INTO notification_preferences VALUES (?,?,?,?,?)",
+                (p["owner"], *(int(values[key]) for key in ("incident_email", "operational_email", "weekly_summary", "marketing"))),
+            )
+            audit(db, p["owner"], "notifications.preferences_changed", "account")
+        return body
+
+    @app.get("/v1/account/notification-history")
+    def notification_history(p=Depends(principal)):
+        with store.connect() as db:
+            return [dict(row) for row in db.execute(
+                "SELECT category,channel,state,detail,at FROM notification_history WHERE owner=? ORDER BY id DESC LIMIT 100",
+                (p["owner"],),
+            )]
+
+    @app.get("/v1/account/export")
+    def export_account(p=Depends(principal)):
+        with store.connect() as db:
+            account = db.execute("SELECT email,created FROM accounts WHERE id=?", (p["owner"],)).fetchone()
+            preferences = read_account_preferences(db, p["owner"])
+            sites = [json.loads(row["data"]) for row in db.execute("SELECT data FROM sites WHERE owner=?", (p["owner"],))]
+            site_ids = [site["id"] for site in sites]
+            incidents = []
+            for site_id in site_ids:
+                incidents.extend(json.loads(row["data"]) for row in db.execute("SELECT data FROM incidents WHERE site_id=?", (site_id,)))
+            access = [dict(row) for row in db.execute(
+                "SELECT actor,action,device,purpose,result,at FROM data_access_log WHERE owner=? ORDER BY id", (p["owner"],)
+            )]
+            audit(db, p["owner"], "account.exported", "account")
+        return {
+            "format": "spatialguard-account-export-v1", "exported_at": now(),
+            "account": dict(account) if account else {"workspace": "local"},
+            "preferences": preferences,
+            "sites": sites, "incidents": incidents, "data_access": access,
+        }
 
     @app.get("/v1/account/preferences", response_model=m.AccountPreferences)
     def account_preferences(p=Depends(principal)):
@@ -374,9 +615,12 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 raise HTTPException(404, "Session not found")
             audit(db, p["owner"], "session.revoked", session_id)
 
-    @app.delete("/v1/account", status_code=204)
+    @app.delete("/v1/account", response_model=m.DeletionReceipt)
     def delete_account(body: m.AccountDeletion, response: Response, p=Depends(principal)):
         """Permanently remove an email account and all owner-scoped records."""
+        requested_at = now()
+        receipt_reference = "delete_" + secrets.token_hex(8)
+        categories = ["account", "sessions", "places", "incidents", "evidence", "Ring connection", "time-lapse files"]
         with store.connect() as db:
             account = db.execute("SELECT * FROM accounts WHERE id=?", (p["owner"],)).fetchone()
             if not account:
@@ -457,12 +701,33 @@ def create_app(db_path=None, engine=None, ring_service=None):
                     db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             for table in (
                 "sites", "plans", "sessions", "pairing", "audit", "account_preferences",
+                "auth_tokens", "data_access_log", "notification_preferences", "notification_history",
             ):
                 db.execute(f"DELETE FROM {table} WHERE owner=?", (p["owner"],))
             db.execute("DELETE FROM settings WHERE key=?", ("active_site:" + p["owner"],))
             db.execute("DELETE FROM accounts WHERE id=?", (p["owner"],))
+            completed_at = now()
+            db.execute(
+                "INSERT INTO deletion_receipts VALUES (?,?,?,?,?)",
+                (receipt_reference, requested_at, completed_at, dump(categories), "Ring disconnected and local processors completed"),
+            )
 
         response.delete_cookie(COOKIE, path="/")
+        return m.DeletionReceipt(
+            reference=receipt_reference, requested_at=requested_at,
+            completed_at=completed_at, categories=categories,
+            downstream="Ring disconnected and local processors completed",
+        )
+
+    @app.get("/v1/deletion-receipts/{reference}", response_model=m.DeletionReceipt)
+    def deletion_receipt(reference: str):
+        if not reference.startswith("delete_") or len(reference) != 23:
+            raise HTTPException(404, "Deletion receipt not found")
+        with store.connect() as db:
+            row = db.execute("SELECT * FROM deletion_receipts WHERE reference=?", (reference,)).fetchone()
+        if not row:
+            raise HTTPException(404, "Deletion receipt not found")
+        return {**dict(row), "categories": json.loads(row["categories"])}
 
     @app.get("/v1/sites", response_model=list[m.Site])
     def sites(p=Depends(principal)):
@@ -494,7 +759,10 @@ def create_app(db_path=None, engine=None, ring_service=None):
     @app.post("/v1/sample-site", response_model=m.Site, status_code=201)
     def create_sample_site(p=Depends(principal)):
         """Add the built-in synthetic demo place on request."""
-        site = engine_call(tf.sample_site, store, p["owner"])
+        try:
+            site = tf.sample_site(engine or client(), store, p["owner"])
+        except Exception:
+            site = tf.bundled_sample_site(store, p["owner"])
         with store.connect() as db:
             db.execute("INSERT OR REPLACE INTO settings VALUES (?,?)", (active_key(p), site["id"]))
             audit(db, p["owner"], "sample.loaded", site["id"])
@@ -523,15 +791,21 @@ def create_app(db_path=None, engine=None, ring_service=None):
     def remove_site(site_id: str, p=Depends(principal)):
         """Remove a place and everything recorded against it, drawing included."""
         with store.connect() as db:
-            owned(db, site_id, p)
+            site = owned(db, site_id, p)
+            bundled = db.execute(
+                "SELECT 1 FROM settings WHERE key=?", ("demo_bundle:" + site_id,)
+            ).fetchone()
         # Delete upstream first: a local row is recoverable, an orphaned drawing is not.
-        engine_call(tf.delete_site, site_id)
+        # The bundled demo is already a local immutable export and has no upstream row.
+        if not bundled:
+            engine_call(tf.delete_site, site_id)
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             for table in ("incidents", "evidence", "runs", "events"):
                 db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             db.execute("DELETE FROM sites WHERE id=? AND owner=?", (site_id, p["owner"]))
             db.execute("DELETE FROM settings WHERE key=? AND value=?", (active_key(p), site_id))
+            db.execute("DELETE FROM settings WHERE key=?", ("demo_bundle:" + site_id,))
             # The sample can be loaded again from scratch.
             db.execute("DELETE FROM settings WHERE key='engine_site' AND value=?", (site_id,))
             audit(db, p["owner"], "site.removed", site_id)
@@ -774,6 +1048,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
     @app.post("/v1/sites/{site_id}/replay", response_model=m.ReplayRun, status_code=202)
     def replay(site_id: str, body: m.ReplayInput, p=Depends(principal)):
+        require_feature("synthetic_replay")
         with store.connect() as db:
             site = owned(db, site_id, p)
             row = db.execute("SELECT * FROM runs WHERE site_id=? AND request_id=?", (site_id, body.request_id)).fetchone()
@@ -784,7 +1059,9 @@ def create_app(db_path=None, engine=None, ring_service=None):
         try:
             source = (engine or client()).request(f"/v1/revisions/{site['revision_id']}/replay-fixture")["observations"]
         except Exception:
-            raise HTTPException(503, "TwinForge is unavailable. Start the engine and retry.") from None
+            if not site["revision_id"].startswith("rev_demo_bundle_v1_"):
+                raise HTTPException(503, "TwinForge is unavailable. Start the engine and retry.") from None
+            source = tf.bundled_replay(site["id"], site["revision_id"])
         run_id = uid("run")
         observations = []
         for index, obs in enumerate(source):
@@ -869,6 +1146,23 @@ def create_app(db_path=None, engine=None, ring_service=None):
     from .test_video_routes import install as install_test_videos
     install_test_videos(app, principal)
 
+    @app.get("/.well-known/assetlinks.json", include_in_schema=False)
+    def android_asset_links():
+        fingerprints = [
+            value.strip().upper()
+            for value in os.environ.get("SPATIALGUARD_ANDROID_SHA256_CERT_FINGERPRINT", "").split(",")
+            if value.strip()
+        ]
+        statements = [{
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "app.spatialguard.mobile",
+                "sha256_cert_fingerprints": fingerprints,
+            },
+        }] if fingerprints else []
+        return Response(content=json.dumps(statements), media_type="application/json")
+
     dist = ROOT / "spatialguard/apps/web/dist"
     if dist.exists():
         app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
@@ -877,6 +1171,9 @@ def create_app(db_path=None, engine=None, ring_service=None):
         @app.get("/landing", include_in_schema=False)
         @app.get("/signin", include_in_schema=False)
         @app.get("/signup", include_in_schema=False)
+        @app.get("/forgot-password", include_in_schema=False)
+        @app.get("/reset-password", include_in_schema=False)
+        @app.get("/verify-email", include_in_schema=False)
         @app.get("/workspace", include_in_schema=False)
         @app.get("/privacy", include_in_schema=False)
         @app.get("/terms", include_in_schema=False)

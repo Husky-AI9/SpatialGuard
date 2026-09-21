@@ -1,10 +1,13 @@
 """Only this application adapter knows TwinForge's HTTP interface."""
 import json
+import hashlib
 import os
 import re
 from urllib.error import HTTPError
 from twinforge_sdk import TwinForge
 from .store import ROOT
+
+DEMO_BUNDLE = ROOT / "spatialguard/fixtures/demo-bundle.json"
 
 
 # Ring publishes one horizontal field of view per camera model (Stick Up Cam Battery
@@ -66,6 +69,53 @@ def sample_site(engine, store, owner="local_owner"):
     with store.connect() as db:
         db.execute("INSERT INTO sites VALUES (?,?,?)", (site_id, owner, dump(data)))
     return relens(store, engine, data)
+
+
+def bundled_sample_site(store, owner):
+    """Load an immutable exported TwinForge demo when the service is unavailable.
+
+    This is a synthetic contract artifact, never an owner upload or a substitute
+    for TwinForge editing. Per-owner IDs preserve the application tenant boundary.
+    """
+    from .store import dump
+    suffix = hashlib.sha256(owner.encode()).hexdigest()[:12]
+    site_id = "site_demo_" + suffix
+    revision_id = "rev_demo_bundle_v1_" + suffix
+    with store.connect() as db:
+        existing = db.execute(
+            "SELECT data FROM sites WHERE id=? AND owner=?", (site_id, owner)
+        ).fetchone()
+    if existing:
+        return json.loads(existing[0])
+    bundle = json.loads(DEMO_BUNDLE.read_text(encoding="utf-8"))
+    layout = bundle["layout"]
+    normalize_cameras(layout)
+    data = {
+        "id": site_id,
+        "name": "Demo home",
+        "revision_id": revision_id,
+        "layout": layout,
+        "monitoring": {
+            "enabled": True,
+            "camera_ids": [camera["id"] for camera in layout["cameras"]],
+        },
+        "monitoring_version": 0,
+        "evidence_mode": "replay",
+        "ring_status": "not_connected",
+    }
+    with store.connect() as db:
+        db.execute("INSERT INTO sites VALUES (?,?,?)", (site_id, owner, dump(data)))
+        db.execute("INSERT OR REPLACE INTO settings VALUES (?,?)", ("demo_bundle:" + site_id, "1"))
+    return data
+
+
+def bundled_replay(site_id, revision_id):
+    bundle = json.loads(DEMO_BUNDLE.read_text(encoding="utf-8"))
+    observations = bundle["observations"]
+    for observation in observations:
+        observation["site_id"] = site_id
+        observation["revision_id"] = revision_id
+    return observations
 
 
 def relens(store, engine, data):
