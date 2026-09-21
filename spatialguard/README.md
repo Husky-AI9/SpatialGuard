@@ -2,6 +2,8 @@
 
 An owner incident workspace for a published TwinForge home. The same React interface runs in a browser and in a bundled Capacitor Android app. The charcoal, gray, and muted-red theme draws from the supplied Figma reference. Synthetic replay remains available, and the local preview can connect a Ring private app to authorized cameras without exposing Ring credentials to the browser or Android client.
 
+Track public-release and competition work in the [10/10, Ring Appstore, and hackathon readiness checklist](docs/10-10-ring-appstore-and-hackathon-checklist.md).
+
 ## Run
 
 From the repository root, install the existing Python environment using the TwinForge setup instructions, then install the workspace JavaScript dependencies:
