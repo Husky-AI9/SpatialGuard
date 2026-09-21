@@ -8,6 +8,7 @@ COPY spatialguard/apps/web/package.json spatialguard/apps/web/package.json
 RUN npm ci
 
 COPY packages/spatial-view packages/spatial-view
+COPY packages/contracts packages/contracts
 COPY packages/sdk-typescript packages/sdk-typescript
 COPY spatialguard/apps/web spatialguard/apps/web
 RUN npm run build --workspace spatialguard-web
