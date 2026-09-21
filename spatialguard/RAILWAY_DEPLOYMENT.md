@@ -20,7 +20,6 @@ SPATIALGUARD_DATA_DIR=/data
 SPATIALGUARD_DB=/data/spatialguard.sqlite3
 TWINFORGE_DB=/data/twinforge.sqlite3
 SPATIALGUARD_TOKEN_KEY=<a Fernet key>
-SPATIALGUARD_ENABLE_TEST_ACCOUNT=true
 ```
 
 Generate the token-encryption key locally, then put its output only in Railway
@@ -33,9 +32,10 @@ Variables:
 SpatialGuard stores salted scrypt password verifiers and gives each account an
 isolated owner ID. The browser stores only a Secure, HttpOnly, SameSite cookie;
 Android receives a separate revocable bearer session after email/password sign
-in. `SPATIALGUARD_ENABLE_TEST_ACCOUNT=true` creates the isolated hackathon test
-account documented on the sign-in page. It does not have access to another
-owner's site or Ring connection.
+in. Railway deployments create the isolated hackathon test account documented
+on the sign-in page by default. Set `SPATIALGUARD_ENABLE_TEST_ACCOUNT=false` to
+disable it. The test account does not have access to another owner's site or
+Ring connection.
 
 ## Ring configuration
 

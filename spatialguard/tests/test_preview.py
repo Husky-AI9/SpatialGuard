@@ -282,7 +282,8 @@ def test_signup_claims_only_the_authenticated_legacy_workspace(tmp_path, monkeyp
 
 def test_opt_in_test_account_is_hashed_and_isolated(tmp_path, monkeypatch):
     monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
-    monkeypatch.setenv('SPATIALGUARD_ENABLE_TEST_ACCOUNT', 'true')
+    monkeypatch.delenv('SPATIALGUARD_ENABLE_TEST_ACCOUNT', raising=False)
+    monkeypatch.setenv('RAILWAY_ENVIRONMENT_ID', 'test-environment')
     app = create_app(tmp_path/'test-account.sqlite', Engine())
     client = TestClient(app, base_url='https://testserver', headers={
         'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',

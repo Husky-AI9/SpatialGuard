@@ -25,7 +25,13 @@ def configured_origin():
 
 def create_app(db_path=None, engine=None, ring_service=None):
     store = Store(db_path)
-    if os.environ.get("SPATIALGUARD_ENABLE_TEST_ACCOUNT", "").lower() in {"1", "true", "yes"}:
+    test_account_setting = os.environ.get("SPATIALGUARD_ENABLE_TEST_ACCOUNT")
+    enable_test_account = (
+        test_account_setting.lower() in {"1", "true", "yes"}
+        if test_account_setting is not None
+        else bool(os.environ.get("RAILWAY_ENVIRONMENT_ID") or os.environ.get("RAILWAY_PROJECT_ID"))
+    )
+    if enable_test_account:
         with store.connect() as db:
             db.execute(
                 "INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)",
