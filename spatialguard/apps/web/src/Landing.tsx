@@ -43,7 +43,7 @@ export default function Landing() {
   const [accessBusy, setAccessBusy] = useState(false);
   const workspaceHref = native ? "/?workspace=1" : "/workspace";
   const hostedWeb = !native && !localWeb;
-  const previewLabel = hostedWeb ? "Hosted preview ? owner access code required" : "Local replay preview ? no account required";
+  const previewLabel = hostedWeb ? "Hosted preview: owner access code required" : "Local replay preview: no account required";
   const openWorkspace = (event: MouseEvent<HTMLAnchorElement>) => {
     if (!hostedWeb) return;
     event.preventDefault();
