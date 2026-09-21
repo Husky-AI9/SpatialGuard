@@ -1,0 +1,644 @@
+{
+  "$defs": {
+    "Camera": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "floor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Floor Id",
+          "type": "string"
+        },
+        "position_m": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            },
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            },
+            {
+              "maximum": 100.0,
+              "minimum": -100.0,
+              "type": "number"
+            }
+          ],
+          "title": "Position M",
+          "type": "array"
+        },
+        "heading_degrees": {
+          "default": 0,
+          "title": "Heading Degrees",
+          "type": "number"
+        },
+        "pitch_degrees": {
+          "default": 0,
+          "maximum": 89.0,
+          "minimum": -89.0,
+          "title": "Pitch Degrees",
+          "type": "number"
+        },
+        "fov_degrees": {
+          "default": 70,
+          "exclusiveMaximum": 180.0,
+          "exclusiveMinimum": 0.0,
+          "title": "Fov Degrees",
+          "type": "number"
+        },
+        "range_m": {
+          "default": 4,
+          "exclusiveMinimum": 0.0,
+          "maximum": 100.0,
+          "title": "Range M",
+          "type": "number"
+        },
+        "configuration_hash": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Configuration Hash",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "floor_id",
+        "position_m",
+        "configuration_hash",
+        "provenance"
+      ],
+      "title": "Camera",
+      "type": "object"
+    },
+    "Floor": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "elevation_m": {
+          "default": 0,
+          "title": "Elevation M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "Floor",
+      "type": "object"
+    },
+    "FloorPlanImage": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "origin_xy_m": {
+          "default": [
+            0,
+            0
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            },
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            }
+          ],
+          "title": "Origin Xy M",
+          "type": "array"
+        },
+        "width_m": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 10000.0,
+          "title": "Width M",
+          "type": "number"
+        },
+        "height_m": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 10000.0,
+          "title": "Height M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "asset_id",
+        "width_m",
+        "height_m"
+      ],
+      "title": "FloorPlanImage",
+      "type": "object"
+    },
+    "Portal": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "from_room_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "From Room Id",
+          "type": "string"
+        },
+        "to_room_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "To Room Id",
+          "type": "string"
+        },
+        "segment_xy_m": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                },
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                },
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "Segment Xy M",
+          "type": "array"
+        },
+        "width_m": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 20.0,
+          "title": "Width M",
+          "type": "number"
+        },
+        "state": {
+          "default": "unknown",
+          "enum": [
+            "open",
+            "closed",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "state_observed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State Observed At"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "from_room_id",
+        "to_room_id",
+        "segment_xy_m",
+        "width_m",
+        "provenance"
+      ],
+      "title": "Portal",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "measured",
+            "manual",
+            "inferred",
+            "unknown"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "confirmed": {
+          "default": false,
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "explanation": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "explanation"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "Room": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "floor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Floor Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "polygon_xy_m": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "maximum": 10000.0,
+                "minimum": -10000.0,
+                "type": "number"
+              },
+              {
+                "maximum": 10000.0,
+                "minimum": -10000.0,
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "maxItems": 200,
+          "minItems": 3,
+          "title": "Polygon Xy M",
+          "type": "array"
+        },
+        "height_m": {
+          "default": 2.6,
+          "exclusiveMinimum": 0.0,
+          "maximum": 20.0,
+          "title": "Height M",
+          "type": "number"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "floor_id",
+        "name",
+        "polygon_xy_m",
+        "provenance"
+      ],
+      "title": "Room",
+      "type": "object"
+    },
+    "ScaleAnchor": {
+      "additionalProperties": false,
+      "properties": {
+        "points": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                },
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                },
+                {
+                  "maximum": 10000.0,
+                  "minimum": -10000.0,
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            }
+          ],
+          "title": "Points",
+          "type": "array"
+        },
+        "distance_m": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1000.0,
+          "title": "Distance M",
+          "type": "number"
+        },
+        "source": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "points",
+        "distance_m",
+        "source"
+      ],
+      "title": "ScaleAnchor",
+      "type": "object"
+    },
+    "Zone": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "floor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Floor Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "purpose": {
+          "default": "general",
+          "maxLength": 100,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "polygon_xy_m": {
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "maximum": 10000.0,
+                "minimum": -10000.0,
+                "type": "number"
+              },
+              {
+                "maximum": 10000.0,
+                "minimum": -10000.0,
+                "type": "number"
+              }
+            ],
+            "type": "array"
+          },
+          "maxItems": 200,
+          "minItems": 3,
+          "title": "Polygon Xy M",
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "id",
+        "floor_id",
+        "name",
+        "polygon_xy_m",
+        "provenance"
+      ],
+      "title": "Zone",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "default": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "units": {
+      "const": "meters",
+      "default": "meters",
+      "title": "Units",
+      "type": "string"
+    },
+    "world_frame": {
+      "const": "RH_Xright_Yforward_Zup",
+      "default": "RH_Xright_Yforward_Zup",
+      "title": "World Frame",
+      "type": "string"
+    },
+    "scale_status": {
+      "default": "unknown",
+      "enum": [
+        "unknown",
+        "verified"
+      ],
+      "title": "Scale Status",
+      "type": "string"
+    },
+    "scale_anchors": {
+      "items": {
+        "$ref": "#/$defs/ScaleAnchor"
+      },
+      "maxItems": 10,
+      "title": "Scale Anchors",
+      "type": "array"
+    },
+    "floors": {
+      "items": {
+        "$ref": "#/$defs/Floor"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "title": "Floors",
+      "type": "array"
+    },
+    "rooms": {
+      "items": {
+        "$ref": "#/$defs/Room"
+      },
+      "maxItems": 30,
+      "title": "Rooms",
+      "type": "array"
+    },
+    "zones": {
+      "items": {
+        "$ref": "#/$defs/Zone"
+      },
+      "maxItems": 30,
+      "title": "Zones",
+      "type": "array"
+    },
+    "portals": {
+      "items": {
+        "$ref": "#/$defs/Portal"
+      },
+      "maxItems": 60,
+      "title": "Portals",
+      "type": "array"
+    },
+    "cameras": {
+      "items": {
+        "$ref": "#/$defs/Camera"
+      },
+      "maxItems": 8,
+      "title": "Cameras",
+      "type": "array"
+    },
+    "asset_ids": {
+      "items": {
+        "maxLength": 100,
+        "minLength": 1,
+        "pattern": "^[a-zA-Z0-9_-]+$",
+        "type": "string"
+      },
+      "maxItems": 30,
+      "title": "Asset Ids",
+      "type": "array"
+    },
+    "floor_plan": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FloorPlanImage"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "floors"
+  ],
+  "title": "Layout",
+  "type": "object"
+}

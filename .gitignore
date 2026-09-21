@@ -1,0 +1,74 @@
+.venv/
+.data/
+node_modules/
+dist/
+build/
+coverage/
+htmlcov/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.pyc
+*.egg-info/
+.env
+!.env.example
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.log
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.jks
+*.keystore
+google-services.json
+
+# Local deployment and infrastructure state.
+.railway/
+.terraform/
+.terraform.lock.hcl
+.aws/
+
+# Local media and generated Android output.
+TestRingVideo/
+test-ring-video/
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+*.apk
+*.aab
+*.ipa
+
+# Provider credentials must never be committed, wherever they land.
+*credentials*.csv
+*credentials*.json
+ring-app-credentials*
+**/*credentials*.csv
+**/*credentials*.json
+**/*token*.json
+**/*secret*.json
+*.pem
+*.key
+*.p12
+
+# Local provider exports and machine-specific notes.
+spatialguard/export AWS_BEARER_TOKEN_BEDROCK=ABS.txt
+
+# Keep the future public repository focused on SpatialGuard. These unrelated
+# TwinForge workspace folders remain available locally but are not included by
+# a later `git add .`; required shared code is staged explicitly above.
+/apps/
+/docs/
+/examples/
+/fixtures/
+/scripts/
+/tests/
+/Claude outputs/
+/README.md
+/AGENTS.md
+/01_TwinForge_Digital_Twin_Engine_Codex_Packet.md
+/02_SpatialGuard_Codex_Packet.md
+/03_Hackathon_Opportunity_Reference_2026.md

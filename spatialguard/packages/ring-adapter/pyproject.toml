@@ -1,0 +1,9 @@
+[project]
+name = "ring-adapter"
+version = "0.1.0"
+description = "Ring Partner API adapter for SpatialGuard. No engine dependencies."
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["ring_adapter*"]

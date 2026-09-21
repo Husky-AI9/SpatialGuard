@@ -1,0 +1,123 @@
+{
+  "$defs": {
+    "Correspondence": {
+      "additionalProperties": false,
+      "properties": {
+        "image_xy": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            },
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            }
+          ],
+          "title": "Image Xy",
+          "type": "array"
+        },
+        "floor_xy_m": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            },
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            }
+          ],
+          "title": "Floor Xy M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "image_xy",
+        "floor_xy_m"
+      ],
+      "title": "Correspondence",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "camera_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "title": "Camera Id",
+      "type": "string"
+    },
+    "configuration_hash": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Configuration Hash",
+      "type": "string"
+    },
+    "resolution": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 16000,
+          "type": "integer"
+        },
+        {
+          "exclusiveMinimum": 0,
+          "maximum": 16000,
+          "type": "integer"
+        }
+      ],
+      "title": "Resolution",
+      "type": "array"
+    },
+    "image_space": {
+      "const": "undistorted",
+      "default": "undistorted",
+      "title": "Image Space",
+      "type": "string"
+    },
+    "image_points": {
+      "items": {
+        "$ref": "#/$defs/Correspondence"
+      },
+      "maxItems": 100,
+      "minItems": 4,
+      "title": "Image Points",
+      "type": "array"
+    },
+    "holdout_points": {
+      "items": {
+        "$ref": "#/$defs/Correspondence"
+      },
+      "maxItems": 100,
+      "minItems": 3,
+      "title": "Holdout Points",
+      "type": "array"
+    },
+    "reviewed": {
+      "title": "Reviewed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "camera_id",
+    "configuration_hash",
+    "resolution",
+    "image_points",
+    "holdout_points",
+    "reviewed"
+  ],
+  "title": "CalibrationInput",
+  "type": "object"
+}

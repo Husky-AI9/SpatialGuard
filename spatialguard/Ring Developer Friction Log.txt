@@ -1,0 +1,270 @@
+SpatialGuard - Ring Developer Friction Log
+Build, Ship, Shape: Amazon Developer Hackathon
+Primary track: Ring
+Prepared: September 20, 2026
+
+Purpose
+This log records friction encountered while implementing and testing SpatialGuard
+against the Ring developer platform. It contains no credentials, account IDs,
+device IDs, private media, home addresses, or other customer data.
+
+Tools and APIs used
+- Ring private-app account linking and OAuth token exchange
+- Ring authorized device inventory, status, and capabilities API
+- Ring latest-image download API
+- Ring WHEP live-video session API
+- Ring app-integration lifecycle and signed webhook interface
+
+===============================================================================
+ENTRY 1 - OAuth token request rejected at Ring's edge
+===============================================================================
+
+Task attempted
+Exchange the one-time Ring authorization grant for application tokens from a
+Python backend.
+
+Steps taken
+1. Created a Ring private app and configured its required URLs.
+2. Completed authorization through the Ring Appstore flow.
+3. Submitted the documented token request using Python's standard urllib client.
+
+Expected result
+Ring evaluates the OAuth request and either returns tokens or a structured OAuth
+error describing a problem with the grant.
+
+Actual result
+The request was rejected by Ring's edge with Cloudflare Error 1010 before the
+OAuth request itself was evaluated. The same flow worked after replacing
+Python urllib's default User-Agent header with an explicit application user
+agent.
+
+Severity
+Critical - account linking could not complete.
+
+Workaround
+SpatialGuard now sends "SpatialGuard-Ring-Partner/1.0" for Ring HTTP requests.
+A regression test verifies that the header is present.
+
+Actionable suggestion
+Document required or unsupported HTTP headers for server-side clients. Return a
+developer-facing response that distinguishes edge-policy rejection from an
+invalid OAuth grant.
+
+===============================================================================
+ENTRY 2 - Valid WHEP session location shape was unclear
+===============================================================================
+
+Task attempted
+Open a bounded, receive-only live-video session and retain the returned session
+resource so it could be closed safely.
+
+Steps taken
+1. Submitted a video-only WebRTC offer to the documented WHEP collection.
+2. Parsed the Location response header.
+3. Validated that the close URL stayed on Ring's API host and below the selected
+   camera's WHEP session collection.
+
+Expected result
+The response contains a documented absolute, root-relative, or relative session
+reference whose permitted query fields are clear.
+
+Actual result
+The real device returned a valid session Location containing a "location" query
+parameter. Our initial strict validator rejected it because the complete response
+shape and allowed query parameters were not clear from the integration guidance.
+
+Severity
+Critical - the live stream could open at Ring but SpatialGuard could not safely
+manage or close the returned session.
+
+Workaround
+SpatialGuard accepts the observed "location" field while still requiring HTTPS,
+Ring's exact API host, the selected camera's session collection, one direct
+session segment, no fragment, and no unrecognized query fields. Automated tests
+cover the accepted and rejected URL shapes.
+
+Actionable suggestion
+Document the complete WHEP Location grammar with absolute, root-relative, and
+relative examples; list permitted query parameters and show the correct DELETE
+request for each form.
+
+===============================================================================
+ENTRY 3 - Snapshot range could begin before app consent
+===============================================================================
+
+Task attempted
+Retrieve the latest authorized still image for a selected Ring camera.
+
+Steps taken
+1. Requested the latest image within a recent time range.
+2. Used a range that partially preceded the time when the account connected the
+   private app.
+
+Expected result
+Ring returns the newest authorized image within the portion of the range covered
+by current app consent, or returns an error that identifies the consent boundary.
+
+Actual result
+Ring rejected a range whose start time preceded app consent even when its end
+time was after consent.
+
+Severity
+Important - snapshots and snapshot-based features could fail immediately after
+the first account connection.
+
+Workaround
+SpatialGuard records its successful link time and uses a timestamp just after
+that audit event as the earliest snapshot-range boundary.
+
+Actionable suggestion
+Return the earliest permitted media timestamp in the authorization or device
+response, and document whether a partially authorized range is rejected or
+clamped.
+
+===============================================================================
+ENTRY 4 - Development callback URLs require repeated manual updates
+===============================================================================
+
+Task attempted
+Test account linking, token exchange, app home, and signed webhooks from a local
+development machine.
+
+Steps taken
+1. Started the local Ring gateway.
+2. Exposed it through an HTTPS quick tunnel.
+3. Copied the generated hostname into the four Ring private-app URL fields.
+4. Repeated the configuration after the quick-tunnel hostname changed.
+
+Expected result
+A reusable development callback, named-tunnel workflow, or clearly documented
+local testing option lets the developer configure the app once.
+
+Actual result
+Every quick-tunnel change required manually updating four portal fields before
+the end-to-end flow could be tested again.
+
+Severity
+Important - it slows repeated integration testing and creates opportunities for
+one stale URL to break only part of the flow.
+
+Workaround
+SpatialGuard includes a tunnel helper that prints all four exact URLs together.
+The production plan uses a stable hosted HTTPS domain.
+
+Actionable suggestion
+Support reusable development callback profiles, allow a controlled localhost
+workflow, or provide a CLI/API for updating all related private-app URLs as one
+configuration.
+
+===============================================================================
+ENTRY 5 - Real webhook delivery is difficult to inspect and trigger
+===============================================================================
+
+Task attempted
+Verify a signed real motion or doorbell event from device trigger through webhook
+delivery, durable processing, incident creation, and UI update.
+
+Steps taken
+1. Connected and activated the private app.
+2. Authorized a real camera.
+3. Configured the public webhook URL.
+4. Implemented signature validation, duplicate suppression, durable retry, and
+   synthetic signed-event tests.
+
+Expected result
+The developer portal can send a representative signed test event and shows a
+delivery record containing time, event type, response status, and retry state.
+
+Actual result
+Account linking, inventory, snapshots, and a real live-video session were
+verifiable, but no real signed motion/doorbell webhook has yet been observed.
+There was no equivalent end-to-end delivery trace available in the workflow we
+used to distinguish subscription, event-generation, delivery, and signature
+problems.
+
+Severity
+Critical - webhook-driven incident behavior cannot be claimed as real-device
+verified until one signed event is observed.
+
+Workaround
+SpatialGuard uses deterministic signed fixtures to test the exact ingestion and
+processing boundary. The product labels this evidence as synthetic and keeps the
+real-event acceptance gate open.
+
+Actionable suggestion
+Add "Send signed test event" and webhook delivery-log tools to the developer
+portal. Include the event subscription state, delivery attempts, HTTP status,
+and sanitized validation diagnostics.
+
+===============================================================================
+ENTRY 6 - Recording-history capability and scopes are not discoverable enough
+===============================================================================
+
+Task attempted
+Show recent motion-event history with authorized recorded-clip playback in the
+multi-camera wall.
+
+Steps taken
+1. Reviewed the capabilities returned for the authorized device.
+2. Implemented bounded live-video and current-snapshot access.
+3. Looked for an authorized recording-history route suitable for the private app.
+
+Expected result
+Device capabilities or developer documentation clearly states whether recording
+history is available, which plans/devices qualify, which scopes are required,
+and which endpoint should be called.
+
+Actual result
+The configured official API did not provide an authorized recording-history
+route that SpatialGuard could use. The UI can show event metadata but must mark
+clip playback unavailable.
+
+Severity
+Important - the app must avoid presenting a control that cannot work, and users
+may incorrectly assume that a Ring subscription guarantees third-party clip
+access.
+
+Workaround
+SpatialGuard disables clip playback, explains why in context, and continues to
+show source camera and event time without inventing availability.
+
+Actionable suggestion
+Expose media-history support, required scope, plan eligibility, retention limit,
+and playback/download capability in machine-readable device capabilities. Add a
+single documentation table covering device and subscription differences.
+
+===============================================================================
+FEATURE REQUESTS
+===============================================================================
+
+1. Signed webhook test console
+Priority: Critical
+Why it matters: It would make event-driven Ring apps testable without waiting for
+an ambiguous physical trigger and would reduce false integration claims.
+
+2. Stable private-app development callbacks
+Priority: Important
+Why it matters: It would remove repeated portal configuration during local
+development and make onboarding substantially faster.
+
+3. Machine-readable media capability discovery
+Priority: Important
+Why it matters: Apps could present only live view, snapshot, event history, or
+recording controls that the authorized device and account actually support.
+
+4. Complete WHEP response examples
+Priority: Important
+Why it matters: Secure clients need to validate and later close session URLs
+without rejecting valid provider responses or accepting overly broad URLs.
+
+===============================================================================
+WOULD WE BUILD WITH RING AGAIN?
+===============================================================================
+
+Yes. Ring account linking, authorized inventory, snapshots, and bounded live
+video allow a useful application without new camera hardware. The biggest
+opportunity is improving developer diagnostics and test tooling for edge-policy
+failures, webhook delivery, and media capability differences. Those improvements
+would shorten the path from successful account linking to a reliable,
+event-driven application.
+

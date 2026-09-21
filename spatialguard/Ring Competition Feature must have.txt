@@ -1,0 +1,33 @@
+Ring Competition Feature must have 
+
+
+Cam Uptime Alert
+About the app
+Cam Uptime Alerts watches your Ring cameras and doorbells for one thing: staying online. The moment a device drops offline you get an instant alert by email and push, and another when it's back. See every device at a glance with a simple green/red status and 7-day uptime history, and choose how fast you're alerted. No video, clips, or snapshots - just connectivity. Works on iPhone, Android and the web. Free for up to 5 devices. A convenience, not a security or life-safety service.
+
+Seeva Online
+Seeva displays live streams from all your Ring cameras in a single grid on phone, tablet, or desktop. Tap any feed to go fullscreen with pinch-to-zoom. Drag and drop tiles to customize your layout — it saves automatically. Supports Ring cameras including newer 4K models and Ring Elite cameras. Features include auto-reconnect, motion event history with clip playback. No extra hardware needed — just install from the Ring App Store, link your account, and start watching. Up to 16 cameras supported.
+
+
+Driveway Alert
+Driveway Alert uses your Ring outdoor cameras to recognize the vehicles you know by their general appearance — make, model, body type, and color. Get a push notification when a familiar vehicle arrives ("Mom's car arrived at 3:14 PM"), configurable quiet-hours alerts for unknown vehicles, and a web dashboard timeline showing each arrival with its snapshot. Non-identifying by design and privacy-first. Owner-enrolled, single property, CCPA compliant, US-only.
+
+TimeLapse
+TimeLapse turns the Ring camera you already own into an automatic time-lapse of anything it can see - a garden growing, a home renovation, a storefront, the changing sky. Link your Ring account, pick a camera, choose a capture cadence and daily capture window, and TimeLapse builds a share-ready reel that grows day after day. Watch, download, and share from the web dashboard. No new hardware, no editing. Still snapshots only - no live video, audio, or AI.
+
+
+Stretch Goal
+
+PackageProtect
+About the app
+Instantly identify carriers like Amazon, UPS, and FedEx with real-time PackageProtect alerts when a delivery arrives. Track packages, monitor pickups, and get protection for your packages with our theft prevention (in beta). Plus, more features are coming soon! Enjoy up to 2,000 AllScout AI detections monthly.
+
+Wildlife Alert
+Wildlife Alert uses advanced AI to identify wild animals on your Ring cameras ALERTS FOR: 🐺 Coyotes — Protect small pets and children 🐻 Bears — Black bears and grizzlies near your home 🦁 Mountain Lions — Cougars/pumas in your area 🐱 Bobcats — Spotted near pet doors or chicken coops 🦨 Skunks, Raccoons 👽 And more!! PERFECT FOR: • Pet owners in coyote-prone areas • Rural homeowners with livestock • Families in mountain lion/bear territory • Wildlife enthusiasts • Trail camera monitoring
+
+PropertyVue
+
+About the app
+PropertyVue gives landlords and Airbnb hosts one dashboard to monitor all their Ring cameras across multiple properties. Instead of checking each property separately, see every motion event, doorbell alert, and camera status in a single unified feed. Set smart alert policies per property Guest Mode for Airbnbs, Vacancy Watch for empty units. Log incidents, add notes, and export PDF reports for insurance claims or tenant disputes.
+
+

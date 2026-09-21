@@ -1,0 +1,4529 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SpatialGuard",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/local-session": {
+      "post": {
+        "summary": "Browser Session",
+        "operationId": "browser_session_v1_local_session_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "summary": "Me",
+        "operationId": "me_v1_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions": {
+      "get": {
+        "summary": "Sessions",
+        "operationId": "sessions_v1_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Session"
+                  },
+                  "type": "array",
+                  "title": "Response Sessions V1 Sessions Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pairing": {
+      "post": {
+        "summary": "Pairing",
+        "operationId": "pairing_v1_pairing_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairCode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pairing/redeem": {
+      "post": {
+        "summary": "Redeem",
+        "operationId": "redeem_v1_pairing_redeem_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionToken"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions/renew": {
+      "post": {
+        "summary": "Renew",
+        "operationId": "renew_v1_sessions_renew_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionToken"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}": {
+      "delete": {
+        "summary": "Revoke",
+        "operationId": "revoke_v1_sessions__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites": {
+      "get": {
+        "summary": "Sites",
+        "operationId": "sites_v1_sites_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Site"
+                  },
+                  "type": "array",
+                  "title": "Response Sites V1 Sites Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/preferences": {
+      "get": {
+        "summary": "Preferences",
+        "operationId": "preferences_v1_preferences_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set Preferences",
+        "operationId": "set_preferences_v1_preferences_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sample-site": {
+      "post": {
+        "summary": "Create Sample Site",
+        "description": "Add the built-in synthetic demo place on request.",
+        "operationId": "create_sample_site_v1_sample_site_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/monitoring": {
+      "patch": {
+        "summary": "Monitoring",
+        "operationId": "monitoring_v1_sites__site_id__monitoring_patch",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Monitoring"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}": {
+      "delete": {
+        "summary": "Remove Site",
+        "description": "Remove a place and everything recorded against it, drawing included.",
+        "operationId": "remove_site_v1_sites__site_id__delete",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/cameras": {
+      "get": {
+        "summary": "Cameras",
+        "operationId": "cameras_v1_sites__site_id__cameras_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CameraStatus"
+                  },
+                  "title": "Response Cameras V1 Sites  Site Id  Cameras Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add Camera",
+        "operationId": "add_camera_v1_sites__site_id__cameras_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CameraInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/cameras/{camera_id}": {
+      "patch": {
+        "summary": "Edit Camera",
+        "operationId": "edit_camera_v1_sites__site_id__cameras__camera_id__patch",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "camera_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Camera Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CameraEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove Camera",
+        "operationId": "remove_camera_v1_sites__site_id__cameras__camera_id__delete",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "camera_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Camera Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/rooms/{room_id}": {
+      "patch": {
+        "summary": "Rename Room",
+        "description": "Rename a space. Geometry is untouched, so its provenance kind stands.",
+        "operationId": "rename_room_v1_sites__site_id__rooms__room_id__patch",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "room_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Room Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/generation-options": {
+      "get": {
+        "summary": "Generation Options",
+        "operationId": "generation_options_v1_generation_options_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationOptions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/plans": {
+      "post": {
+        "summary": "Create Plan",
+        "operationId": "create_plan_v1_plans_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/plans/{job_id}": {
+      "get": {
+        "summary": "Plan Status",
+        "operationId": "plan_status_v1_plans__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Discard Plan",
+        "operationId": "discard_plan_v1_plans__job_id__delete",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/plans/{job_id}/accept": {
+      "post": {
+        "summary": "Accept Plan",
+        "operationId": "accept_plan_v1_plans__job_id__accept_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanAccept"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/floor-plan": {
+      "get": {
+        "summary": "Floor Plan Image",
+        "operationId": "floor_plan_image_v1_sites__site_id__floor_plan_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/sessions": {
+      "post": {
+        "summary": "Media",
+        "operationId": "media_v1_sites__site_id__sessions_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "camera_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Camera Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaSession"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/replay": {
+      "post": {
+        "summary": "Replay",
+        "operationId": "replay_v1_sites__site_id__replay_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/runs/{run_id}": {
+      "get": {
+        "summary": "Get Run",
+        "operationId": "get_run_v1_sites__site_id__runs__run_id__get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayRun"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/incidents": {
+      "get": {
+        "summary": "Incidents",
+        "operationId": "incidents_v1_sites__site_id__incidents_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/incidents/{incident_id}": {
+      "get": {
+        "summary": "Incident",
+        "operationId": "incident_v1_incidents__incident_id__get",
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/incidents/{incident_id}/review": {
+      "post": {
+        "summary": "Review",
+        "operationId": "review_v1_incidents__incident_id__review_post",
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evidence/{evidence_id}": {
+      "get": {
+        "summary": "Evidence",
+        "operationId": "evidence_v1_evidence__evidence_id__get",
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Evidence Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceAsset"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evidence/{evidence_id}/image": {
+      "get": {
+        "summary": "Evidence Image",
+        "operationId": "evidence_image_v1_evidence__evidence_id__image_get",
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Evidence Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/events": {
+      "get": {
+        "summary": "Events",
+        "operationId": "events_v1_sites__site_id__events_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring": {
+      "get": {
+        "summary": "Status",
+        "operationId": "status_v1_ring_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RingStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Disconnect",
+        "operationId": "disconnect_v1_ring_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/v1/classifier": {
+      "get": {
+        "summary": "Classification Status",
+        "operationId": "classification_status_v1_classifier_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifierStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/sign-in-code": {
+      "post": {
+        "summary": "Code",
+        "operationId": "code_v1_ring_sign_in_code_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairCode"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/devices": {
+      "get": {
+        "summary": "Devices",
+        "operationId": "devices_v1_ring_devices_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RingDevice"
+                  },
+                  "type": "array",
+                  "title": "Response Devices V1 Ring Devices Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/devices/refresh": {
+      "post": {
+        "summary": "Refresh",
+        "operationId": "refresh_v1_ring_devices_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RingDevice"
+                  },
+                  "type": "array",
+                  "title": "Response Refresh V1 Ring Devices Refresh Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/operations": {
+      "get": {
+        "summary": "Operations",
+        "operationId": "operations_v1_ring_operations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/operations/preferences": {
+      "patch": {
+        "summary": "Operations Preferences",
+        "operationId": "operations_preferences_v1_ring_operations_preferences_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperationsPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/operations/wall": {
+      "put": {
+        "summary": "Camera Wall",
+        "operationId": "camera_wall_v1_ring_operations_wall_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CameraWall"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/operations/alerts/{alert_id}/acknowledge": {
+      "post": {
+        "summary": "Acknowledge Alert",
+        "operationId": "acknowledge_alert_v1_ring_operations_alerts__alert_id__acknowledge_post",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/timelapses": {
+      "post": {
+        "summary": "Create Timelapse",
+        "operationId": "create_timelapse_v1_ring_timelapses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimelapseInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/timelapses/{project_id}/capture": {
+      "post": {
+        "summary": "Capture Timelapse",
+        "operationId": "capture_timelapse_v1_ring_timelapses__project_id__capture_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/timelapses/{project_id}/frames/{frame_id}": {
+      "get": {
+        "summary": "Timelapse Frame",
+        "operationId": "timelapse_frame_v1_ring_timelapses__project_id__frames__frame_id__get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "frame_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Frame Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/timelapses/{project_id}/reel": {
+      "get": {
+        "summary": "Timelapse Reel",
+        "operationId": "timelapse_reel_v1_ring_timelapses__project_id__reel_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/timelapses/{project_id}": {
+      "delete": {
+        "summary": "Delete Timelapse",
+        "operationId": "delete_timelapse_v1_ring_timelapses__project_id__delete",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/devices/{device}/mapping": {
+      "put": {
+        "summary": "Mapping",
+        "operationId": "mapping_v1_ring_devices__device__mapping_put",
+        "parameters": [
+          {
+            "name": "device",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RingMapping"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/sites/{site}/cameras/{camera}/snapshot": {
+      "get": {
+        "summary": "Snapshot",
+        "operationId": "snapshot_v1_ring_sites__site__cameras__camera__snapshot_get",
+        "parameters": [
+          {
+            "name": "site",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site"
+            }
+          },
+          {
+            "name": "camera",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Camera"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {},
+              "image/png": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/incidents/{incident_id}/classify": {
+      "post": {
+        "summary": "Classify Incident",
+        "operationId": "classify_incident_v1_incidents__incident_id__classify_post",
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/devices/{device}/streams": {
+      "post": {
+        "summary": "Stream",
+        "operationId": "stream_v1_ring_devices__device__streams_post",
+        "parameters": [
+          {
+            "name": "device",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamOffer"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamAnswer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ring/streams/{sid}": {
+      "delete": {
+        "summary": "Close",
+        "operationId": "close_v1_ring_streams__sid__delete",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Stream State",
+        "operationId": "stream_state_v1_ring_streams__sid__get",
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Sid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/test-videos": {
+      "get": {
+        "summary": "Test Videos",
+        "operationId": "test_videos_v1_test_videos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TestVideo"
+                  },
+                  "type": "array",
+                  "title": "Response Test Videos V1 Test Videos Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/test-videos/{video_id}/media": {
+      "get": {
+        "summary": "Test Video Media",
+        "operationId": "test_video_media_v1_test_videos__video_id__media_get",
+        "parameters": [
+          {
+            "name": "video_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Video Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/test-videos/{video_id}/track": {
+      "get": {
+        "summary": "Test Video Track",
+        "operationId": "test_video_track_v1_test_videos__video_id__track_get",
+        "parameters": [
+          {
+            "name": "video_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Video Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestVideoTrack"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/test-videos/{video_id}/classify": {
+      "post": {
+        "summary": "Classify Test Video",
+        "operationId": "classify_test_video_v1_test_videos__video_id__classify_post",
+        "parameters": [
+          {
+            "name": "video_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Video Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentClassification"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Index",
+        "operationId": "index__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/manifest.webmanifest": {
+      "get": {
+        "summary": "Manifest",
+        "operationId": "manifest_manifest_webmanifest_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sw.js": {
+      "get": {
+        "summary": "Service Worker",
+        "operationId": "service_worker_sw_js_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/icon.svg": {
+      "get": {
+        "summary": "Icon",
+        "operationId": "icon_icon_svg_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Association": {
+        "properties": {
+          "from_observation_id": {
+            "type": "string",
+            "title": "From Observation Id"
+          },
+          "to_observation_id": {
+            "type": "string",
+            "title": "To Observation Id"
+          },
+          "state": {
+            "type": "string",
+            "const": "possible",
+            "title": "State",
+            "default": "possible"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "unobserved_gap_seconds": {
+            "type": "number",
+            "title": "Unobserved Gap Seconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from_observation_id",
+          "to_observation_id",
+          "reason",
+          "unobserved_gap_seconds"
+        ],
+        "title": "Association"
+      },
+      "Camera": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "floor_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Floor Id"
+          },
+          "position_m": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              },
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              },
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": -100.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position M"
+          },
+          "heading_degrees": {
+            "type": "number",
+            "title": "Heading Degrees",
+            "default": 0
+          },
+          "pitch_degrees": {
+            "type": "number",
+            "maximum": 89.0,
+            "minimum": -89.0,
+            "title": "Pitch Degrees",
+            "default": 0
+          },
+          "fov_degrees": {
+            "type": "number",
+            "exclusiveMaximum": 180.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Fov Degrees",
+            "default": 70
+          },
+          "range_m": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Range M",
+            "default": 4
+          },
+          "configuration_hash": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Configuration Hash"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "floor_id",
+          "position_m",
+          "configuration_hash",
+          "provenance"
+        ],
+        "title": "Camera"
+      },
+      "CameraEdit": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "position_m": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 100.0,
+                    "minimum": -100.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 3,
+                "minItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position M"
+          },
+          "heading_degrees": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 360.0,
+                "minimum": -360.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading Degrees"
+          },
+          "pitch_degrees": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 89.0,
+                "minimum": -89.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pitch Degrees"
+          },
+          "range_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CameraEdit"
+      },
+      "CameraInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "default": "New camera"
+          },
+          "position_m": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              },
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              },
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": -100.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position M"
+          },
+          "heading_degrees": {
+            "type": "number",
+            "maximum": 360.0,
+            "minimum": -360.0,
+            "title": "Heading Degrees",
+            "default": 0
+          },
+          "pitch_degrees": {
+            "type": "number",
+            "maximum": 89.0,
+            "minimum": -89.0,
+            "title": "Pitch Degrees",
+            "default": 0
+          },
+          "range_m": {
+            "type": "number",
+            "maximum": 100.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Range M",
+            "default": 4
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position_m"
+        ],
+        "title": "CameraInput",
+        "description": "Owner-placed camera. Identity, lens, calibration hash, and provenance stay server-assigned."
+      },
+      "CameraStatus": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "selected": {
+            "type": "boolean",
+            "title": "Selected"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "replay_only",
+              "unavailable",
+              "live_connected"
+            ],
+            "title": "State",
+            "default": "replay_only"
+          },
+          "last_observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Observed At"
+          },
+          "calibration": {
+            "type": "string",
+            "title": "Calibration",
+            "default": "Synthetic coordinates; no real-camera calibration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "selected"
+        ],
+        "title": "CameraStatus"
+      },
+      "CameraWall": {
+        "properties": {
+          "devices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "title": "Devices"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "devices"
+        ],
+        "title": "CameraWall"
+      },
+      "ClassifierStatus": {
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "configured",
+          "model"
+        ],
+        "title": "ClassifierStatus"
+      },
+      "Event": {
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "title": "Sequence"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "resource_id": {
+            "type": "string",
+            "title": "Resource Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sequence",
+          "kind",
+          "resource_id"
+        ],
+        "title": "Event"
+      },
+      "EventPage": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "cursor": {
+            "type": "integer",
+            "title": "Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "events",
+          "cursor"
+        ],
+        "title": "EventPage"
+      },
+      "Evidence": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "replay",
+              "live",
+              "simulator"
+            ],
+            "title": "Mode"
+          },
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "title": "Evidence"
+      },
+      "EvidenceAsset": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "incident_id": {
+            "type": "string",
+            "title": "Incident Id"
+          },
+          "observation_id": {
+            "type": "string",
+            "title": "Observation Id"
+          },
+          "mode": {
+            "type": "string",
+            "const": "replay",
+            "title": "Mode",
+            "default": "replay"
+          },
+          "media_type": {
+            "type": "string",
+            "const": "image/svg+xml",
+            "title": "Media Type",
+            "default": "image/svg+xml"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "incident_id",
+          "observation_id",
+          "description"
+        ],
+        "title": "EvidenceAsset"
+      },
+      "Floor": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "elevation_m": {
+            "type": "number",
+            "title": "Elevation M",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Floor"
+      },
+      "FloorPlanImage": {
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Asset Id"
+          },
+          "origin_xy_m": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              },
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Origin Xy M",
+            "default": [
+              0,
+              0
+            ]
+          },
+          "width_m": {
+            "type": "number",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width M"
+          },
+          "height_m": {
+            "type": "number",
+            "maximum": 10000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Height M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "asset_id",
+          "width_m",
+          "height_m"
+        ],
+        "title": "FloorPlanImage"
+      },
+      "GenerationOptions": {
+        "properties": {
+          "vision_available": {
+            "type": "boolean",
+            "title": "Vision Available"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "vision_available"
+        ],
+        "title": "GenerationOptions"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Incident": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "revision_id": {
+            "type": "string",
+            "title": "Revision Id"
+          },
+          "calibration_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Calibration Ids",
+            "default": []
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "needs_review",
+              "reviewed"
+            ],
+            "title": "Status",
+            "default": "needs_review"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "rule": {
+            "type": "string",
+            "title": "Rule"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "evidence_mode": {
+            "type": "string",
+            "enum": [
+              "replay",
+              "live",
+              "simulator"
+            ],
+            "title": "Evidence Mode",
+            "default": "replay"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/Observation"
+            },
+            "type": "array",
+            "title": "Observations"
+          },
+          "associations": {
+            "items": {
+              "$ref": "#/components/schemas/Association"
+            },
+            "type": "array",
+            "title": "Associations"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Ids"
+          },
+          "classification_status": {
+            "type": "string",
+            "enum": [
+              "not_requested",
+              "completed",
+              "unavailable"
+            ],
+            "title": "Classification Status",
+            "default": "not_requested"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IncidentClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "site_id",
+          "revision_id",
+          "run_id",
+          "title",
+          "rule",
+          "started_at",
+          "created_at",
+          "observations",
+          "associations",
+          "evidence_ids"
+        ],
+        "title": "Incident"
+      },
+      "IncidentClassification": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "delivery_activity",
+              "face_covering_visible",
+              "possible_weapon_visible",
+              "possible_unauthorized_entry",
+              "unidentified_person",
+              "package_visible",
+              "animal_visible",
+              "vehicle_visible",
+              "unclear",
+              "no_relevant_activity"
+            ],
+            "title": "Label"
+          },
+          "display_label": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Display Label"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Confidence"
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "visible_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Visible Evidence"
+          },
+          "uncertainty": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Uncertainty"
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Model"
+          },
+          "response_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Id"
+          },
+          "analyzed_at": {
+            "type": "string",
+            "title": "Analyzed At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "display_label",
+          "confidence",
+          "summary",
+          "visible_evidence",
+          "uncertainty",
+          "model",
+          "analyzed_at"
+        ],
+        "title": "IncidentClassification"
+      },
+      "IncidentPage": {
+        "properties": {
+          "incidents": {
+            "items": {
+              "$ref": "#/components/schemas/Incident"
+            },
+            "type": "array",
+            "title": "Incidents"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "incidents"
+        ],
+        "title": "IncidentPage"
+      },
+      "Layout": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "0.1",
+            "title": "Schema Version",
+            "default": "0.1"
+          },
+          "units": {
+            "type": "string",
+            "const": "meters",
+            "title": "Units",
+            "default": "meters"
+          },
+          "world_frame": {
+            "type": "string",
+            "const": "RH_Xright_Yforward_Zup",
+            "title": "World Frame",
+            "default": "RH_Xright_Yforward_Zup"
+          },
+          "scale_status": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "verified"
+            ],
+            "title": "Scale Status",
+            "default": "unknown"
+          },
+          "scale_anchors": {
+            "items": {
+              "$ref": "#/components/schemas/ScaleAnchor"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Scale Anchors"
+          },
+          "floors": {
+            "items": {
+              "$ref": "#/components/schemas/Floor"
+            },
+            "type": "array",
+            "maxItems": 1,
+            "minItems": 1,
+            "title": "Floors"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/Room"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Rooms"
+          },
+          "zones": {
+            "items": {
+              "$ref": "#/components/schemas/Zone"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Zones"
+          },
+          "portals": {
+            "items": {
+              "$ref": "#/components/schemas/Portal"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Portals"
+          },
+          "cameras": {
+            "items": {
+              "$ref": "#/components/schemas/Camera"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Cameras"
+          },
+          "asset_ids": {
+            "items": {
+              "type": "string",
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_-]+$"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Asset Ids"
+          },
+          "floor_plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FloorPlanImage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "floors"
+        ],
+        "title": "Layout"
+      },
+      "MediaSession": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "camera_id": {
+            "type": "string",
+            "title": "Camera Id"
+          },
+          "state": {
+            "type": "string",
+            "const": "denied",
+            "title": "State",
+            "default": "denied"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": "Ring is not connected. Replay has no live media session."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "camera_id"
+        ],
+        "title": "MediaSession"
+      },
+      "Monitoring": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "camera_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Camera Ids"
+          },
+          "classification_enabled": {
+            "type": "boolean",
+            "title": "Classification Enabled",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "enabled",
+          "camera_ids"
+        ],
+        "title": "Monitoring"
+      },
+      "Observation": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "0.1",
+            "title": "Schema Version",
+            "default": "0.1"
+          },
+          "observation_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Observation Id"
+          },
+          "site_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Site Id"
+          },
+          "revision_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Revision Id"
+          },
+          "source_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Source Id"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Category"
+          },
+          "location": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PointLocation"
+              },
+              {
+                "$ref": "#/components/schemas/RoomLocation"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownLocation"
+              }
+            ],
+            "title": "Location",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "floor_point": "#/components/schemas/PointLocation",
+                "room": "#/components/schemas/RoomLocation",
+                "unknown": "#/components/schemas/UnknownLocation"
+              }
+            }
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "observation_id",
+          "site_id",
+          "revision_id",
+          "source_id",
+          "observed_at",
+          "received_at",
+          "category",
+          "location",
+          "evidence",
+          "provenance"
+        ],
+        "title": "Observation"
+      },
+      "OperationsPreferences": {
+        "properties": {
+          "delay_seconds": {
+            "type": "integer",
+            "maximum": 3600.0,
+            "minimum": 0.0,
+            "title": "Delay Seconds",
+            "default": 0
+          },
+          "browser_enabled": {
+            "type": "boolean",
+            "title": "Browser Enabled",
+            "default": false
+          },
+          "email_enabled": {
+            "type": "boolean",
+            "title": "Email Enabled",
+            "default": false
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Email",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OperationsPreferences"
+      },
+      "PairCode": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "expires_at": {
+            "type": "number",
+            "title": "Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "expires_at"
+        ],
+        "title": "PairCode"
+      },
+      "PairInput": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 12,
+            "title": "Code"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "default": "Android device"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "PairInput"
+      },
+      "PlanAccept": {
+        "properties": {
+          "width_m": {
+            "type": "number",
+            "maximum": 1000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width M"
+          },
+          "depth_m": {
+            "type": "number",
+            "maximum": 1000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Depth M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "width_m",
+          "depth_m"
+        ],
+        "title": "PlanAccept",
+        "description": "Two owner-measured dimensions. Tracing cannot establish real metres on its own."
+      },
+      "PlanInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "image/png",
+              "image/jpeg"
+            ],
+            "title": "Media Type"
+          },
+          "data_base64": {
+            "type": "string",
+            "maxLength": 8000000,
+            "title": "Data Base64"
+          },
+          "ceiling_height_m": {
+            "type": "number",
+            "maximum": 20.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Ceiling Height M",
+            "default": 2.6
+          },
+          "vision_assisted": {
+            "type": "boolean",
+            "title": "Vision Assisted",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "media_type",
+          "data_base64"
+        ],
+        "title": "PlanInput",
+        "description": "An owner-supplied floor-plan drawing to trace into a map."
+      },
+      "PlanJob": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "needs_review",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State"
+          },
+          "layout": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Layout"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rooms": {
+            "type": "integer",
+            "title": "Rooms",
+            "default": 0
+          },
+          "connections": {
+            "type": "integer",
+            "title": "Connections",
+            "default": 0
+          },
+          "traced_width_m": {
+            "type": "number",
+            "title": "Traced Width M",
+            "default": 0
+          },
+          "traced_depth_m": {
+            "type": "number",
+            "title": "Traced Depth M",
+            "default": 0
+          },
+          "scale_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scale Basis"
+          },
+          "label_reader": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Reader"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "vision_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "completed",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vision Status"
+          },
+          "vision_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vision Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id",
+          "name",
+          "state"
+        ],
+        "title": "PlanJob"
+      },
+      "PointLocation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "floor_point",
+            "title": "Kind"
+          },
+          "floor_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Floor Id"
+          },
+          "xy_m": {
+            "prefixItems": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              },
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": -10000.0
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Xy M"
+          },
+          "uncertainty_radius_m": {
+            "type": "number",
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Uncertainty Radius M"
+          },
+          "calibration_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1,
+                "pattern": "^[a-zA-Z0-9_-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "floor_id",
+          "xy_m",
+          "uncertainty_radius_m"
+        ],
+        "title": "PointLocation"
+      },
+      "Portal": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "from_room_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "From Room Id"
+          },
+          "to_room_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "To Room Id"
+          },
+          "segment_xy_m": {
+            "prefixItems": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Segment Xy M"
+          },
+          "width_m": {
+            "type": "number",
+            "maximum": 20.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Width M"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "unknown"
+            ],
+            "title": "State",
+            "default": "unknown"
+          },
+          "state_observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Observed At"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "from_room_id",
+          "to_room_id",
+          "segment_xy_m",
+          "width_m",
+          "provenance"
+        ],
+        "title": "Portal"
+      },
+      "Preferences": {
+        "properties": {
+          "active_site_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Site Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Preferences",
+        "description": "Which place the owner last looked at, so a reload reopens it."
+      },
+      "Provenance": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "measured",
+              "manual",
+              "inferred",
+              "unknown"
+            ],
+            "title": "Kind"
+          },
+          "source_ids": {
+            "items": {
+              "type": "string",
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_-]+$"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Source Ids"
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed",
+            "default": false
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Explanation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "explanation"
+        ],
+        "title": "Provenance"
+      },
+      "ReplayInput": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{8,80}$",
+            "title": "Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id"
+        ],
+        "title": "ReplayInput"
+      },
+      "ReplayRun": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "paused",
+              "failed"
+            ],
+            "title": "State"
+          },
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "state"
+        ],
+        "title": "ReplayRun"
+      },
+      "ReviewInput": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "reviewed",
+            "title": "Status",
+            "default": "reviewed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReviewInput"
+      },
+      "RingDevice": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "type": "object",
+            "title": "Status"
+          },
+          "capabilities": {
+            "type": "object",
+            "title": "Capabilities"
+          },
+          "checked_at": {
+            "type": "string",
+            "title": "Checked At"
+          },
+          "site_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Site Id"
+          },
+          "camera_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Camera Id"
+          },
+          "hardware_model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "video_doorbell",
+                  "stick_up_cam"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hardware Model"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status",
+          "capabilities",
+          "checked_at",
+          "site_id",
+          "camera_id"
+        ],
+        "title": "RingDevice"
+      },
+      "RingMapping": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "camera_id": {
+            "type": "string",
+            "title": "Camera Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site_id",
+          "camera_id"
+        ],
+        "title": "RingMapping"
+      },
+      "RingStatus": {
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "public_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "configured",
+          "state",
+          "public_url"
+        ],
+        "title": "RingStatus"
+      },
+      "Room": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Id"
+          },
+          "floor_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Floor Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "polygon_xy_m": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "maximum": 10000.0,
+                  "minimum": -10000.0
+                },
+                {
+                  "type": "number",
+                  "maximum": 10000.0,
+                  "minimum": -10000.0
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 3,
+            "title": "Polygon Xy M"
+          },
+          "height_m": {
+            "type": "number",
+            "maximum": 20.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Height M",
+            "default": 2.6
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "floor_id",
+          "name",
+          "polygon_xy_m",
+          "provenance"
+        ],
+        "title": "Room"
+      },
+      "RoomEdit": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "RoomEdit",
+        "description": "Owners name their own spaces; tracing only ever guesses."
+      },
+      "RoomLocation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "room",
+            "title": "Kind"
+          },
+          "room_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Room Id"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "room_id",
+          "reason"
+        ],
+        "title": "RoomLocation"
+      },
+      "ScaleAnchor": {
+        "properties": {
+          "points": {
+            "prefixItems": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 10000.0,
+                    "minimum": -10000.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Points"
+          },
+          "distance_m": {
+            "type": "number",
+            "maximum": 1000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Distance M"
+          },
+          "source": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "points",
+          "distance_m",
+          "source"
+        ],
+        "title": "ScaleAnchor"
+      },
+      "Session": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "browser",
+              "android"
+            ],
+            "title": "Kind"
+          },
+          "expires_at": {
+            "type": "number",
+            "title": "Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "expires_at"
+        ],
+        "title": "Session"
+      },
+      "SessionToken": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token",
+          "session"
+        ],
+        "title": "SessionToken"
+      },
+      "Site": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "revision_id": {
+            "type": "string",
+            "title": "Revision Id"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/Layout"
+          },
+          "monitoring": {
+            "$ref": "#/components/schemas/Monitoring"
+          },
+          "monitoring_version": {
+            "type": "integer",
+            "title": "Monitoring Version",
+            "default": 0
+          },
+          "evidence_mode": {
+            "type": "string",
+            "const": "replay",
+            "title": "Evidence Mode",
+            "default": "replay"
+          },
+          "ring_status": {
+            "type": "string",
+            "const": "not_connected",
+            "title": "Ring Status",
+            "default": "not_connected"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "revision_id",
+          "layout",
+          "monitoring"
+        ],
+        "title": "Site"
+      },
+      "StreamAnswer": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "sdp": {
+            "type": "string",
+            "title": "Sdp"
+          },
+          "expires_at": {
+            "type": "number",
+            "title": "Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "sdp",
+          "expires_at"
+        ],
+        "title": "StreamAnswer"
+      },
+      "StreamOffer": {
+        "properties": {
+          "sdp": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 10,
+            "title": "Sdp"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sdp"
+        ],
+        "title": "StreamOffer"
+      },
+      "StreamState": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "title": "State"
+          },
+          "expires_at": {
+            "type": "number",
+            "title": "Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "state",
+          "expires_at"
+        ],
+        "title": "StreamState"
+      },
+      "TestTrackPoint": {
+        "properties": {
+          "t_seconds": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "T Seconds"
+          },
+          "foot_x_norm": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Foot X Norm"
+          },
+          "foot_y_norm": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Foot Y Norm"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "t_seconds",
+          "foot_x_norm",
+          "foot_y_norm",
+          "confidence"
+        ],
+        "title": "TestTrackPoint"
+      },
+      "TestVideo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "lighting": {
+            "type": "string",
+            "enum": [
+              "day",
+              "night"
+            ],
+            "title": "Lighting"
+          },
+          "duration_seconds": {
+            "type": "number",
+            "title": "Duration Seconds"
+          },
+          "classification_frame_seconds": {
+            "type": "number",
+            "title": "Classification Frame Seconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "lighting",
+          "duration_seconds",
+          "classification_frame_seconds"
+        ],
+        "title": "TestVideo"
+      },
+      "TestVideoTrack": {
+        "properties": {
+          "video_id": {
+            "type": "string",
+            "title": "Video Id"
+          },
+          "detector": {
+            "type": "string",
+            "title": "Detector"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TestTrackPoint"
+            },
+            "type": "array",
+            "title": "Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "video_id",
+          "detector",
+          "points"
+        ],
+        "title": "TestVideoTrack"
+      },
+      "TimelapseInput": {
+        "properties": {
+          "device": {
+            "type": "string",
+            "title": "Device"
+          },
+          "site": {
+            "type": "string",
+            "title": "Site"
+          },
+          "camera": {
+            "type": "string",
+            "title": "Camera"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "cadence_minutes": {
+            "type": "integer",
+            "maximum": 1440.0,
+            "minimum": 5.0,
+            "title": "Cadence Minutes"
+          },
+          "start_hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Start Hour"
+          },
+          "end_hour": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "End Hour"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Timezone",
+            "default": "America/Phoenix"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device",
+          "site",
+          "camera",
+          "name",
+          "cadence_minutes",
+          "start_hour",
+          "end_hour"
+        ],
+        "title": "TimelapseInput"
+      },
+      "UnknownLocation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "unknown",
+            "title": "Kind"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "UnknownLocation"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Zone": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Id"
+          },
+          "floor_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "title": "Floor Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "purpose": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Purpose",
+            "default": "general"
+          },
+          "polygon_xy_m": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "maximum": 10000.0,
+                  "minimum": -10000.0
+                },
+                {
+                  "type": "number",
+                  "maximum": 10000.0,
+                  "minimum": -10000.0
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 3,
+            "title": "Polygon Xy M"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "floor_id",
+          "name",
+          "polygon_xy_m",
+          "provenance"
+        ],
+        "title": "Zone"
+      }
+    }
+  }
+}

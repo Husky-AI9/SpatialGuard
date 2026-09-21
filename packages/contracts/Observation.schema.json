@@ -1,0 +1,292 @@
+{
+  "$defs": {
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "replay",
+            "live",
+            "simulator"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "asset_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "PointLocation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "floor_point",
+          "title": "Kind",
+          "type": "string"
+        },
+        "floor_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Floor Id",
+          "type": "string"
+        },
+        "xy_m": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            },
+            {
+              "maximum": 10000.0,
+              "minimum": -10000.0,
+              "type": "number"
+            }
+          ],
+          "title": "Xy M",
+          "type": "array"
+        },
+        "uncertainty_radius_m": {
+          "maximum": 1000.0,
+          "minimum": 0.0,
+          "title": "Uncertainty Radius M",
+          "type": "number"
+        },
+        "calibration_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Id"
+        }
+      },
+      "required": [
+        "kind",
+        "floor_id",
+        "xy_m",
+        "uncertainty_radius_m"
+      ],
+      "title": "PointLocation",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "measured",
+            "manual",
+            "inferred",
+            "unknown"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "confirmed": {
+          "default": false,
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "explanation": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "explanation"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RoomLocation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "room",
+          "title": "Kind",
+          "type": "string"
+        },
+        "room_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z0-9_-]+$",
+          "title": "Room Id",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "room_id",
+        "reason"
+      ],
+      "title": "RoomLocation",
+      "type": "object"
+    },
+    "UnknownLocation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "unknown",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "reason"
+      ],
+      "title": "UnknownLocation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1",
+      "default": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "observation_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "title": "Observation Id",
+      "type": "string"
+    },
+    "site_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "title": "Site Id",
+      "type": "string"
+    },
+    "revision_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "title": "Revision Id",
+      "type": "string"
+    },
+    "source_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "received_at": {
+      "format": "date-time",
+      "title": "Received At",
+      "type": "string"
+    },
+    "category": {
+      "maxLength": 100,
+      "minLength": 1,
+      "title": "Category",
+      "type": "string"
+    },
+    "location": {
+      "discriminator": {
+        "mapping": {
+          "floor_point": "#/$defs/PointLocation",
+          "room": "#/$defs/RoomLocation",
+          "unknown": "#/$defs/UnknownLocation"
+        },
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PointLocation"
+        },
+        {
+          "$ref": "#/$defs/RoomLocation"
+        },
+        {
+          "$ref": "#/$defs/UnknownLocation"
+        }
+      ],
+      "title": "Location"
+    },
+    "evidence": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
+    }
+  },
+  "required": [
+    "observation_id",
+    "site_id",
+    "revision_id",
+    "source_id",
+    "observed_at",
+    "received_at",
+    "category",
+    "location",
+    "evidence",
+    "provenance"
+  ],
+  "title": "Observation",
+  "type": "object"
+}

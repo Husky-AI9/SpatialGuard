@@ -1,0 +1,1 @@
+{"name":"@twinforge/spatial-view","version":"0.1.0","private":true,"type":"module","exports":{"./geometry":"./geometry.ts","./cameraGlyph":"./cameraGlyph.tsx","./Map2D":"./Map2D.tsx","./Scene3D":"./Scene3D.tsx","./TopDownPerson":"./TopDownPerson.tsx"},"peerDependencies":{"react":"19.0.0","three":"0.173.0"}}
