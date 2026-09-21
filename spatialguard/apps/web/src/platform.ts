@@ -48,7 +48,10 @@ export async function request<T>(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(native
-      ? { Authorization: `Bearer ${credential}` }
+      ? {
+          "X-SpatialGuard-Client": "android",
+          ...(credential ? { Authorization: `Bearer ${credential}` } : {}),
+        }
       : localWeb ? { "X-SpatialGuard-Local": "1" } : {}),
   };
   let status: number, data: unknown;

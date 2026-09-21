@@ -1,17 +1,21 @@
 import json
 import os
 import secrets
+import sqlite3
 import time
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from .store import Store, ROOT, uid, digest, dump, event, audit, now
+from .auth import normalize_email, password_hash, password_matches
 from . import models as m
 from . import engine as tf
 from .engine import LayoutRejected, client, normalize_cameras, publish_layout
 
 COOKIE = "spatialguard_session"
+TEST_ACCOUNT_EMAIL = "test12345@gmail.com"
+TEST_ACCOUNT_HASH = "scrypt$16384$8$1$gU_jnmIipTWfapkUzl4nrA==$s3ZRiadAzw-SsCKBe1undbBh8rTOi_EYaEo4DkoLyzU="
 
 
 def configured_origin():
@@ -21,6 +25,12 @@ def configured_origin():
 
 def create_app(db_path=None, engine=None, ring_service=None):
     store = Store(db_path)
+    if os.environ.get("SPATIALGUARD_ENABLE_TEST_ACCOUNT", "").lower() in {"1", "true", "yes"}:
+        with store.connect() as db:
+            db.execute(
+                "INSERT OR IGNORE INTO accounts VALUES (?,?,?,?)",
+                ("acct_test_preview", TEST_ACCOUNT_EMAIL, TEST_ACCOUNT_HASH, now()),
+            )
     app = FastAPI(title="SpatialGuard", version="0.1.0")
     app.state.store = store
     app.add_middleware(CORSMiddleware, allow_origins=["https://localhost"], allow_methods=["GET", "POST", "PATCH", "DELETE"],
@@ -88,18 +98,139 @@ def create_app(db_path=None, engine=None, ring_service=None):
             raise HTTPException(404, "Site not found")
         return json.loads(row[0])
 
-    def session_data(row):
-        return m.Session(id=row["id"], name=row["name"], kind=row["kind"], expires_at=row["expires"])
+    def session_data(row, db=None):
+        if db is None:
+            with store.connect() as lookup:
+                account = lookup.execute("SELECT email FROM accounts WHERE id=?", (row["owner"],)).fetchone()
+        else:
+            account = db.execute("SELECT email FROM accounts WHERE id=?", (row["owner"],)).fetchone()
+        return m.Session(
+            id=row["id"], name=row["name"], kind=row["kind"],
+            expires_at=row["expires"], email=account["email"] if account else None,
+        )
 
     def issue(db, owner, kind, name):
         token, sid = secrets.token_urlsafe(32), uid("session")
         expires = time.time() + (86400 * 30 if kind == "android" else 28800)
         db.execute("INSERT INTO sessions VALUES (?,?,?,?,?,?)", (sid, owner, digest(token), name, kind, expires))
-        return m.SessionToken(token=token, session=m.Session(id=sid, name=name, kind=kind, expires_at=expires))
+        account = db.execute("SELECT email FROM accounts WHERE id=?", (owner,)).fetchone()
+        return m.SessionToken(token=token, session=m.Session(
+            id=sid, name=name, kind=kind, expires_at=expires,
+            email=account["email"] if account else None,
+        ))
+
+    def set_browser_cookie(response, token):
+        secure = configured_origin().startswith("https://")
+        response.set_cookie(
+            COOKIE, token, httponly=True, samesite="lax" if secure else "strict",
+            secure=secure, max_age=28800, path="/",
+        )
+
+    def auth_kind(request):
+        if request.headers.get("x-spatialguard-client") == "android":
+            return "android"
+        cookie_browser(request)
+        return "browser"
+
+    def throttle(db, key, limit):
+        row = db.execute("SELECT * FROM attempts WHERE peer=?", (key,)).fetchone()
+        recent = row and row["starts"] > time.time() - 60
+        count = row["count"] + 1 if recent else 1
+        start = row["starts"] if recent else time.time()
+        db.execute("INSERT OR REPLACE INTO attempts VALUES (?,?,?)", (key, start, count))
+        if count > limit:
+            raise HTTPException(429, "Too many attempts. Wait one minute and try again.")
+
+    def legacy_owner(db, request):
+        token = request.cookies.get(COOKIE, "")
+        if not token:
+            return None
+        row = db.execute(
+            "SELECT owner FROM sessions WHERE digest=? AND expires>?",
+            (digest(token), time.time()),
+        ).fetchone()
+        return row["owner"] if row and row["owner"] in {"local_owner", "hosted_owner"} else None
+
+    def claim_legacy_workspace(db, old_owner, new_owner):
+        """Move the authenticated preview workspace to its new email account."""
+        for table in ("sites", "plans", "audit", "ring_accounts", "ring_streams", "ring_alerts", "timelapse_projects"):
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
+                db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))
+        for table in ("ring_ops_preferences", "ring_camera_wall"):
+            if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
+                db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))
+        old_key, new_key = "active_site:" + old_owner, "active_site:" + new_owner
+        preference = db.execute("SELECT value FROM settings WHERE key=?", (old_key,)).fetchone()
+        if preference:
+            db.execute("INSERT OR REPLACE INTO settings VALUES (?,?)", (new_key, preference["value"]))
+            db.execute("DELETE FROM settings WHERE key=?", (old_key,))
+        db.execute("DELETE FROM pairing WHERE owner=?", (old_owner,))
+        if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ring_codes'").fetchone():
+            db.execute("DELETE FROM ring_codes WHERE owner=?", (old_owner,))
+        # Shared-code sessions must not survive the move to an individual account.
+        db.execute("DELETE FROM sessions WHERE owner=?", (old_owner,))
+
+    def auth_result(result, kind, response):
+        if kind == "browser":
+            set_browser_cookie(response, result.token)
+            return m.AuthSession(session=result.session)
+        return m.AuthSession(session=result.session, token=result.token)
 
     @app.get("/health")
     def health():
         return {"status": "ok", "application": "spatialguard"}
+
+    @app.post("/v1/auth/signup", response_model=m.AuthSession, status_code=201)
+    def signup(body: m.AccountCredentials, request: Request, response: Response):
+        kind = auth_kind(request)
+        email = normalize_email(body.email)
+        owner = uid("acct")
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            throttle(db, "signup:" + request.client.host, 8)
+        verifier = password_hash(body.password)
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            old_owner = legacy_owner(db, request)
+            try:
+                db.execute("INSERT INTO accounts VALUES (?,?,?,?)", (owner, email, verifier, now()))
+            except sqlite3.IntegrityError:
+                raise HTTPException(409, "An account with this email already exists") from None
+            if old_owner:
+                claim_legacy_workspace(db, old_owner, owner)
+            result = issue(db, owner, kind, "Android app" if kind == "android" else "Web browser")
+            audit(db, owner, "account.created", owner)
+        return auth_result(result, kind, response)
+
+    @app.post("/v1/auth/signin", response_model=m.AuthSession)
+    def signin(body: m.AccountCredentials, request: Request, response: Response):
+        kind = auth_kind(request)
+        email = normalize_email(body.email)
+        attempt_key = "signin:" + request.client.host + ":" + digest(email)[:16]
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            throttle(db, attempt_key, 10)
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            account = db.execute("SELECT * FROM accounts WHERE email=? COLLATE NOCASE", (email,)).fetchone()
+            valid_password = password_matches(
+                body.password, account["password_hash"] if account else TEST_ACCOUNT_HASH,
+            )
+            if not account or not valid_password:
+                time.sleep(0.15)
+                raise HTTPException(401, "Email or password is incorrect")
+            db.execute("DELETE FROM attempts WHERE peer=?", (attempt_key,))
+            db.execute("DELETE FROM sessions WHERE expires<=?", (time.time(),))
+            result = issue(db, account["id"], kind, "Android app" if kind == "android" else "Web browser")
+            audit(db, account["id"], "account.signed_in", result.session.id)
+        return auth_result(result, kind, response)
+
+    @app.post("/v1/auth/signout", status_code=204)
+    def signout(response: Response, p=Depends(principal)):
+        with store.connect() as db:
+            db.execute("DELETE FROM sessions WHERE id=? AND owner=?", (p["id"], p["owner"]))
+            audit(db, p["owner"], "account.signed_out", p["id"])
+        response.delete_cookie(COOKIE, path="/")
 
     @app.post("/v1/local-session", response_model=m.Session)
     def browser_session(request: Request, response: Response):
@@ -117,40 +248,6 @@ def create_app(db_path=None, engine=None, ring_service=None):
         response.set_cookie(COOKIE, result.token, httponly=True, samesite="strict", max_age=28800)
         return result.session
 
-    @app.post("/v1/hosted-session", response_model=m.Session)
-    def hosted_session(body: m.HostedSessionInput, request: Request, response: Response):
-        """Open one explicit, same-origin owner session for a hosted preview.
-
-        The code is compared in constant time and exists only in the deployment
-        environment, never in JavaScript, the APK, or source code.
-        """
-        hosted_browser(request)
-        configured_code = os.environ.get("SPATIALGUARD_HOSTED_ACCESS_CODE", "")
-        if not configured_code:
-            raise HTTPException(503, "Hosted access is not configured")
-        if not secrets.compare_digest(body.access_code, configured_code):
-            time.sleep(0.15)
-            raise HTTPException(401, "The hosted access code is invalid")
-        with store.connect() as db:
-            current = db.execute(
-                "SELECT * FROM sessions WHERE digest=? AND expires>? AND kind='browser'",
-                (digest(request.cookies.get(COOKIE, "")), time.time()),
-            ).fetchone()
-            if current and current["owner"] == "hosted_owner":
-                return session_data(current)
-            db.execute("DELETE FROM sessions WHERE expires<=?", (time.time(),))
-            db.execute(
-                """DELETE FROM sessions WHERE kind='browser' AND owner='hosted_owner'
-                AND id NOT IN (SELECT id FROM sessions WHERE kind='browser' AND owner='hosted_owner'
-                ORDER BY expires DESC LIMIT 4)"""
-            )
-            result = issue(db, "hosted_owner", "browser", "Hosted owner browser")
-        response.set_cookie(
-            COOKIE, result.token, httponly=True, samesite="lax", secure=True,
-            max_age=28800, path="/",
-        )
-        return result.session
-
     @app.get("/v1/me", response_model=m.Session)
     def me(p=Depends(principal)):
         return session_data(p)
@@ -158,7 +255,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
     @app.get("/v1/sessions", response_model=list[m.Session])
     def sessions(p=Depends(principal)):
         with store.connect() as db:
-            return [session_data(r) for r in db.execute("SELECT * FROM sessions WHERE owner=? AND expires>?", (p["owner"], time.time()))]
+            return [session_data(r, db) for r in db.execute("SELECT * FROM sessions WHERE owner=? AND expires>?", (p["owner"], time.time()))]
 
     @app.post("/v1/pairing", response_model=m.PairCode)
     def pairing(p=Depends(principal)):
@@ -616,6 +713,8 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
         @app.get("/")
         @app.get("/landing", include_in_schema=False)
+        @app.get("/signin", include_in_schema=False)
+        @app.get("/signup", include_in_schema=False)
         @app.get("/workspace", include_in_schema=False)
         def index():
             return FileResponse(dist / "index.html")

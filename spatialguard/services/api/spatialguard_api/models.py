@@ -1,5 +1,5 @@
 from typing import Annotated, Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from twinforge.models import Coordinate, Layout, Observation
 
 
@@ -221,10 +221,15 @@ class PairInput(Model):
     name: str = Field(default="Android device", min_length=1, max_length=60)
 
 
-class HostedSessionInput(Model):
-    """A short-lived preview gate for the single hosted owner workspace."""
+class AccountCredentials(Model):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=8, max_length=128)
 
-    access_code: str = Field(min_length=12, max_length=128)
+    @field_validator("email")
+    @classmethod
+    def valid_email(cls, value: str):
+        from .auth import normalize_email
+        return normalize_email(value)
 
 
 class PairCode(Model):
@@ -237,11 +242,17 @@ class Session(Model):
     name: str
     kind: Literal["browser", "android"]
     expires_at: float
+    email: str | None = None
 
 
 class SessionToken(Model):
     token: str
     session: Session
+
+
+class AuthSession(Model):
+    session: Session
+    token: str | None = None
 
 
 class ReviewInput(Model):

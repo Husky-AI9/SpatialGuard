@@ -43,7 +43,7 @@ guidance opens the Ring Appstore and links back to the hosted workspace.
 Before public release:
 
 - Rename and brand the private Ring listing, currently named test.
-- Provide individual hosted user accounts rather than the owner-preview access code.
+- Add verified email and a password-reset flow to the new individual account system.
 - Replace code copying with a secure continuation for an already signed-in owner,
   with explicit account confirmation and a CSRF-protected claim.
 - Refresh inventory after returning from Ring and guide camera placement directly.

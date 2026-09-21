@@ -81,7 +81,7 @@ export default function DesktopLanding({
               </button>
             </div>
             <button className="lp-local-note" onClick={openSignIn}>
-              {hostedWeb ? "Hosted preview · owner access code required" : "Local replay preview · no account required"}
+              {hostedWeb ? "Private workspace · email sign-in required" : "Local replay preview · no account required"}
             </button>
           </div>
 

@@ -237,20 +237,62 @@ def test_pairing_expiry_rate_limit_and_auth_boundaries(setup):
     assert c.get('/v1/sites',headers={'Host':'evil.example'}).status_code==400
 
 
-def test_hosted_preview_requires_an_access_code_and_uses_a_same_origin_cookie(tmp_path, monkeypatch):
+def test_hosted_email_signup_signin_and_signout_use_a_same_origin_cookie(tmp_path, monkeypatch):
     monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
-    monkeypatch.setenv('SPATIALGUARD_HOSTED_ACCESS_CODE', 'hosted-preview-code')
     app = create_app(tmp_path/'hosted.sqlite', Engine())
     client = TestClient(app, base_url='https://testserver', headers={
         'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
     })
-    assert client.post('/v1/hosted-session', json={'access_code': 'not-the-code'}).status_code == 401
-    session = client.post('/v1/hosted-session', json={'access_code': 'hosted-preview-code'})
-    assert session.status_code == 200
-    assert 'Secure' in session.headers['set-cookie']
-    assert client.get('/v1/me').json()['name'] == 'Hosted owner browser'
+    credentials = {'email': 'Owner@Example.com', 'password': 'correct-password'}
+    signup = client.post('/v1/auth/signup', json=credentials)
+    assert signup.status_code == 201, signup.text
+    assert signup.json()['token'] is None
+    assert signup.json()['session']['email'] == 'owner@example.com'
+    assert 'Secure' in signup.headers['set-cookie']
+    assert client.get('/v1/me').json()['email'] == 'owner@example.com'
     assert client.post('/v1/pairing').status_code == 200
-    assert client.post('/v1/sites', json={'name': 'Not a valid full API fixture'}).status_code == 405
+    assert client.post('/v1/auth/signup', json=credentials).status_code == 409
+    assert client.post('/v1/auth/signout').status_code == 204
+    assert client.get('/v1/me').status_code == 401
+    assert client.post('/v1/auth/signin', json={**credentials, 'password': 'wrong-password'}).status_code == 401
+    signin = client.post('/v1/auth/signin', json={**credentials, 'email': 'OWNER@example.com'})
+    assert signin.status_code == 200
+    assert client.get('/v1/me').json()['email'] == 'owner@example.com'
+    assert client.post('/v1/hosted-session', json={'access_code': 'old-code'}).status_code == 404
+
+
+def test_signup_claims_only_the_authenticated_legacy_workspace(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    app = create_app(tmp_path/'claim.sqlite', Engine())
+    store = app.state.store
+    with store.connect() as db:
+        db.execute('INSERT INTO sites VALUES (?,?,?)', ('legacy_site', 'hosted_owner', '{}'))
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
+                   ('legacy_session', 'hosted_owner', digest('legacy-token'), 'Legacy', 'browser', time.time()+1000))
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    }, cookies={'spatialguard_session': 'legacy-token'})
+    response = client.post('/v1/auth/signup', json={'email': 'owner@example.com', 'password': 'correct-password'})
+    assert response.status_code == 201, response.text
+    with store.connect() as db:
+        account = db.execute('SELECT id FROM accounts WHERE email=?', ('owner@example.com',)).fetchone()
+        assert db.execute('SELECT owner FROM sites WHERE id=?', ('legacy_site',)).fetchone()['owner'] == account['id']
+        assert db.execute('SELECT 1 FROM sessions WHERE id=?', ('legacy_session',)).fetchone() is None
+
+
+def test_opt_in_test_account_is_hashed_and_isolated(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    monkeypatch.setenv('SPATIALGUARD_ENABLE_TEST_ACCOUNT', 'true')
+    app = create_app(tmp_path/'test-account.sqlite', Engine())
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    response = client.post('/v1/auth/signin', json={'email': 'test12345@gmail.com', 'password': 'test12345'})
+    assert response.status_code == 200, response.text
+    assert client.get('/v1/sites').json() == []
+    with app.state.store.connect() as db:
+        stored = db.execute('SELECT password_hash FROM accounts WHERE email=?', ('test12345@gmail.com',)).fetchone()[0]
+        assert stored != 'test12345' and stored.startswith('scrypt$')
 
 
 def test_cross_owner_and_evidence_isolation(setup):

@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
+import { useEffect, type MouseEvent } from "react";
 import {
   ArrowRight,
   Camera,
@@ -10,13 +10,10 @@ import {
   Route,
   Shield,
   UserPlus,
-  X,
 } from "lucide-react";
 import "./landing.css";
 import DesktopLanding from "./DesktopLanding";
-import { native, localWeb, request } from "./platform";
-
-type AccessDialog = "signin" | "signup" | null;
+import { native, localWeb } from "./platform";
 
 function SpatialGuardMark({ size = 24 }: { size?: number }) {
   return (
@@ -38,31 +35,16 @@ function Brand() {
 }
 
 export default function Landing() {
-  const [accessDialog, setAccessDialog] = useState<AccessDialog>(null);
-  const [accessCode, setAccessCode] = useState("");
-  const [accessError, setAccessError] = useState("");
-  const [accessBusy, setAccessBusy] = useState(false);
   const workspaceHref = native ? "/?workspace=1" : "/workspace";
   const hostedWeb = !native && !localWeb;
-  const previewLabel = hostedWeb ? "Hosted preview: owner access code required" : "Local replay preview: no account required";
+  const accountRequired = hostedWeb || native;
+  const previewLabel = accountRequired ? "Private account required" : "Local replay preview: no account required";
+  const openAuth = (mode: "signin" | "signup") =>
+    window.location.assign(native ? `/?auth=${mode}` : `/${mode}`);
   const openWorkspace = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (!hostedWeb) return;
+    if (!accountRequired) return;
     event.preventDefault();
-    setAccessError("");
-    setAccessDialog("signin");
-  };
-  const signIn = async (event: FormEvent) => {
-    event.preventDefault();
-    setAccessBusy(true);
-    setAccessError("");
-    try {
-      await request("/v1/hosted-session", "POST", { access_code: accessCode });
-      window.location.assign(workspaceHref);
-    } catch (error) {
-      setAccessError(error instanceof Error ? error.message : "Could not sign in");
-    } finally {
-      setAccessBusy(false);
-    }
+    openAuth("signin");
   };
 
   useEffect(() => {
@@ -70,21 +52,12 @@ export default function Landing() {
     window.scrollTo({ top: 0, left: 0 });
   }, []);
 
-  useEffect(() => {
-    if (!accessDialog) return;
-    const close = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAccessDialog(null);
-    };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [accessDialog]);
-
   return (
     <>
       <DesktopLanding
-        hostedWeb={hostedWeb}
-        openSignIn={() => setAccessDialog("signin")}
-        openSignUp={() => setAccessDialog("signup")}
+        hostedWeb={accountRequired}
+        openSignIn={() => openAuth("signin")}
+        openSignUp={() => openAuth("signup")}
         openWorkspace={openWorkspace}
         workspaceHref={workspaceHref}
       />
@@ -168,8 +141,8 @@ export default function Landing() {
           <div className="sg-mobile-actions">
             <a className="sg-mobile-try" href={workspaceHref} onClick={openWorkspace}><Play size={17} fill="currentColor" />Try it out</a>
             <div>
-              <button onClick={() => setAccessDialog("signin")}><LogIn size={16} />Sign in</button>
-              <button onClick={() => setAccessDialog("signup")}><UserPlus size={16} />Sign up</button>
+              <button onClick={() => openAuth("signin")}><LogIn size={16} />Sign in</button>
+              <button onClick={() => openAuth("signup")}><UserPlus size={16} />Sign up</button>
             </div>
           </div>
           <small>{previewLabel}</small>
@@ -179,8 +152,8 @@ export default function Landing() {
       <header className="sg-entry-nav">
         <Brand />
         <div className="sg-entry-auth" aria-label="Account access">
-          <button onClick={() => setAccessDialog("signin")}><LogIn size={16} />Sign in</button>
-          <button className="sg-entry-signup" onClick={() => setAccessDialog("signup")}><UserPlus size={16} />Create account</button>
+          <button onClick={() => openAuth("signin")}><LogIn size={16} />Sign in</button>
+          <button className="sg-entry-signup" onClick={() => openAuth("signup")}><UserPlus size={16} />Create account</button>
         </div>
       </header>
 
@@ -191,7 +164,7 @@ export default function Landing() {
           <p>SpatialGuard places cameras, movement, and evidence on one home map so you can understand an event without switching between disconnected clips.</p>
           <div className="sg-entry-actions">
             <a className="sg-entry-primary" href={workspaceHref} onClick={openWorkspace}><Play size={17} fill="currentColor" />Try it out</a>
-            <button onClick={() => setAccessDialog("signup")}>Create account <ArrowRight size={17} /></button>
+            <button onClick={() => openAuth("signup")}>Create account <ArrowRight size={17} /></button>
           </div>
           <div className="sg-entry-benefits" aria-label="SpatialGuard benefits">
             <span><Map size={17} />2D and 3D home context</span>
@@ -261,49 +234,6 @@ export default function Landing() {
         <span>Ring connection available in Settings</span>
       </footer>
       </div>
-      {accessDialog && (
-        <div className="sg-access-backdrop" role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) setAccessDialog(null);
-        }}>
-          <section className="sg-access-dialog" role="dialog" aria-modal="true" aria-labelledby="sg-access-title">
-            <button className="sg-access-close" aria-label="Close" onClick={() => setAccessDialog(null)}><X size={18} /></button>
-            {accessDialog === "signin" ? <LogIn size={24} /> : <UserPlus size={24} />}
-            <h2 id="sg-access-title">{accessDialog === "signin" ? "Sign in to SpatialGuard" : "Create your SpatialGuard account"}</h2>
-            {hostedWeb ? (
-              <form className="sg-access-form" onSubmit={signIn}>
-                <p>This hosted preview is protected by an owner access code. It creates a secure browser session for this workspace.</p>
-                <label htmlFor="landing-access-code">Access code</label>
-                <input
-                  id="landing-access-code"
-                  type="password"
-                  autoComplete="current-password"
-                  autoFocus
-                  minLength={12}
-                  maxLength={128}
-                  required
-                  value={accessCode}
-                  onChange={(event) => setAccessCode(event.target.value)}
-                />
-                {accessError && <p className="sg-access-error" role="alert">{accessError}</p>}
-                <div className="sg-access-actions">
-                  <button type="button" onClick={() => setAccessDialog(null)}>Not now</button>
-                  <button className="sg-access-submit" disabled={accessBusy || accessCode.length < 12}>
-                    {accessBusy ? "Signing in…" : "Open workspace"} <ArrowRight size={16} />
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <>
-                <p>Hosted accounts are not enabled in this local preview yet. Continue to the owner workspace to explore the complete demo without creating credentials.</p>
-                <div className="sg-access-actions">
-                  <button onClick={() => setAccessDialog(null)}>Not now</button>
-                  <a href={workspaceHref}>Continue to workspace <ArrowRight size={16} /></a>
-                </div>
-              </>
-            )}
-          </section>
-        </div>
-      )}
     </>
   );
 }

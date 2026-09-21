@@ -133,11 +133,11 @@ test("home keeps CCTV and incidents in one right rail beside a full green 2D map
     await camera.click();
     await expect(page.locator(".camera-marker[aria-pressed=true]")).toHaveCount(1);
     await expect(rail.locator(".home-cctv-stage video")).toBeVisible();
-    await expect(rail.locator(".home-cctv-controls")).toBeVisible();
+    await expect(rail.locator(".ring-video-actions")).toBeVisible();
     await expect(map.locator(".map-camera-panel")).toHaveCount(0);
     const fits = async () => rail.evaluate((element) => {
       const cctv = element.querySelector<HTMLElement>(".home-cctv")!;
-      const controls = element.querySelector<HTMLElement>(".home-cctv-controls")!;
+      const controls = element.querySelector<HTMLElement>(".ring-video-actions")!;
       const incidents = element.querySelector<HTMLElement>(".incident-list")!;
       const incidentRow = element.querySelector<HTMLElement>(".incident-row");
       const cctvBox = cctv.getBoundingClientRect();
@@ -174,7 +174,7 @@ test("home keeps CCTV and incidents in one right rail beside a full green 2D map
     });
     await page.getByRole("button", { name: "3D", exact: true }).click();
     await expect(page.locator(".spatial-scene canvas")).toBeVisible();
-    await expect(rail.locator(".home-cctv-controls")).toBeVisible();
+    await expect(rail.locator(".ring-video-actions")).toBeVisible();
   }
 });
 
@@ -235,7 +235,7 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
       },
     });
   });
-  await page.route("**/v1/sites/**", async (route) => {
+  await page.route(/\/v1\/sites\/[^/?]+(?:\?.*)?$/, async (route) => {
     if (route.request().method() !== "GET") return route.continue();
     const response = await route.fetch();
     const body = await response.json();

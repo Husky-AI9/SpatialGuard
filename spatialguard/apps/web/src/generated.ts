@@ -21,6 +21,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signup */
+        post: operations["signup_v1_auth_signup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/signin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signin */
+        post: operations["signin_v1_auth_signin_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/signout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Signout */
+        post: operations["signout_v1_auth_signout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/local-session": {
         parameters: {
             query?: never;
@@ -32,29 +83,6 @@ export interface paths {
         put?: never;
         /** Browser Session */
         post: operations["browser_session_v1_local_session_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/hosted-session": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Hosted Session
-         * @description Open one explicit, same-origin owner session for a hosted preview.
-         *
-         *     The code is compared in constant time and exists only in the deployment
-         *     environment, never in JavaScript, the APK, or source code.
-         */
-        post: operations["hosted_session_v1_hosted_session_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1015,6 +1043,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountCredentials */
+        AccountCredentials: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** Association */
         Association: {
             /** From Observation Id */
@@ -1031,6 +1066,12 @@ export interface components {
             reason: string;
             /** Unobserved Gap Seconds */
             unobserved_gap_seconds: number;
+        };
+        /** AuthSession */
+        AuthSession: {
+            session: components["schemas"]["Session"];
+            /** Token */
+            token?: string | null;
         };
         /** Camera */
         Camera: {
@@ -1243,14 +1284,6 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
-        };
-        /**
-         * HostedSessionInput
-         * @description A short-lived preview gate for the single hosted owner workspace.
-         */
-        HostedSessionInput: {
-            /** Access Code */
-            access_code: string;
         };
         /** Incident */
         Incident: {
@@ -1773,6 +1806,8 @@ export interface components {
             kind: "browser" | "android";
             /** Expires At */
             expires_at: number;
+            /** Email */
+            email?: string | null;
         };
         /** SessionToken */
         SessionToken: {
@@ -1959,6 +1994,90 @@ export interface operations {
             };
         };
     };
+    signup_v1_auth_signup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountCredentials"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthSession"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    signin_v1_auth_signin_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountCredentials"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthSession"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    signout_v1_auth_signout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     browser_session_v1_local_session_post: {
         parameters: {
             query?: never;
@@ -1975,39 +2094,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Session"];
-                };
-            };
-        };
-    };
-    hosted_session_v1_hosted_session_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["HostedSessionInput"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Session"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

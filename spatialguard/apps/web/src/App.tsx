@@ -25,6 +25,7 @@ import {
   Plus,
   X,
   Map,
+  LogOut,
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import type { Marker } from "@twinforge/spatial-view/Map2D";
@@ -133,11 +134,10 @@ export default function App() {
     [planImage, setPlanImage] = useState(""),
     [step, setStep] = useState(0),
     [testTrail, setTestTrail] = useState<Marker[]>([]);
-  const [code, setCode] = useState(""),
-    [hostedAccessCode, setHostedAccessCode] = useState(""),
-    [pairCode, setPairCode] = useState(""),
+  const [pairCode, setPairCode] = useState(""),
     [pairExpiry, setPairExpiry] = useState(0),
     [sessions, setSessions] = useState<Session[]>([]),
+    [currentSession, setCurrentSession] = useState<Session | null>(null),
     [nextCursor, setNextCursor] = useState<number | null>(null),
     [image, setImage] = useState(""),
     [imageError, setImageError] = useState(""),
@@ -162,6 +162,7 @@ export default function App() {
       setIncidents([]);
       setOnline(false);
       void clearToken();
+      setCurrentSession(null);
     } else if (!(e instanceof ApiError)) {
       setOnline(false);
     }
@@ -221,11 +222,14 @@ export default function App() {
         const hasSession = await initializePlatform();
         if (live) setPaired(hasSession);
         if (!native) {
-          if (localWeb) await request("/v1/local-session", "POST");
-          else await request<Session>("/v1/me");
+          const session = localWeb
+            ? await request<Session>("/v1/local-session", "POST")
+            : await request<Session>("/v1/me");
+          if (live) setCurrentSession(session);
         }
         else {
           const session = await request<Session>("/v1/me");
+          if (live) setCurrentSession(session);
           if (session.expires_at < Date.now() / 1000 + 7 * 86400) {
             const renewed = await request<
               components["schemas"]["SessionToken"]
@@ -605,80 +609,22 @@ export default function App() {
         <h1>SpatialGuard</h1>
         <p>
           {native && !paired
-            ? "Pair with your local workspace"
+            ? "Sign in to SpatialGuard"
             : hostedWeb
               ? "Sign in to the hosted workspace"
               : "Local workspace unavailable"}
         </p>
         <p>
-          {hostedWeb ? "Enter the access code configured for this hosted preview." : "Start SpatialGuard on your PC."}
-          {native && !paired
-            ? " Connect this Android device by USB, then get a pairing code from Settings in the web app."
-            : ""}
+          {native || hostedWeb
+            ? "Use your email and password to continue."
+            : "Start SpatialGuard on your PC."}
         </p>
         {error && <p role="alert">{error}</p>}
-        {native && !paired ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void act(async () => {
-                const result = await request<
-                  components["schemas"]["SessionToken"]
-                >("/v1/pairing/redeem", "POST", {
-                  code: code.trim(),
-                  name: "Android preview",
-                });
-                await storeToken(result.token);
-                setPaired(true);
-                await refresh();
-              });
-            }}
-          >
-            <label htmlFor="pair-code">Pairing code</label>
-            <input
-              id="pair-code"
-              autoCapitalize="characters"
-              autoComplete="off"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              maxLength={12}
-            />
-            <button
-              className="primary"
-              disabled={busy || code.trim().length !== 12}
-            >
-              Pair device
-            </button>
-          </form>
-        ) : hostedWeb ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void act(async () => {
-                await request<Session>("/v1/hosted-session", "POST", {
-                  access_code: hostedAccessCode,
-                });
-                setHostedAccessCode("");
-                setPaired(true);
-                await refresh();
-              });
-            }}
-          >
-            <label htmlFor="hosted-access-code">Access code</label>
-            <input
-              id="hosted-access-code"
-              type="password"
-              autoComplete="current-password"
-              value={hostedAccessCode}
-              onChange={(e) => setHostedAccessCode(e.target.value)}
-              minLength={12}
-              maxLength={128}
-              required
-            />
-            <button className="primary" disabled={busy || hostedAccessCode.length < 12}>
-              Sign in
-            </button>
-          </form>
+        {native || hostedWeb ? (
+          <div className="button-row">
+            <a className="primary" href={native ? "/?auth=signin" : "/signin"}>Sign in</a>
+            <a href={native ? "/?auth=signup" : "/signup"}>Create account</a>
+          </div>
         ) : (
           <button
             onClick={() =>
@@ -1337,6 +1283,21 @@ export default function App() {
           {tab === "Operations" && <Operations />}
           {tab === "Settings" && (
             <div className="settings-page">
+              <section>
+                <h2>Account</h2>
+                <p>{currentSession?.email ?? "Local preview owner"}</p>
+                {currentSession?.email && (
+                  <button
+                    onClick={() => void act(async () => {
+                      await request("/v1/auth/signout", "POST");
+                      await clearToken();
+                      window.location.assign(native ? "/" : "/");
+                    })}
+                  >
+                    <LogOut size={16} /> Sign out
+                  </button>
+                )}
+              </section>
               <section>
                 <h2>Places</h2>
                 <p>

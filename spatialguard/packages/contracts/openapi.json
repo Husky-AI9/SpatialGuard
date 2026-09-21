@@ -21,17 +21,37 @@
         }
       }
     },
-    "/v1/local-session": {
+    "/v1/auth/signup": {
       "post": {
-        "summary": "Browser Session",
-        "operationId": "browser_session_v1_local_session_post",
+        "summary": "Signup",
+        "operationId": "signup_v1_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountCredentials"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Session"
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -39,16 +59,15 @@
         }
       }
     },
-    "/v1/hosted-session": {
+    "/v1/auth/signin": {
       "post": {
-        "summary": "Hosted Session",
-        "description": "Open one explicit, same-origin owner session for a hosted preview.\n\nThe code is compared in constant time and exists only in the deployment\nenvironment, never in JavaScript, the APK, or source code.",
-        "operationId": "hosted_session_v1_hosted_session_post",
+        "summary": "Signin",
+        "operationId": "signin_v1_auth_signin_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/HostedSessionInput"
+                "$ref": "#/components/schemas/AccountCredentials"
               }
             }
           },
@@ -60,7 +79,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Session"
+                  "$ref": "#/components/schemas/AuthSession"
                 }
               }
             }
@@ -71,6 +90,35 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/signout": {
+      "post": {
+        "summary": "Signout",
+        "operationId": "signout_v1_auth_signout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/v1/local-session": {
+      "post": {
+        "summary": "Browser Session",
+        "operationId": "browser_session_v1_local_session_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
                 }
               }
             }
@@ -2118,6 +2166,29 @@
   },
   "components": {
     "schemas": {
+      "AccountCredentials": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "AccountCredentials"
+      },
       "Association": {
         "properties": {
           "from_observation_id": {
@@ -2152,6 +2223,30 @@
           "unobserved_gap_seconds"
         ],
         "title": "Association"
+      },
+      "AuthSession": {
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/Session"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "session"
+        ],
+        "title": "AuthSession"
       },
       "Camera": {
         "properties": {
@@ -2712,23 +2807,6 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
-      },
-      "HostedSessionInput": {
-        "properties": {
-          "access_code": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 12,
-            "title": "Access Code"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "access_code"
-        ],
-        "title": "HostedSessionInput",
-        "description": "A short-lived preview gate for the single hosted owner workspace."
       },
       "Incident": {
         "properties": {
@@ -4154,6 +4232,17 @@
           "expires_at": {
             "type": "number",
             "title": "Expires At"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
           }
         },
         "additionalProperties": false,

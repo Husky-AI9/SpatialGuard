@@ -35,6 +35,8 @@ class Store:
             db.executescript('''
             PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL, created TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sites (id TEXT PRIMARY KEY, owner TEXT NOT NULL, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, owner TEXT NOT NULL, digest TEXT UNIQUE NOT NULL,
                 name TEXT NOT NULL, kind TEXT NOT NULL, expires REAL NOT NULL);

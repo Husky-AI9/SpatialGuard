@@ -19,8 +19,8 @@ SPATIALGUARD_ORIGIN=https://spatialguard-production.up.railway.app
 SPATIALGUARD_DATA_DIR=/data
 SPATIALGUARD_DB=/data/spatialguard.sqlite3
 TWINFORGE_DB=/data/twinforge.sqlite3
-SPATIALGUARD_HOSTED_ACCESS_CODE=<a unique 12+ character code>
 SPATIALGUARD_TOKEN_KEY=<a Fernet key>
+SPATIALGUARD_ENABLE_TEST_ACCOUNT=true
 ```
 
 Generate the token-encryption key locally, then put its output only in Railway
@@ -30,10 +30,12 @@ Variables:
 ./.venv/Scripts/python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-The access code protects the single-owner demo session. It is not a substitute
-for production accounts, password recovery, or delegated access. The browser
-stores only a Secure, HttpOnly, SameSite cookie; Android receives a separate,
-revocable pairing credential.
+SpatialGuard stores salted scrypt password verifiers and gives each account an
+isolated owner ID. The browser stores only a Secure, HttpOnly, SameSite cookie;
+Android receives a separate revocable bearer session after email/password sign
+in. `SPATIALGUARD_ENABLE_TEST_ACCOUNT=true` creates the isolated hackathon test
+account documented on the sign-in page. It does not have access to another
+owner's site or Ring connection.
 
 ## Ring configuration
 
@@ -55,7 +57,7 @@ https://spatialguard-production.up.railway.app/ring/token
 https://spatialguard-production.up.railway.app/ring/webhook
 ```
 
-Open SpatialGuard, sign in with the hosted access code, then use **Settings ?
+Open SpatialGuard, create an account or sign in, then use **Settings →
 Ring connection** to create a Ring sign-in code and finish the private-app
 authorization. Ring OAuth tokens are encrypted with `SPATIALGUARD_TOKEN_KEY`
 before they are written to the mounted SQLite database.
@@ -69,14 +71,14 @@ $env:SPATIALGUARD_API_URL = "https://spatialguard-production.up.railway.app"
 ./spatialguard/scripts/android.ps1 -Release
 ```
 
-Sign in to the hosted web workspace, create an Android pairing code in
-**Settings**, then enter it in the release app. The code is single-use and
-expires in three minutes.
+Sign in from Android with the same email and password as the hosted web app.
+The optional device-pairing flow in **Settings** remains available for local
+development and its codes are single-use and expire in three minutes.
 
 ## Current deployment boundary
 
 This is a durable hosted preview when the `/data` volume is attached. It uses
-one owner access code, one service replica, and SQLite WAL on that volume. It
-does not yet provide PostgreSQL, multi-user login, backups, object storage,
-hosted push notifications, or a high-availability worker. Those are required
-before treating it as a production security service.
+individual email accounts, one service replica, and SQLite WAL on that volume.
+It does not yet provide verified email, password reset, PostgreSQL, backups,
+object storage, hosted push notifications, or a high-availability worker.
+Those are required before treating it as a production security service.
