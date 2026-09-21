@@ -43,6 +43,7 @@ export default function Landing() {
   const [accessBusy, setAccessBusy] = useState(false);
   const workspaceHref = native ? "/?workspace=1" : "/workspace";
   const hostedWeb = !native && !localWeb;
+  const previewLabel = hostedWeb ? "Hosted preview ? owner access code required" : "Local replay preview ? no account required";
   const openWorkspace = (event: MouseEvent<HTMLAnchorElement>) => {
     if (!hostedWeb) return;
     event.preventDefault();
@@ -162,7 +163,7 @@ export default function Landing() {
               <button onClick={() => setAccessDialog("signup")}><UserPlus size={16} />Sign up</button>
             </div>
           </div>
-          <small>Local replay preview · No account required</small>
+          <small>{previewLabel}</small>
         </div>
       </section>
 
@@ -246,7 +247,7 @@ export default function Landing() {
       </main>
 
       <footer className="sg-entry-footer">
-        <span>Local replay preview</span>
+        <span>{hostedWeb ? "Hosted preview" : "Local replay preview"}</span>
         <span>Built with TwinForge</span>
         <span>Ring connection available in Settings</span>
       </footer>

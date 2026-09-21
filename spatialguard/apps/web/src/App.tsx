@@ -150,6 +150,7 @@ export default function App() {
     refreshRef = useRef<() => Promise<void>>(async () => {});
   current.current = { tab, selected };
   const hostedWeb = !native && !localWeb;
+  const environmentLabel = hostedWeb ? "Hosted preview" : "Local preview";
   activeRef.current = activeSite;
   runRef.current = run;
   const handleError = useCallback((e: unknown) => {
@@ -1151,7 +1152,7 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <span>Local preview</span>
+          <span>{environmentLabel}</span>
           <small>Ring connection in Settings</small>
         </div>
       </aside>
@@ -1177,7 +1178,7 @@ export default function App() {
             <h1>{tab}</h1>
           </div>
           <div className="top-actions">
-            <span className="mode">Local preview</span>
+            <span className="mode">{environmentLabel}</span>
             <button
               title="Map from a floor plan"
               onClick={() => setImporting(true)}
