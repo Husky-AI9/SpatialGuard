@@ -1,1 +1,1 @@
-{"name":"twinforge-workspace","private":true,"workspaces":["apps/viewer","packages/spatial-view","spatialguard/apps/web"]}
+{"name":"spatialguard-workspace","private":true,"workspaces":["packages/spatial-view","spatialguard/apps/web"]}

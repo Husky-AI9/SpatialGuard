@@ -12,6 +12,11 @@ Create these Railway services from the repository:
 The React build can be served by the API for the first hosted milestone or
 deployed as a separate static service after the API is ready.
 
+The root `Dockerfile` is the authoritative build for the first hosted service.
+It builds the React bundle with Node 22, installs the pinned Python 3.11
+dependencies (including Uvicorn), and starts FastAPI on Railway's `PORT`.
+`railway.toml` selects that Dockerfile and checks `/health`.
+
 ## Required production changes before deployment
 
 - Replace the local SQLite store with PostgreSQL.
