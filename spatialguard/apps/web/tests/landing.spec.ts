@@ -48,3 +48,16 @@ test("try it out opens the local workspace", async ({ page }) => {
   await expect(page).toHaveURL("http://127.0.0.1:8010/workspace");
   await expect(page.locator(".lp-desktop")).toHaveCount(0);
 });
+
+test("privacy, terms, and deletion guidance are public and readable", async ({ page }) => {
+  for (const [route, heading] of [
+    ["/privacy", "Privacy notice"],
+    ["/terms", "Preview terms"],
+    ["/data-deletion", "Delete your data"],
+  ] as const) {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Back" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  }
+});

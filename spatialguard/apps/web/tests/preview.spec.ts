@@ -2,6 +2,23 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 const output = path.resolve("../../../.data/spatialguard");
 
+async function allowProviderFeatures(page: import("@playwright/test").Page) {
+  await page.route("**/v1/account/preferences", async route => {
+    const body = route.request().method() === "PATCH"
+      ? route.request().postDataJSON()
+      : {};
+    await route.fulfill({ json: {
+      onboarding_completed: true,
+      ring_data_consent: true,
+      classification_consent: true,
+      incident_retention_days: 90,
+      audit_retention_days: 365,
+      consent_updated_at: new Date().toISOString(),
+      ...body,
+    } });
+  });
+}
+
 /** A workspace can be empty, and the owner's last place is remembered, so put the
  *  demo home in front of tests that rely on its replay fixture. */
 async function openDemo(page: import("@playwright/test").Page) {
@@ -219,8 +236,48 @@ test("3D camera pins select CCTV by mouse and keyboard without resetting the vie
   await expect(map.locator(".scene-camera-pin")).toHaveCount(2);
 });
 
+test("live multi-camera evidence shows camera nodes and an unknown gap, not a person dot", async ({ page }) => {
+  await openDemo(page);
+  const sites = await page.evaluate(() => fetch("/v1/sites").then(response => response.json()));
+  const demo = sites.find((site: { name: string }) => site.name === "Demo home");
+  const [first, second] = demo.layout.cameras;
+  const observedAt = "2026-09-21T12:00:00+00:00";
+  const nextAt = "2026-09-21T12:01:20+00:00";
+  const observation = (id: string, camera: string, at: string) => ({
+    observation_id: id, site_id: demo.id, revision_id: demo.revision_id,
+    source_id: camera, observed_at: at, received_at: at, category: "motion_detected",
+    location: { kind: "unknown", reason: "Ring event metadata supplies no calibrated person location." },
+    evidence: { mode: "live" },
+    provenance: { kind: "measured", confirmed: false, explanation: "Signed Ring event; no person coordinate." },
+  });
+  const incident = {
+    id: "incident-live-graph", site_id: demo.id, revision_id: demo.revision_id,
+    run_id: "ring-live-graph", title: "Activity across 2 Ring cameras",
+    rule: "Two Ring events were grouped within five minutes. Movement is unknown.",
+    started_at: observedAt, created_at: observedAt, status: "needs_review", reviewed_at: null,
+    evidence_mode: "live", calibration_ids: [], evidence_ids: [],
+    classification_status: "not_requested", classification: null,
+    observations: [observation("obs-front", first.id, observedAt), observation("obs-hall", second.id, nextAt)],
+    associations: [{ state: "possible", from_observation_id: "obs-front", to_observation_id: "obs-hall",
+      reason: "Possible continuation only; identity and movement are unknown.", unobserved_gap_seconds: 80 }],
+  };
+  await page.route(`**/v1/sites/${demo.id}/incidents*`, route => route.fulfill({ json: { incidents: [incident], next_cursor: null } }));
+  await page.route("**/v1/incidents/incident-live-graph", route => route.fulfill({ json: incident }));
+  await page.getByRole("button", { name: "Refresh workspace" }).click();
+  await page.getByRole("button", { name: /Activity across 2 Ring cameras/ }).first().click();
+  const legend = page.getByLabel("Spatial evidence graph legend");
+  await expect(legend.getByText("Observed by camera")).toBeVisible();
+  await expect(legend.getByText("Unknown gap")).toBeVisible();
+  await expect(page.locator(".evidence-link")).toHaveCount(1);
+  await expect(page.locator(".map-actor")).toHaveCount(0);
+  await page.screenshot({ path: path.join(output, "spatial-evidence-graph.png"), fullPage: true });
+  await page.getByRole("button", { name: "3D", exact: true }).click();
+  await expect(page.locator('.spatial-scene[data-evidence-links="1"] canvas')).toBeVisible();
+});
+
 test("private day and night clips animate an approximate 2D and 3D movement trail", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await allowProviderFeatures(page);
   const classificationRequests: string[] = [];
   await page.route("**/v1/test-videos/*/classify", (route) => {
     classificationRequests.push(route.request().url());
@@ -248,6 +305,14 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
     if (body.monitoring) body.monitoring.classification_enabled = true;
     return route.fulfill({ response, json: body });
   });
+  await page.route("**/v1/sites", async route => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.forEach((site: { monitoring?: { classification_enabled?: boolean } }) => {
+      if (site.monitoring) site.monitoring.classification_enabled = true;
+    });
+    return route.fulfill({ response, json: body });
+  });
   await openDemo(page);
   const camera = page
     .getByRole("complementary", { name: "Home activity" })
@@ -257,7 +322,7 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   await page.getByRole("button", { name: "Test delivery videos" }).click();
   const day = page.getByLabel("Delivery test · daylight");
   await expect(day).toBeVisible();
-  await expect(page.getByText("Person track ready", { exact: false })).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".test-video-status small")).toContainText("Person track ready", { timeout: 15000 });
   await day.evaluate((element: HTMLVideoElement) => {
     element.playbackRate = 4;
     return element.play();
@@ -275,7 +340,7 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   await page.getByRole("button", { name: "2D", exact: true }).click();
   await page.getByRole("button", { name: "Night delivery" }).click();
   const night = page.getByLabel("Delivery test · night");
-  await expect(page.getByText("Person track ready", { exact: false })).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".test-video-status small")).toContainText("Person track ready", { timeout: 15000 });
   await night.evaluate((element: HTMLVideoElement) => element.play());
   await expect.poll(() => page.locator(".approximate-marker").count()).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Day delivery" }).click();
@@ -290,7 +355,7 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   await expect(page.locator(".map-actor")).toHaveCount(0);
   await expect(page.locator(".test-video-status strong")).toHaveText("No longer visible - position unknown");
   await page.getByRole("button", { name: "Night delivery" }).click();
-  await expect(page.getByText("Person track ready", { exact: false })).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".test-video-status small")).toContainText("Person track ready", { timeout: 15000 });
   await expect(page.locator(".test-video-status-urgent")).toContainText("Urgent review");
   await page.getByLabel("Delivery test · night").evaluate((element: HTMLVideoElement) => element.play());
   await expect(page.locator(".map-actor-weapon")).toBeVisible();
@@ -311,6 +376,7 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   expect(classificationRequests).toHaveLength(2);
 });
 test("classification icons distinguish activities without turning person tracks into objects", async ({ page }) => {
+  await allowProviderFeatures(page);
   let label = "face_covering_visible";
   await page.route("**/v1/test-videos/*/classify", route => route.fulfill({ json: {
     label, display_label: "Fixture activity", confidence: "low",
@@ -322,6 +388,14 @@ test("classification icons distinguish activities without turning person tracks 
     const response = await route.fetch();
     const body = await response.json();
     if (body.monitoring) body.monitoring.classification_enabled = true;
+    return route.fulfill({ response, json: body });
+  });
+  await page.route("**/v1/sites", async route => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.forEach((site: { monitoring?: { classification_enabled?: boolean } }) => {
+      if (site.monitoring) site.monitoring.classification_enabled = true;
+    });
     return route.fulfill({ response, json: body });
   });
   await openDemo(page);
@@ -353,6 +427,7 @@ test("classification icons distinguish activities without turning person tracks 
 });
 
 test("person exit preserves the path through gaps, seeking, view changes and replay end", async ({ page }) => {
+  await allowProviderFeatures(page);
   await page.route("**/v1/test-videos/*/classify", route => route.fulfill({ status: 503, json: { detail: "Classification disabled in this tracking test" } }));
   await page.route("**/v1/test-videos/*/track", route => route.fulfill({ json: {
     video_id: "delivery-day", detector: "Fixture person track",
@@ -362,7 +437,7 @@ test("person exit preserves the path through gaps, seeking, view changes and rep
   await page.getByRole("complementary", { name: "Home activity" })
     .getByRole("button", { name: /Open .* feed and select it on map/ }).first().click();
   await page.getByRole("button", { name: "Test delivery videos" }).click();
-  await expect(page.getByText("Person track ready", { exact: false })).toBeVisible();
+  await expect(page.locator(".test-video-status strong")).toContainText("Person track ready");
   const video = page.locator(".test-video-stage video");
   const seek = async (at: number) => {
     await video.evaluate((element: HTMLVideoElement, time) => new Promise<void>(resolve => {
@@ -745,7 +820,27 @@ test("the demo home can be loaded or switched to from Settings", async ({ page }
   await expect(page.getByText("No places yet.")).toBeVisible();
 });
 
+test("setup guide explains consent, maps, and evidence on a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/workspace");
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Open setup guide" }).click();
+  const guide = page.getByRole("dialog", { name: "SpatialGuard setup" });
+  await expect(guide.getByRole("heading", { name: "One place to understand camera events" })).toBeVisible();
+  await guide.getByRole("button", { name: "Continue" }).click();
+  await expect(guide.getByText("Use authorized Ring data")).toBeVisible();
+  await guide.getByRole("button", { name: "Continue" }).click();
+  await expect(guide.getByRole("heading", { name: "Add a floor plan, then place each camera" })).toBeVisible();
+  await guide.getByRole("button", { name: "Continue" }).click();
+  await expect(guide.getByText("Unknown gap")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: path.join(output, "onboarding-phone.png") });
+  await guide.getByRole("button", { name: "Skip setup" }).click();
+  await expect(guide).toHaveCount(0);
+});
+
 test("Luna classification is opt-in and explains snapshot handling", async ({ page }) => {
+  await allowProviderFeatures(page);
   await page.route("**/v1/classifier", (route) =>
     route.fulfill({
       json: { configured: true, model: "gpt-5.6-luna" },

@@ -2,7 +2,7 @@
 import json
 import time
 from datetime import datetime
-from .store import Store, dump, event, now
+from .store import Store, cleanup_retention, dump, event, now
 from .models import Incident, Association, EvidenceAsset
 from .engine import client
 
@@ -88,10 +88,14 @@ def main():
     from .ring_worker import process_one as ring_process
     ring = RingService(store)
     cleanup_at = 0
+    retention_at = 0
     while True:
         if time.time() >= cleanup_at:
             ring.cleanup()
             cleanup_at = time.time()+2
+        if time.time() >= retention_at:
+            cleanup_retention(store)
+            retention_at = time.time()+3600
         live = ring_process(ring, engine)
         if not process_one(store, engine) and not live:
             time.sleep(.5)

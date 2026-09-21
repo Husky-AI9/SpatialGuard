@@ -144,6 +144,60 @@
         }
       }
     },
+    "/v1/account/preferences": {
+      "get": {
+        "summary": "Account Preferences",
+        "operationId": "account_preferences_v1_account_preferences_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountPreferences"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Account Preferences",
+        "operationId": "update_account_preferences_v1_account_preferences_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountPreferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountPreferences"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sessions": {
       "get": {
         "summary": "Sessions",
@@ -255,6 +309,38 @@
             }
           }
         ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account": {
+      "delete": {
+        "summary": "Delete Account",
+        "description": "Permanently remove an email account and all owner-scoped records.",
+        "operationId": "delete_account_v1_account_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountDeletion"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "204": {
             "description": "Successful Response"
@@ -2188,6 +2274,81 @@
           "password"
         ],
         "title": "AccountCredentials"
+      },
+      "AccountDeletion": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password"
+          },
+          "confirmation": {
+            "type": "string",
+            "const": "DELETE",
+            "title": "Confirmation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "password",
+          "confirmation"
+        ],
+        "title": "AccountDeletion"
+      },
+      "AccountPreferences": {
+        "properties": {
+          "onboarding_completed": {
+            "type": "boolean",
+            "title": "Onboarding Completed",
+            "default": false
+          },
+          "ring_data_consent": {
+            "type": "boolean",
+            "title": "Ring Data Consent",
+            "default": false
+          },
+          "classification_consent": {
+            "type": "boolean",
+            "title": "Classification Consent",
+            "default": false
+          },
+          "incident_retention_days": {
+            "type": "integer",
+            "enum": [
+              30,
+              90,
+              365
+            ],
+            "title": "Incident Retention Days",
+            "default": 90
+          },
+          "audit_retention_days": {
+            "type": "integer",
+            "enum": [
+              90,
+              365,
+              730
+            ],
+            "title": "Audit Retention Days",
+            "default": 365
+          },
+          "consent_updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AccountPreferences"
       },
       "Association": {
         "properties": {

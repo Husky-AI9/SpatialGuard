@@ -46,3 +46,12 @@ No real signed motion/doorbell webhook was triggered during this verification. T
 - Added purple camera pins with names, a short leader to the displayed camera mount, and a selected state. Pins follow orbit/zoom at a fixed screen size, remain visible over walls, and hide outside the view. They are navigation markers, not additional physical objects.
 - Pins are keyboard-accessible buttons that select the corresponding camera and CCTV card. Selection and workspace refresh preserve the current orbit/zoom when the building extent is unchanged.
 - SpatialGuard production build passed. Two browser workflows passed: mouse/keyboard pin selection, preserved zoom and view switching; and existing person-exit/retained-path behavior across 2D/3D. Inspected the resulting screenshot under ignored `.data/spatialguard/3d-camera-pins.png`.
+
+## September 21, 2026 — evidence, onboarding, and privacy
+
+- Unknown-location Ring events now render as camera evidence nodes in 2D and 3D. Cross-camera associations use a possible-continuation link with a distinct unknown segment. The browser regression verifies that this live case renders no person actor.
+- Added a responsive four-step first-run guide, explicit Ring-data and snapshot-classification choices, configurable incident/audit retention, public privacy/terms/deletion pages, and password-plus-`DELETE` account removal. Email verification and password reset are deferred.
+- Backend suite: **75 passed** with the two existing test-harness deprecation warnings. The focused Ring/privacy regression after the final legacy-local scheduler adjustment: **59 passed**.
+- Browser suite: **35 passed in 47.4 s**, covering the new graph, phone guide, legal routes, and the existing Ring, replay, camera, activity-icon, and floor-plan workflows.
+- SpatialGuard and TwinForge production builds passed with the existing Three.js chunk advisory. Capacitor sync and the Android debug build completed successfully: **154 tasks**, 27 executed and 127 up-to-date.
+- Visually inspected `.data/spatialguard/onboarding-phone.png` and `.data/spatialguard/spatial-evidence-graph.png`. These checks use synthetic/mocked events and do not establish person-tracking accuracy, identity matching, or Ring Appstore approval. No Android device or emulator was attached for installation in this run.

@@ -232,6 +232,20 @@ class AccountCredentials(Model):
         return normalize_email(value)
 
 
+class AccountPreferences(Model):
+    onboarding_completed: bool = False
+    ring_data_consent: bool = False
+    classification_consent: bool = False
+    incident_retention_days: Literal[30, 90, 365] = 90
+    audit_retention_days: Literal[90, 365, 730] = 365
+    consent_updated_at: str | None = None
+
+
+class AccountDeletion(Model):
+    password: str = Field(min_length=8, max_length=128)
+    confirmation: Literal["DELETE"]
+
+
 class PairCode(Model):
     code: str
     expires_at: float

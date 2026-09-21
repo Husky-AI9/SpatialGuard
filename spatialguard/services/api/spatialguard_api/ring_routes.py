@@ -5,7 +5,7 @@ from typing import Literal
 from .models import ClassifierStatus, Incident, Model, PairCode
 from .ring_service import RingService
 from .classifier import ClassifierUnavailable, classify_image, status as classifier_status
-from .store import audit, event
+from .store import account_preferences, audit, event
 
 
 class RingStatus(Model):
@@ -71,6 +71,18 @@ def install(app, store, principal, service=None):
     ring = service or RingService(store)
     app.state.ring = ring
 
+    def require_ring_consent(owner):
+        with store.connect() as db:
+            preferences = account_preferences(db, owner)
+        if not preferences['ring_data_consent']:
+            raise HTTPException(409, 'Allow Ring data in Privacy settings first')
+        return preferences
+
+    def require_classification_consent(owner):
+        preferences = require_ring_consent(owner)
+        if not preferences['classification_consent']:
+            raise HTTPException(409, 'Allow snapshot classification in Privacy settings first')
+
     @app.get('/v1/ring', response_model=RingStatus)
     def status(p=Depends(principal)):
         return ring.status(p['owner'])
@@ -81,56 +93,69 @@ def install(app, store, principal, service=None):
 
     @app.post('/v1/ring/sign-in-code', response_model=PairCode)
     def code(p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return ring.code(p['owner'])
 
     @app.get('/v1/ring/devices', response_model=list[RingDevice])
     def devices(p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return ring.devices(p['owner'])
 
     @app.post('/v1/ring/devices/refresh', response_model=list[RingDevice])
     def refresh(p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return ring.devices(p['owner'], True)
 
     @app.get('/v1/ring/operations')
     def operations(p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return ring.operations(p['owner'])
 
     @app.patch('/v1/ring/operations/preferences', status_code=204)
     def operations_preferences(body: OperationsPreferences, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         ring.update_operations_preferences(p['owner'], body.model_dump())
 
     @app.put('/v1/ring/operations/wall', status_code=204)
     def camera_wall(body: CameraWall, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         ring.save_camera_wall(p['owner'], body.devices)
 
     @app.post('/v1/ring/operations/alerts/{alert_id}/acknowledge', status_code=204)
     def acknowledge_alert(alert_id: str, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         ring.acknowledge_alert(p['owner'], alert_id)
 
     @app.post('/v1/ring/timelapses', status_code=201)
     def create_timelapse(body: TimelapseInput, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return {'id': ring.create_timelapse(p['owner'], body.model_dump())}
 
     @app.post('/v1/ring/timelapses/{project_id}/capture', status_code=201)
     def capture_timelapse(project_id: str, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return {'id': ring.capture_timelapse(p['owner'], project_id)}
 
     @app.get('/v1/ring/timelapses/{project_id}/frames/{frame_id}', response_class=Response)
     def timelapse_frame(project_id: str, frame_id: str, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         content, media_type = ring.timelapse_frame(p['owner'], project_id, frame_id)
         return Response(content, media_type=media_type, headers={'Cache-Control':'private, max-age=300'})
 
     @app.get('/v1/ring/timelapses/{project_id}/reel', response_class=Response)
     def timelapse_reel(project_id: str, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return Response(ring.timelapse_reel(p['owner'], project_id), media_type='image/gif',
                         headers={'Content-Disposition':f'attachment; filename="spatialguard-{project_id}.gif"'})
 
     @app.delete('/v1/ring/timelapses/{project_id}', status_code=204)
     def delete_timelapse(project_id: str, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         ring.delete_timelapse(p['owner'], project_id)
 
     @app.put('/v1/ring/devices/{device}/mapping', status_code=204)
     def mapping(device: str, body: RingMapping, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         ring.mapping(p['owner'], device, body.site_id, body.camera_id)
 
     @app.get(
@@ -139,6 +164,7 @@ def install(app, store, principal, service=None):
         responses={200: {'content': {'image/jpeg': {}, 'image/png': {}}}},
     )
     def snapshot(site: str, camera: str, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         image, content_type, metadata = ring.snapshot(p['owner'], site, camera)
         headers = {'Cache-Control': 'private, max-age=30'}
         headers.update(metadata)
@@ -146,6 +172,7 @@ def install(app, store, principal, service=None):
 
     @app.post('/v1/incidents/{incident_id}/classify', response_model=Incident)
     def classify_incident(incident_id: str, p=Depends(principal)):
+        require_classification_consent(p['owner'])
         with store.connect() as db:
             row = db.execute(
                 'SELECT i.data FROM incidents i JOIN sites s ON s.id=i.site_id '
@@ -186,6 +213,7 @@ def install(app, store, principal, service=None):
 
     @app.post('/v1/ring/devices/{device}/streams', response_model=StreamAnswer)
     def stream(device: str, body: StreamOffer, p=Depends(principal)):
+        require_ring_consent(p['owner'])
         return ring.stream(p['owner'], device, body.sdp)
 
     @app.delete('/v1/ring/streams/{sid}', status_code=204)

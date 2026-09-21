@@ -8,7 +8,7 @@ from twinforge.geometry import query_layout, validate_layout
 from twinforge.models import Layout, PointQuery
 from spatialguard_api.api import create_app
 from spatialguard_api.engine import RING_FOV_DEGREES, relens
-from spatialguard_api.store import dump, digest, Store
+from spatialguard_api.store import cleanup_retention, dump, digest, Store
 from spatialguard_api.worker import process_one
 
 
@@ -294,6 +294,75 @@ def test_opt_in_test_account_is_hashed_and_isolated(tmp_path, monkeypatch):
     with app.state.store.connect() as db:
         stored = db.execute('SELECT password_hash FROM accounts WHERE email=?', ('test12345@gmail.com',)).fetchone()[0]
         assert stored != 'test12345' and stored.startswith('scrypt$')
+
+
+def test_account_privacy_consent_and_permanent_deletion(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    engine = Engine()
+    app = create_app(tmp_path/'privacy.sqlite', engine)
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    credentials = {'email': 'privacy@example.com', 'password': 'correct-password'}
+    assert client.post('/v1/auth/signup', json=credentials).status_code == 201
+    defaults = client.get('/v1/account/preferences').json()
+    assert defaults == {
+        'onboarding_completed': False, 'ring_data_consent': False,
+        'classification_consent': False, 'incident_retention_days': 90,
+        'audit_retention_days': 365, 'consent_updated_at': None,
+    }
+    assert client.post('/v1/ring/sign-in-code').status_code == 409
+    with app.state.store.connect() as db:
+        owner = db.execute('SELECT id FROM accounts WHERE email=?', ('privacy@example.com',)).fetchone()['id']
+        site = {'id':'private_site','name':'Home','revision_id':'rev_demo',
+            'layout':synthetic_layout().model_dump(mode='json'),
+            'monitoring':{'enabled':True,'camera_ids':['camera_front'],'classification_enabled':False},
+            'monitoring_version':0,'evidence_mode':'replay','ring_status':'not_connected'}
+        db.execute('INSERT INTO sites VALUES (?,?,?)', ('private_site', owner, dump(site)))
+    blocked = client.patch('/v1/sites/private_site/monitoring', json={
+        'enabled': True, 'camera_ids': ['camera_front'], 'classification_enabled': True,
+    })
+    assert blocked.status_code == 409
+    saved = client.patch('/v1/account/preferences', json={
+        **defaults, 'onboarding_completed': True, 'ring_data_consent': True,
+        'classification_consent': True, 'incident_retention_days': 30,
+        'audit_retention_days': 90,
+    })
+    assert saved.status_code == 200 and saved.json()['consent_updated_at']
+    assert client.post('/v1/ring/sign-in-code').status_code == 200
+    assert client.patch('/v1/sites/private_site/monitoring', json={
+        'enabled': True, 'camera_ids': ['camera_front'], 'classification_enabled': True,
+    }).status_code == 200
+    assert client.request('DELETE', '/v1/account', json={
+        'password': 'wrong-password', 'confirmation': 'DELETE',
+    }).status_code == 401
+    assert client.request('DELETE', '/v1/account', json={
+        'password': credentials['password'], 'confirmation': 'DELETE',
+    }).status_code == 204
+    assert engine.deleted == ['private_site']
+    with app.state.store.connect() as db:
+        assert db.execute('SELECT 1 FROM accounts WHERE id=?', (owner,)).fetchone() is None
+        assert db.execute('SELECT 1 FROM sites WHERE owner=?', (owner,)).fetchone() is None
+        assert db.execute('SELECT 1 FROM sessions WHERE owner=?', (owner,)).fetchone() is None
+
+
+def test_retention_removes_expired_incident_evidence_and_audit(setup):
+    app, client, store, _ = setup
+    result = run(setup, 'retention-test')
+    incident = client.get('/v1/incidents/' + result['incident_id']).json()
+    incident['created_at'] = '2020-01-01T00:00:00+00:00'
+    with store.connect() as db:
+        db.execute('UPDATE incidents SET data=? WHERE id=?', (dump(incident), incident['id']))
+        db.execute("INSERT OR REPLACE INTO account_preferences(owner,incident_retention_days,audit_retention_days) VALUES (?,?,?)",
+                   ('local_owner', 30, 90))
+        db.execute("INSERT INTO audit(owner,action,resource,at) VALUES (?,?,?,?)",
+                   ('local_owner', 'old.action', 'old', '2020-01-01T00:00:00+00:00'))
+    removed = cleanup_retention(store)
+    assert removed['incidents'] == 1 and removed['audit_records'] >= 1
+    with store.connect() as db:
+        assert db.execute('SELECT 1 FROM incidents WHERE id=?', (incident['id'],)).fetchone() is None
+        for evidence_id in incident['evidence_ids']:
+            assert db.execute('SELECT 1 FROM evidence WHERE id=?', (evidence_id,)).fetchone() is None
 
 
 def test_cross_owner_and_evidence_isolation(setup):

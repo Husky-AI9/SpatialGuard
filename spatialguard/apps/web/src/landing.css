@@ -674,6 +674,10 @@ body.landing-body {
   color: #5d637c;
   font-size: 11px;
 }
+.landing-legal-links { display: flex; align-items: center; gap: 14px; }
+.landing-legal-links a { color: inherit; text-decoration: none; }
+.landing-legal-links a:hover { color: #4e45ca; }
+.lp-footer .landing-legal-links { font-size: 12px; }
 
 .sg-access-backdrop {
   position: fixed;

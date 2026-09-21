@@ -28,7 +28,7 @@ import {
   LogOut,
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
-import type { Marker } from "@twinforge/spatial-view/Map2D";
+import type { EvidenceLink, Marker } from "@twinforge/spatial-view/Map2D";
 import { bounds } from "@twinforge/spatial-view/geometry";
 import type { CameraChange } from "@twinforge/spatial-view/cameraGlyph";
 import CameraControls from "./CameraControls";
@@ -39,6 +39,7 @@ import CameraWorkspace from "./CameraWorkspace";
 import CameraWall from "./CameraWall";
 import HomeCctv from "./HomeCctv";
 import Operations from "./Operations";
+import Onboarding, { type AccountPreferences } from "./Onboarding";
 import type { TestTrack } from "./TestVideoReplay";
 import type { components } from "./generated";
 import type {
@@ -141,7 +142,13 @@ export default function App() {
     [nextCursor, setNextCursor] = useState<number | null>(null),
     [image, setImage] = useState(""),
     [imageError, setImageError] = useState(""),
-    [classifierStatus, setClassifierStatus] = useState<ClassifierStatus | null>(null);
+    [classifierStatus, setClassifierStatus] = useState<ClassifierStatus | null>(null),
+    [accountPreferences, setAccountPreferences] = useState<AccountPreferences | null>(null),
+    [onboardingOpen, setOnboardingOpen] = useState(false),
+    [deleteOpen, setDeleteOpen] = useState(false),
+    [deletePassword, setDeletePassword] = useState(""),
+    [deleteConfirmation, setDeleteConfirmation] = useState(""),
+    [deleteError, setDeleteError] = useState("");
   const cursor = useRef(0),
     activeRef = useRef(""),
     current = useRef({ tab, selected }),
@@ -236,6 +243,11 @@ export default function App() {
             >("/v1/sessions/renew", "POST");
             await storeToken(renewed.token);
           }
+        }
+        const preferences = await request<AccountPreferences>("/v1/account/preferences");
+        if (live) {
+          setAccountPreferences(preferences);
+          setOnboardingOpen(!preferences.onboarding_completed && (native || !localWeb));
         }
         if (live) {
           setPaired(true);
@@ -342,6 +354,7 @@ export default function App() {
       void Promise.all([
         request<Session[]>("/v1/sessions").then(setSessions),
         request<ClassifierStatus>("/v1/classifier").then(setClassifierStatus),
+        request<AccountPreferences>("/v1/account/preferences").then(setAccountPreferences),
       ]).catch(handleError);
   }, [tab, paired, handleError]);
   const observation = selected?.observations[step];
@@ -394,6 +407,26 @@ export default function App() {
     void request("/v1/preferences", "PUT", { active_site_id: id }).catch(
       () => {},
     );
+  const saveAccountPreferences = async (next: AccountPreferences) => {
+    const saved = await request<AccountPreferences>("/v1/account/preferences", "PATCH", next);
+    setAccountPreferences(saved);
+    if (saved.onboarding_completed) setOnboardingOpen(false);
+  };
+  const deleteAccount = async () => {
+    setBusy(true);
+    setDeleteError("");
+    try {
+      await request("/v1/account", "DELETE", {
+        password: deletePassword,
+        confirmation: deleteConfirmation,
+      });
+      await clearToken();
+      window.location.assign(native ? "/" : "/landing");
+    } catch (problem) {
+      setDeleteError(problem instanceof Error ? problem.message : "Could not delete the account");
+      setBusy(false);
+    }
+  };
   const switchSite = (id: string) => {
     if (id === activeSite) return;
     cursor.current = 0;
@@ -565,6 +598,17 @@ export default function App() {
     let unobserved = false;
     const incidentMarkers = (
       selected?.observations.flatMap((o, i) => {
+        if (o.location.kind === "unknown" && selected.evidence_mode === "live") {
+          const camera = site?.layout.cameras.find((item) => item.id === o.source_id);
+          if (!camera) return [];
+          return [{
+            id: o.observation_id,
+            xy: [camera.position_m[0], camera.position_m[1]] as [number, number],
+            selected: i === step,
+            evidenceNode: true,
+            label: `Activity observed by ${camera.name}; person position unknown`,
+          } satisfies Marker];
+        }
         if (o.location.kind !== "floor_point") {
           unobserved = true;
           return [];
@@ -580,7 +624,17 @@ export default function App() {
       }) ?? []
     );
     return selected ? incidentMarkers : testTrail;
-  }, [selected, selected?.observations, step, testTrail]);
+  }, [selected, selected?.observations, site?.layout.cameras, step, testTrail]);
+  const evidenceLinks = useMemo<EvidenceLink[]>(() => {
+    if (!selected || selected.evidence_mode !== "live") return [];
+    return selected.associations.map((association, index) => ({
+      id: `evidence-link-${index}-${association.to_observation_id}`,
+      fromMarkerId: association.from_observation_id,
+      toMarkerId: association.to_observation_id,
+      gapSeconds: association.unobserved_gap_seconds,
+      label: association.reason,
+    }));
+  }, [selected]);
   const nav = (name: Tab) => {
     setTab(name);
     if (name !== "Home" && view === "Camera wall") setView("2D");
@@ -717,6 +771,7 @@ export default function App() {
               selected={room}
               onSelect={mapSelect}
               markers={markers}
+              evidenceLinks={evidenceLinks}
               fitBuilding={tab === "Home"}
               editable={editable}
               placing={placing}
@@ -732,9 +787,17 @@ export default function App() {
                 selected={room}
                 onSelect={mapSelect}
                 markers={markers}
+                evidenceLinks={evidenceLinks}
               />
             </Suspense>
           ) : <CameraWall compact />}
+          {selected?.evidence_mode === "live" && (
+            <div className="evidence-map-legend" aria-label="Spatial evidence graph legend">
+              <span><i className="evidence-observed" />Observed by camera</span>
+              <span><i className="evidence-possible" />Possible continuation</span>
+              <span><i className="evidence-unknown">?</i>Unknown gap</span>
+            </div>
+          )}
         </div>
       )}
       {activeRoom && view === "2D" && (
@@ -797,6 +860,8 @@ export default function App() {
           <span>
             {view === "Camera wall"
               ? "Live Ring views ? saved camera order"
+              : selected?.evidence_mode === "live"
+                ? "Camera observations · person position unknown"
               : view === "3D"
                 ? "Illustrative walls · drag to orbit"
               : editable
@@ -854,12 +919,12 @@ export default function App() {
                 </small>
                 <small>
                   {incident.status === "reviewed" ? "Reviewed" : "Needs review"} ?{" "}
-                  {
-                    incident.observations.filter(
-                      (observation) => observation.location.kind !== "unknown",
-                    ).length
-                  }{" "}
-                  observations
+                  {incident.evidence_mode === "live"
+                    ? incident.observations.length
+                    : incident.observations.filter(
+                        (observation) => observation.location.kind !== "unknown",
+                      ).length}{" "}
+                  {incident.evidence_mode === "live" ? "camera events" : "observations"}
                 </small>
               </span>
               <ArrowUpRight size={18} />
@@ -935,11 +1000,12 @@ export default function App() {
             </strong>
           </div>
           <p>
-            Analyze the latest authorized camera snapshot. The image is sent to
-            OpenAI for this request and is not stored by SpatialGuard.
+            {accountPreferences?.classification_consent
+              ? "Analyze the latest authorized camera snapshot. The image is sent to OpenAI for this request and is not stored by SpatialGuard."
+              : "Allow Ring data and snapshot classification in Privacy settings before sending an image to OpenAI."}
           </p>
           <button
-            disabled={busy || !online}
+            disabled={busy || !online || !accountPreferences?.classification_consent}
             onClick={() =>
               void act(async () => {
                 const result = await request<Incident>(
@@ -1299,6 +1365,11 @@ export default function App() {
                 )}
               </section>
               <section>
+                <h2>Getting started</h2>
+                <p>Review how Ring access, home maps, and the spatial evidence graph work together.</p>
+                <button onClick={() => setOnboardingOpen(true)}>Open setup guide</button>
+              </section>
+              <section>
                 <h2>Places</h2>
                 <p>
                   {sites.length
@@ -1355,6 +1426,49 @@ export default function App() {
                 </p>
               </section>
               <section>
+                <h2>Privacy and retention</h2>
+                <p>Choose which provider data SpatialGuard may process and how long incident and security records remain in this workspace.</p>
+                {accountPreferences ? (
+                  <div className="privacy-controls">
+                    <label className="consent-choice">
+                      <input type="checkbox" checked={accountPreferences.ring_data_consent}
+                        onChange={(event) => setAccountPreferences({
+                          ...accountPreferences,
+                          ring_data_consent: event.target.checked,
+                          classification_consent: event.target.checked ? accountPreferences.classification_consent : false,
+                        })} />
+                      <span><strong>Use authorized Ring data</strong><small>Camera inventory, live view, snapshots, events, device status, and time-lapse captures.</small></span>
+                    </label>
+                    <label className="consent-choice">
+                      <input type="checkbox" disabled={!accountPreferences.ring_data_consent}
+                        checked={accountPreferences.classification_consent}
+                        onChange={(event) => setAccountPreferences({ ...accountPreferences, classification_consent: event.target.checked })} />
+                      <span><strong>Analyze event snapshots</strong><small>Send one event snapshot to the configured OpenAI model for a reviewable category.</small></span>
+                    </label>
+                    <div className="retention-grid">
+                      <label>Incident retention
+                        <select value={accountPreferences.incident_retention_days}
+                          onChange={(event) => setAccountPreferences({ ...accountPreferences,
+                            incident_retention_days: Number(event.target.value) as 30 | 90 | 365 })}>
+                          <option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option>
+                        </select>
+                      </label>
+                      <label>Security audit retention
+                        <select value={accountPreferences.audit_retention_days}
+                          onChange={(event) => setAccountPreferences({ ...accountPreferences,
+                            audit_retention_days: Number(event.target.value) as 90 | 365 | 730 })}>
+                          <option value={90}>90 days</option><option value={365}>1 year</option><option value={730}>2 years</option>
+                        </select>
+                      </label>
+                    </div>
+                    <button className="primary" disabled={busy || !online}
+                      onClick={() => void act(() => saveAccountPreferences(accountPreferences))}>Save privacy choices</button>
+                    <p className="fine">Retention cleanup runs in the background. Disabling Ring permission stops new provider processing; use Ring connection below to disconnect the integration.</p>
+                    <p className="legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/data-deletion">Data deletion</a></p>
+                  </div>
+                ) : <p>Loading privacy choices…</p>}
+              </section>
+              <section>
                 <h2>Luna incident classification</h2>
                 <p>
                   When enabled, a Ring motion or doorbell event sends one authorized
@@ -1368,7 +1482,7 @@ export default function App() {
                   the configured OpenAI account.
                 </p>
                 <button
-                  disabled={!site || busy || !online || !classifierStatus?.configured}
+                  disabled={!site || busy || !online || !classifierStatus?.configured || !accountPreferences?.classification_consent}
                   aria-pressed={site?.monitoring.classification_enabled ?? false}
                   onClick={() =>
                     site &&
@@ -1385,11 +1499,20 @@ export default function App() {
                 </button>
                 <p className="fine" role="status">
                   {classifierStatus?.configured
-                    ? `${classifierStatus.model} is configured on this server.`
+                    ? accountPreferences?.classification_consent
+                      ? `${classifierStatus.model} is configured on this server.`
+                      : "Allow Ring data and snapshot classification in Privacy settings first."
                     : "Add OPENAI_API_KEY to the root .env and restart SpatialGuard."}
                 </p>
               </section>
-              <RingConnection sites={sites} />
+              {accountPreferences?.ring_data_consent ? (
+                <RingConnection sites={sites} />
+              ) : (
+                <section>
+                  <h2>Ring connection</h2>
+                  <p>Allow Ring data in Privacy settings before linking a Ring account. Your Ring password is entered only on Ring’s own authorization page.</p>
+                </section>
+              )}
               <section>
                 <h2>Android pairing</h2>
                 {native ? (
@@ -1452,9 +1575,10 @@ export default function App() {
               <section>
                 <h2>Data and evidence</h2>
                 <p>
-                  This preview contains synthetic observations and
-                  illustrations, stored locally on your PC. Audio, recording,
-                  remote notifications, and caregiver access are disabled.
+                  Replay evidence is synthetic. Live Ring incidents retain event
+                  metadata and classifications; SpatialGuard does not store the
+                  snapshot used for classification. Live video is viewed through
+                  a bounded provider session and is not recorded by SpatialGuard.
                 </p>
                 <p>
                   Geometry revision:{" "}
@@ -1462,10 +1586,50 @@ export default function App() {
                 </p>
                 <p>Application version 0.1 · TwinForge schema 0.1</p>
               </section>
+              {currentSession?.email && (
+                <section className="danger-zone">
+                  <h2>Delete account</h2>
+                  <p>Permanently remove this account, its maps, uploaded floor plans, incidents, sessions, Ring data, and time-lapse files. This cannot be undone.</p>
+                  <button className="danger" onClick={() => setDeleteOpen(true)}>Delete my account</button>
+                </section>
+              )}
             </div>
           )}
         </main>
       </div>
+      {onboardingOpen && accountPreferences && (
+        <Onboarding
+          preferences={accountPreferences}
+          onSave={saveAccountPreferences}
+          onLoadSample={loadSample}
+          onUploadPlan={() => {
+            void saveAccountPreferences({ ...accountPreferences, onboarding_completed: true })
+              .then(() => setImporting(true))
+              .catch(handleError);
+          }}
+          onOpenSettings={() => setTab("Settings")}
+        />
+      )}
+      {deleteOpen && (
+        <div className="modal-backdrop" role="presentation">
+          <section className="delete-account-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+            <button className="modal-close" aria-label="Close" onClick={() => setDeleteOpen(false)}><X size={18} /></button>
+            <p className="eyebrow">Permanent action</p>
+            <h2 id="delete-account-title">Delete SpatialGuard account?</h2>
+            <p>This removes the workspace and tries to disconnect the Ring integration first. It cannot be undone.</p>
+            <label>Current password<input type="password" autoComplete="current-password" value={deletePassword}
+              onChange={(event) => setDeletePassword(event.target.value)} /></label>
+            <label>Type DELETE to confirm<input value={deleteConfirmation}
+              onChange={(event) => setDeleteConfirmation(event.target.value)} /></label>
+            {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
+            <div className="button-row">
+              <button onClick={() => setDeleteOpen(false)}>Cancel</button>
+              <button className="danger" disabled={busy || deletePassword.length < 8 || deleteConfirmation !== "DELETE"}
+                onClick={() => void deleteAccount()}>{busy ? "Deleting…" : "Delete account permanently"}</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

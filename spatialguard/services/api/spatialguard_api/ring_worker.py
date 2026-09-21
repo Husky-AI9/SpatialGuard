@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from .models import Association, Incident
 from twinforge.models import Observation
-from .store import event, now
+from .store import account_preferences, event, now
 from .classifier import classify_image
 
 LIVE_INCIDENT_WINDOW_SECONDS = 5 * 60
@@ -87,10 +87,12 @@ def process_one(service, engine, classifier=classify_image):
         snapshot = json.loads(row['snapshot']) if row['snapshot'] else None
         def current(db):
             if not snapshot or row['kind'] not in ('motion_detected','button_press'): return False
-            a = db.execute("SELECT 1 FROM ring_accounts WHERE account=? AND state='connected' AND generation=?", (row['account'], snapshot['generation'])).fetchone()
+            a = db.execute("SELECT owner FROM ring_accounts WHERE account=? AND state='connected' AND generation=?", (row['account'], snapshot['generation'])).fetchone()
             s = db.execute('SELECT data FROM sites WHERE id=?', (snapshot['site'],)).fetchone()
             d = db.execute('SELECT 1 FROM ring_devices WHERE account=? AND device=? AND site=? AND camera=?', (row['account'], row['device'], snapshot['site'], snapshot['camera'])).fetchone()
             if not a or not s or not d: return False
+            if not account_preferences(db, a['owner'])['ring_data_consent']:
+                return False
             site = json.loads(s[0])
             return site['monitoring']['enabled'] and site.get('monitoring_version',0) == snapshot['monitoring_version'] and snapshot['camera'] in site['monitoring']['camera_ids']
         with store.connect() as db:
@@ -108,7 +110,10 @@ def process_one(service, engine, classifier=classify_image):
                 (row['account'],),
             ).fetchone()
         site = json.loads(site_row[0])
-        if site['monitoring'].get('classification_enabled', False):
+        with store.connect() as db:
+            privacy = account_preferences(db, account_row['owner'])
+        if (site['monitoring'].get('classification_enabled', False)
+                and privacy['ring_data_consent'] and privacy['classification_consent']):
             classification_status = 'unavailable'
             try:
                 image, media_type, _ = service.snapshot(

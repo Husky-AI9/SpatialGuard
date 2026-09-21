@@ -4,7 +4,7 @@ import os
 import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -27,6 +27,107 @@ def dump(value):
     return json.dumps(value, separators=(",", ":"))
 
 
+DEFAULT_ACCOUNT_PREFERENCES = {
+    "onboarding_completed": False,
+    "ring_data_consent": False,
+    "classification_consent": False,
+    "incident_retention_days": 90,
+    "audit_retention_days": 365,
+    "consent_updated_at": None,
+}
+
+
+def account_preferences(db, owner, create=True):
+    """Return privacy preferences for an account.
+
+    Legacy local workspaces never see account onboarding, but their data
+    permissions still start disabled and must be enabled explicitly in
+    Settings before Ring linking or snapshot classification.
+    """
+    account = db.execute("SELECT 1 FROM accounts WHERE id=?", (owner,)).fetchone()
+    row = db.execute("SELECT * FROM account_preferences WHERE owner=?", (owner,)).fetchone()
+    if not row and account and create:
+        db.execute("INSERT INTO account_preferences(owner) VALUES (?)", (owner,))
+        row = db.execute("SELECT * FROM account_preferences WHERE owner=?", (owner,)).fetchone()
+    if not row:
+        result = dict(DEFAULT_ACCOUNT_PREFERENCES)
+        result["onboarding_completed"] = not bool(account)
+        # A pre-account local preview may already have an owner-authorized Ring
+        # integration from earlier builds. Preserve that existing permission as
+        # a migration; new email accounts always start with both choices off.
+        if not account and db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ring_accounts'"
+        ).fetchone():
+            linked = db.execute(
+                "SELECT 1 FROM ring_accounts WHERE owner=? AND state='connected'", (owner,)
+            ).fetchone()
+            result["ring_data_consent"] = bool(linked)
+            if linked:
+                for site_row in db.execute("SELECT data FROM sites WHERE owner=?", (owner,)):
+                    try:
+                        if json.loads(site_row["data"]).get("monitoring", {}).get("classification_enabled"):
+                            result["classification_consent"] = True
+                            break
+                    except (TypeError, json.JSONDecodeError):
+                        continue
+        return result
+    result = dict(row)
+    result.pop("owner", None)
+    for key in ("onboarding_completed", "ring_data_consent", "classification_consent"):
+        result[key] = bool(result[key])
+    return result
+
+
+def cleanup_retention(store):
+    """Apply each owner's incident and audit retention choices.
+
+    Cleanup is intentionally independent from provider processing. An expired
+    incident removes its replay evidence and event notification together, but
+    it never changes the immutable TwinForge revision pinned by newer records.
+    """
+    removed_incidents = 0
+    removed_audit = 0
+    current = datetime.now(timezone.utc)
+    with store.connect() as db:
+        owners = db.execute("SELECT owner FROM account_preferences").fetchall()
+        for owner_row in owners:
+            owner = owner_row["owner"]
+            preferences = account_preferences(db, owner, create=False)
+            sites = [row["id"] for row in db.execute(
+                "SELECT id FROM sites WHERE owner=?", (owner,)
+            )]
+            incident_cutoff = current - timedelta(days=preferences["incident_retention_days"])
+            for site_id in sites:
+                rows = db.execute(
+                    "SELECT id,run_id,data FROM incidents WHERE site_id=?", (site_id,)
+                ).fetchall()
+                for row in rows:
+                    try:
+                        created = datetime.fromisoformat(json.loads(row["data"])["created_at"].replace("Z", "+00:00"))
+                    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                        continue
+                    if created >= incident_cutoff:
+                        continue
+                    evidence_rows = db.execute(
+                        "SELECT id,data FROM evidence WHERE site_id=?", (site_id,)
+                    ).fetchall()
+                    for evidence_row in evidence_rows:
+                        try:
+                            belongs = json.loads(evidence_row["data"]).get("incident_id") == row["id"]
+                        except (TypeError, json.JSONDecodeError):
+                            belongs = False
+                        if belongs:
+                            db.execute("DELETE FROM evidence WHERE id=?", (evidence_row["id"],))
+                    db.execute("DELETE FROM events WHERE site_id=? AND resource=?", (site_id, row["id"]))
+                    db.execute("DELETE FROM incidents WHERE id=?", (row["id"],))
+                    db.execute("DELETE FROM runs WHERE id=? AND site_id=?", (row["run_id"], site_id))
+                    removed_incidents += 1
+            audit_cutoff = (current - timedelta(days=preferences["audit_retention_days"])).isoformat()
+            result = db.execute("DELETE FROM audit WHERE owner=? AND at<?", (owner, audit_cutoff))
+            removed_audit += result.rowcount
+    return {"incidents": removed_incidents, "audit_records": removed_audit}
+
+
 class Store:
     def __init__(self, path=None):
         self.path = Path(path or os.environ.get("SPATIALGUARD_DB", DATA / "app.sqlite3"))
@@ -37,6 +138,15 @@ class Store:
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE,
                 password_hash TEXT NOT NULL, created TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS account_preferences (
+                owner TEXT PRIMARY KEY,
+                onboarding_completed INTEGER NOT NULL DEFAULT 0,
+                ring_data_consent INTEGER NOT NULL DEFAULT 0,
+                classification_consent INTEGER NOT NULL DEFAULT 0,
+                incident_retention_days INTEGER NOT NULL DEFAULT 90,
+                audit_retention_days INTEGER NOT NULL DEFAULT 365,
+                consent_updated_at TEXT
+            );
             CREATE TABLE IF NOT EXISTS sites (id TEXT PRIMARY KEY, owner TEXT NOT NULL, data TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, owner TEXT NOT NULL, digest TEXT UNIQUE NOT NULL,
                 name TEXT NOT NULL, kind TEXT NOT NULL, expires REAL NOT NULL);

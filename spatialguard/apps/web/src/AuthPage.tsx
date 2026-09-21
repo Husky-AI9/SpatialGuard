@@ -156,7 +156,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
           <p className="sg-auth-switch">
             {signingUp ? "Already have an account?" : "New to SpatialGuard?"} <a href={otherHref}>{signingUp ? "Sign in" : "Create an account"}</a>
           </p>
-          <p className="sg-auth-privacy">Passwords are stored as salted verifiers. Your Ring credentials stay on the server and are never sent to this page.</p>
+          <p className="sg-auth-privacy">Passwords are stored as salted verifiers. Your Ring credentials stay on the server and are never sent to this page. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
         </div>
       </section>
     </main>

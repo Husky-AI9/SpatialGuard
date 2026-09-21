@@ -1,5 +1,16 @@
 import { test, expect } from "@playwright/test";
 
+async function allowRingData(page: import("@playwright/test").Page) {
+  await page.route("**/v1/account/preferences", route => route.fulfill({ json: {
+    onboarding_completed: true,
+    ring_data_consent: true,
+    classification_consent: false,
+    incident_retention_days: 90,
+    audit_retention_days: 365,
+    consent_updated_at: new Date().toISOString(),
+  } }));
+}
+
 test("camera wall is available from Home and Cameras while Operations stays task-focused", async ({ page }) => {
   const operations = {
     devices: [{
@@ -35,6 +46,7 @@ test("camera wall is available from Home and Cameras while Operations stays task
 test("Ring setup shows real endpoint URLs and single-use sign-in instructions", async ({
   page,
 }) => {
+  await allowRingData(page);
   // Keep this UI test independent of whichever real Ring account is linked on
   // the developer's machine.
   await page.route("**/v1/ring", (r) =>
@@ -78,6 +90,7 @@ test("Ring setup shows real endpoint URLs and single-use sign-in instructions", 
 test("phone Ring inventory handles mapping and provider errors without fake live video", async ({
   page,
 }) => {
+  await allowRingData(page);
   await page.setViewportSize({ width: 390, height: 844 });
   const device = {
     id: "device-a",

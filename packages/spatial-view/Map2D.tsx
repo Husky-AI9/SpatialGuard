@@ -22,6 +22,15 @@ export type Marker = {
   headingDegrees?: number;
   /** An unobserved gap sits between this position and the previous one. */
   gapBefore?: boolean;
+  /** Evidence was reported by this camera; this is not a person coordinate. */
+  evidenceNode?: boolean;
+};
+export type EvidenceLink = {
+  id: string;
+  fromMarkerId: string;
+  toMarkerId: string;
+  gapSeconds?: number;
+  label?: string;
 };
 const actorColor = (marker: Marker) => activityColor(marker.actorKind ?? "person");
 
@@ -70,6 +79,7 @@ export default function Map2D({
   selected,
   onSelect,
   markers = [],
+  evidenceLinks = [],
   editable = false,
   placing = false,
   background = "",
@@ -81,6 +91,7 @@ export default function Map2D({
   selected: string;
   onSelect: (id: string) => void;
   markers?: Marker[];
+  evidenceLinks?: EvidenceLink[];
   editable?: boolean;
   placing?: boolean;
   /** Object URL of the traced floor-plan drawing, shown beneath the geometry. */
@@ -164,7 +175,9 @@ export default function Map2D({
       className={`spatial-map${moveable ? " editable" : ""}${placing ? " placing" : ""}`}
       viewBox={`${x} ${-y - h} ${w} ${h}`}
       role="group"
-      aria-label="Home floor map. Synthetic replay positions."
+      aria-label={evidenceLinks.length
+        ? "Home floor map with camera observations, possible continuations, and unknown gaps"
+        : "Home floor map. Synthetic replay positions."}
       onClick={
         placing && onPlace
           ? (e) => onPlace(eventPoint(e).map(snap) as XY)
@@ -382,7 +395,37 @@ export default function Map2D({
           </g>
         );
       })}
-      {markers.slice(1).map((to, i) => {
+      {evidenceLinks.map((link) => {
+        const from = markers.find((marker) => marker.id === link.fromMarkerId);
+        const to = markers.find((marker) => marker.id === link.toMarkerId);
+        if (!from || !to) return null;
+        const first: XY = [
+          from.xy[0] + (to.xy[0] - from.xy[0]) * .42,
+          from.xy[1] + (to.xy[1] - from.xy[1]) * .42,
+        ];
+        const second: XY = [
+          from.xy[0] + (to.xy[0] - from.xy[0]) * .58,
+          from.xy[1] + (to.xy[1] - from.xy[1]) * .58,
+        ];
+        const mid: XY = [(first[0] + second[0]) / 2, (first[1] + second[1]) / 2];
+        const gap = link.gapSeconds === undefined ? "Unknown gap" : `${Math.round(link.gapSeconds)}s gap`;
+        return (
+          <g key={link.id} className="evidence-link" pointerEvents="none">
+            <line x1={from.xy[0]} y1={-from.xy[1]} x2={first[0]} y2={-first[1]}
+              stroke="#b86c18" strokeWidth=".09" strokeDasharray=".18 .12" strokeLinecap="round" />
+            <line x1={first[0]} y1={-first[1]} x2={second[0]} y2={-second[1]}
+              stroke="#69707c" strokeWidth=".075" strokeDasharray=".04 .11" strokeLinecap="round" />
+            <line x1={second[0]} y1={-second[1]} x2={to.xy[0]} y2={-to.xy[1]}
+              stroke="#b86c18" strokeWidth=".09" strokeDasharray=".18 .12" strokeLinecap="round" />
+            <g transform={`translate(${mid[0]} ${-mid[1]})`}>
+              <circle r=".26" fill="#f7f3ed" stroke="#69707c" strokeWidth=".04" />
+              <text x="0" y=".1" textAnchor="middle" fontSize=".28" fontWeight="700" fill="#555b65">?</text>
+              <title>{link.label ?? `Possible continuation with ${gap.toLowerCase()}`}</title>
+            </g>
+          </g>
+        );
+      })}
+      {!evidenceLinks.length && markers.slice(1).map((to, i) => {
         const from = markers[i];
         if (to.approximate && to.gapBefore) return null;
         const mid = [(from.xy[0] + to.xy[0]) / 2, (from.xy[1] + to.xy[1]) / 2];
@@ -433,7 +476,16 @@ export default function Map2D({
               strokeDasharray=".12 .09"
             />
           )}
-          {p.selected && (
+          {p.evidenceNode && (
+            <>
+              <circle cx={p.xy[0]} cy={-p.xy[1]} r=".31" fill="#f5b64c" fillOpacity=".18"
+                stroke="#b86c18" strokeWidth=".055" strokeDasharray=".11 .08" />
+              <circle cx={p.xy[0]} cy={-p.xy[1]} r=".13" fill="#b86c18" stroke="#fff" strokeWidth=".045">
+                <title>{p.label ?? "Activity observed by this camera; person position unknown"}</title>
+              </circle>
+            </>
+          )}
+          {p.selected && !p.evidenceNode && (
             <circle
               cx={p.xy[0]}
               cy={-p.xy[1]}
@@ -442,7 +494,7 @@ export default function Map2D({
               opacity=".18"
             />
           )}
-          {p.actorKind ? (
+          {p.evidenceNode ? null : p.actorKind ? (
             <ActorGlyph marker={p} />
           ) : (
             <circle

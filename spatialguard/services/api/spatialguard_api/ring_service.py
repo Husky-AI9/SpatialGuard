@@ -16,7 +16,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from urllib.parse import quote, urlparse
 from fastapi import HTTPException
-from .store import Store, DATA, digest, dump, uid, now, event, audit
+from .store import Store, DATA, account_preferences, digest, dump, uid, now, event, audit
 from .ring_provider import Provider, ServerVault, WindowsVault, credentials
 
 
@@ -400,6 +400,12 @@ class RingService:
             event_id = digest(account + ':' + str(d.get('id') or rid))
             if db.execute('SELECT 1 FROM ring_inbox WHERE id=?', (event_id,)).fetchone(): return
             a = db.execute("SELECT * FROM ring_accounts WHERE account=? AND state='connected'", (account,)).fetchone()
+            consent = bool(a and account_preferences(db, a['owner'])['ring_data_consent'])
+            # Keep only a provider revocation after permission is withdrawn so
+            # local credentials can be invalidated. All camera event content is
+            # discarded before it enters the inbox.
+            if not consent and kind != 'app_integration_removed':
+                return
             mapping = db.execute('SELECT * FROM ring_devices WHERE account=? AND device=?', (account, device)).fetchone()
             snapshot = None
             if a and mapping and mapping['site']:
@@ -607,6 +613,10 @@ class RingService:
             rows = db.execute('SELECT * FROM timelapse_projects WHERE enabled=1 AND next_capture<=? LIMIT 2',
                               (time.time(),)).fetchall()
         for row in rows:
+            with self.store.connect() as db:
+                permitted = account_preferences(db, row['owner'])['ring_data_consent']
+            if not permitted:
+                continue
             try:
                 hour = datetime.now(ZoneInfo(row['timezone'])).hour
                 inside = (row['start_hour'] <= hour < row['end_hour']) if row['start_hour'] < row['end_hour'] else (
@@ -627,6 +637,9 @@ class RingService:
                 "WHERE a.notify_at<=? AND a.emailed=0 AND p.email_enabled=1 AND p.email<>'' LIMIT 8",
                 (time.time(),)).fetchall()
         for row in rows:
+            with self.store.connect() as db:
+                if not account_preferences(db, row['owner'])['ring_data_consent']:
+                    continue
             try:
                 message = EmailMessage(); message['From']=sender; message['To']=row['email']
                 message['Subject'] = 'Ring camera offline' if row['kind']=='offline' else 'Ring camera recovered'

@@ -1594,6 +1594,138 @@ select.site-name:hover {
   padding: 20px;
   z-index: 20;
 }
+
+/* Spatial evidence graph -------------------------------------------------- */
+.map-area { position: relative; }
+.evidence-map-legend {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 9px 11px;
+  border: 1px solid #d2d0cc;
+  border-radius: 7px;
+  background: rgba(250, 248, 244, .94);
+  box-shadow: 0 5px 18px rgba(39, 37, 44, .12);
+  color: #343238;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.evidence-map-legend span,
+.onboarding-evidence > span { display: flex; align-items: center; gap: 7px; }
+.evidence-observed,
+.evidence-possible,
+.evidence-unknown { display: inline-grid; place-items: center; flex: 0 0 auto; width: 15px; height: 15px; }
+.evidence-observed { border: 2px solid #b86c18; border-radius: 50%; background: #f6d39e; }
+.evidence-possible { width: 22px; height: 0; border-top: 2px dashed #b86c18; }
+.evidence-unknown { border: 1px solid #69707c; border-radius: 50%; color: #555b65; background: #f7f3ed; font-size: 10px; font-style: normal; }
+
+/* First-run guide and privacy controls ----------------------------------- */
+.onboarding-backdrop { z-index: 60; background: rgba(24, 23, 28, .72); }
+.onboarding-dialog,
+.delete-account-dialog {
+  position: relative;
+  width: min(650px, 100%);
+  border: 1px solid #56515b;
+  border-radius: 10px;
+  background: #2d2c30;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .38);
+  color: #f8f5f1;
+}
+.onboarding-dialog > header,
+.onboarding-dialog > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 22px;
+  border-bottom: 1px solid #4b474f;
+  color: #c8c3cb;
+  font-size: 12px;
+  font-weight: 700;
+}
+.onboarding-dialog > footer { border-top: 1px solid #4b474f; border-bottom: 0; }
+.onboarding-copy { min-height: 340px; padding: 34px 42px 28px; }
+.onboarding-copy h2 { max-width: 520px; margin: 8px 0 14px; font-size: clamp(25px, 4vw, 36px); line-height: 1.08; }
+.onboarding-copy > p:not(.eyebrow) { max-width: 555px; color: #cec9d1; line-height: 1.6; }
+.onboarding-copy ul { display: grid; gap: 11px; padding: 0; margin: 22px 0 0; list-style: none; }
+.onboarding-copy li { display: flex; gap: 10px; color: #ded9e1; }
+.onboarding-copy li svg { color: #a99ff7; margin-top: 2px; }
+.onboarding-icon { display: grid; place-items: center; width: 45px; height: 45px; border-radius: 8px; color: #f7f5ff; background: #5b4fe8; }
+.onboarding-map-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.onboarding-evidence { display: grid; gap: 12px; margin: 22px 0; }
+.onboarding-evidence > span { display: grid; grid-template-columns: 24px 145px 1fr; }
+.onboarding-evidence small { color: #bdb8c2; line-height: 1.4; }
+.consent-choice {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: start;
+  gap: 11px;
+  max-width: 650px;
+  padding: 14px 0;
+  border-top: 1px solid #4b474f;
+}
+.consent-choice input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+.consent-choice span,
+.consent-choice small { display: block; }
+.consent-choice small { margin-top: 4px; color: var(--muted); line-height: 1.45; }
+.privacy-controls { display: grid; gap: 10px; }
+.retention-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 14px; margin: 8px 0; }
+.retention-grid label { display: grid; gap: 7px; color: #e1dce3; font-size: 13px; font-weight: 600; }
+.retention-grid select,
+.delete-account-dialog input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 11px;
+  border: 1px solid #5b5660;
+  border-radius: 6px;
+  color: #f7f4f0;
+  background: #37353a;
+}
+.legal-links,
+.landing-legal-links { display: flex; flex-wrap: wrap; gap: 14px; }
+.legal-links a { color: #b7affb; }
+.danger-zone { border-bottom-color: #8d4545 !important; }
+.delete-account-dialog { padding: 28px; }
+.delete-account-dialog h2 { margin: 6px 0 10px; }
+.delete-account-dialog > p { color: #c9c4cc; line-height: 1.5; }
+.delete-account-dialog label { display: grid; gap: 7px; margin-top: 15px; font-size: 13px; font-weight: 700; }
+.delete-account-dialog .button-row { justify-content: flex-end; margin-top: 22px; }
+.modal-close { position: absolute; top: 14px; right: 14px; padding: 5px; min-height: 32px; }
+.form-error { color: #ffb4b4 !important; }
+
+/* Legal pages ------------------------------------------------------------- */
+.legal-page { min-height: 100vh; color: #222337; background: #f2f2f8; }
+.legal-page > header { display: flex; justify-content: space-between; align-items: center; padding: 22px clamp(20px, 5vw, 70px); border-bottom: 1px solid #d8d9e5; background: #fff; }
+.legal-page > header a,
+.legal-brand { display: inline-flex; align-items: center; gap: 8px; color: #343551; text-decoration: none; font-weight: 700; }
+.legal-brand span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 7px; color: #fff; background: #5b4fe8; }
+.legal-page article { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 70px 0 45px; }
+.legal-page h1 { margin: 8px 0 14px; font-size: clamp(38px, 7vw, 66px); line-height: .98; letter-spacing: -.04em; }
+.legal-intro { max-width: 650px; margin: 0 0 48px; color: #64667e; font-size: 18px; line-height: 1.6; }
+.legal-page article section { padding: 26px 0; border-top: 1px solid #d5d6e1; }
+.legal-page article h2 { margin: 0 0 9px; font-size: 19px; }
+.legal-page article section p { margin: 0; color: #55586f; line-height: 1.7; }
+.legal-page > nav { display: flex; justify-content: center; gap: 22px; padding: 28px 20px 42px; border-top: 1px solid #d8d9e5; }
+.legal-page > nav a { color: #4b43b4; }
+
+@media (max-width: 650px) {
+  .evidence-map-legend { right: 9px; left: 9px; bottom: 9px; justify-content: center; }
+  .onboarding-backdrop { align-items: flex-end; padding: 0; }
+  .onboarding-dialog { max-height: 94dvh; overflow-y: auto; border-radius: 14px 14px 0 0; }
+  .onboarding-copy { min-height: 0; padding: 26px 22px; }
+  .onboarding-dialog > footer { align-items: stretch; flex-direction: column-reverse; }
+  .onboarding-dialog > footer .button-row { display: grid; grid-template-columns: repeat(2, 1fr); }
+  .onboarding-evidence > span { grid-template-columns: 24px 1fr; }
+  .onboarding-evidence small { grid-column: 2; }
+  .retention-grid { grid-template-columns: 1fr; }
+  .delete-account-dialog { width: 100%; border-radius: 12px; padding: 24px 20px; }
+  .legal-page article { padding-top: 45px; }
+}
 .modal {
   background: var(--ink);
   border: 1px solid var(--line);

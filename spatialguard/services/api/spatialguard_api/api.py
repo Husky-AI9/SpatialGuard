@@ -3,11 +3,23 @@ import os
 import secrets
 import sqlite3
 import time
+from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from .store import Store, ROOT, uid, digest, dump, event, audit, now
+from .store import (
+    DATA,
+    Store,
+    ROOT,
+    account_preferences as read_account_preferences,
+    uid,
+    digest,
+    dump,
+    event,
+    audit,
+    now,
+)
 from .auth import normalize_email, password_hash, password_matches
 from . import models as m
 from . import engine as tf
@@ -162,6 +174,12 @@ def create_app(db_path=None, engine=None, ring_service=None):
         for table in ("sites", "plans", "audit", "ring_accounts", "ring_streams", "ring_alerts", "timelapse_projects"):
             if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
                 db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))
+        old_privacy = db.execute(
+            "SELECT 1 FROM account_preferences WHERE owner=?", (old_owner,)
+        ).fetchone()
+        if old_privacy:
+            db.execute("DELETE FROM account_preferences WHERE owner=?", (new_owner,))
+            db.execute("UPDATE account_preferences SET owner=? WHERE owner=?", (new_owner, old_owner))
         for table in ("ring_ops_preferences", "ring_camera_wall"):
             if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
                 db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))
@@ -202,6 +220,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 db.execute("INSERT INTO accounts VALUES (?,?,?,?)", (owner, email, verifier, now()))
             except sqlite3.IntegrityError:
                 raise HTTPException(409, "An account with this email already exists") from None
+            db.execute("INSERT OR IGNORE INTO account_preferences(owner) VALUES (?)", (owner,))
             if old_owner:
                 claim_legacy_workspace(db, old_owner, owner)
             result = issue(db, owner, kind, "Android app" if kind == "android" else "Web browser")
@@ -258,6 +277,48 @@ def create_app(db_path=None, engine=None, ring_service=None):
     def me(p=Depends(principal)):
         return session_data(p)
 
+    @app.get("/v1/account/preferences", response_model=m.AccountPreferences)
+    def account_preferences(p=Depends(principal)):
+        with store.connect() as db:
+            return read_account_preferences(db, p["owner"])
+
+    @app.patch("/v1/account/preferences", response_model=m.AccountPreferences)
+    def update_account_preferences(body: m.AccountPreferences, p=Depends(principal)):
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = read_account_preferences(db, p["owner"])
+            consent_changed = (
+                existing["ring_data_consent"] != body.ring_data_consent
+                or existing["classification_consent"] != body.classification_consent
+            )
+            # Snapshot classification necessarily uses Ring event data, so it
+            # cannot remain enabled after the broader permission is withdrawn.
+            classification_consent = bool(
+                body.classification_consent and body.ring_data_consent
+            )
+            consent_at = now() if consent_changed else existing["consent_updated_at"]
+            db.execute(
+                """INSERT OR REPLACE INTO account_preferences(
+                    owner,onboarding_completed,ring_data_consent,classification_consent,
+                    incident_retention_days,audit_retention_days,consent_updated_at
+                ) VALUES (?,?,?,?,?,?,?)""",
+                (
+                    p["owner"], int(body.onboarding_completed), int(body.ring_data_consent),
+                    int(classification_consent), body.incident_retention_days,
+                    body.audit_retention_days, consent_at,
+                ),
+            )
+            if not classification_consent:
+                for row in db.execute("SELECT id,data FROM sites WHERE owner=?", (p["owner"],)):
+                    site = json.loads(row["data"])
+                    if site.get("monitoring", {}).get("classification_enabled"):
+                        site["monitoring"]["classification_enabled"] = False
+                        site["monitoring_version"] = site.get("monitoring_version", 0) + 1
+                        db.execute("UPDATE sites SET data=? WHERE id=?", (dump(site), row["id"]))
+                        event(db, row["id"], "monitoring.changed", row["id"])
+            audit(db, p["owner"], "privacy.preferences_changed", p["owner"])
+            return read_account_preferences(db, p["owner"], create=False)
+
     @app.get("/v1/sessions", response_model=list[m.Session])
     def sessions(p=Depends(principal)):
         with store.connect() as db:
@@ -313,6 +374,96 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 raise HTTPException(404, "Session not found")
             audit(db, p["owner"], "session.revoked", session_id)
 
+    @app.delete("/v1/account", status_code=204)
+    def delete_account(body: m.AccountDeletion, response: Response, p=Depends(principal)):
+        """Permanently remove an email account and all owner-scoped records."""
+        with store.connect() as db:
+            account = db.execute("SELECT * FROM accounts WHERE id=?", (p["owner"],)).fetchone()
+            if not account:
+                raise HTTPException(409, "Local preview workspaces do not have an account to delete")
+            if not password_matches(body.password, account["password_hash"]):
+                raise HTTPException(401, "Password is incorrect")
+            site_ids = [row["id"] for row in db.execute(
+                "SELECT id FROM sites WHERE owner=?", (p["owner"],)
+            )]
+            engine_sites = set(site_ids)
+            engine_sites.update(row["engine_site"] for row in db.execute(
+                "SELECT engine_site FROM plans WHERE owner=?", (p["owner"],)
+            ))
+            ring_accounts = [row["account"] for row in db.execute(
+                "SELECT account FROM ring_accounts WHERE owner=?", (p["owner"],)
+            )]
+            projects = [row["id"] for row in db.execute(
+                "SELECT id FROM timelapse_projects WHERE owner=?", (p["owner"],)
+            )]
+            frame_paths = [row["path"] for row in db.execute(
+                "SELECT f.path FROM timelapse_frames f JOIN timelapse_projects p ON p.id=f.project WHERE p.owner=?",
+                (p["owner"],),
+            )]
+
+        # Revoke the provider grant while credentials still exist. If Ring is
+        # unavailable, keep the account so the owner can retry instead of
+        # silently leaving a connected integration behind.
+        try:
+            app.state.ring.disconnect(p["owner"])
+        except Exception:
+            raise HTTPException(
+                503,
+                "Ring could not be disconnected. Retry, or remove SpatialGuard in Ring before deleting the account.",
+            ) from None
+
+        # The provider grant is now gone. Remove the matching local provider
+        # material immediately so a later TwinForge outage cannot leave an
+        # ownerless token row or time-lapse file behind.
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            for account_id in ring_accounts:
+                for table in ("ring_devices", "ring_inbox", "ring_health"):
+                    db.execute(f"DELETE FROM {table} WHERE account=?", (account_id,))
+                db.execute("DELETE FROM ring_streams WHERE account=?", (account_id,))
+                db.execute("DELETE FROM ring_accounts WHERE account=?", (account_id,))
+            for project_id in projects:
+                db.execute("DELETE FROM timelapse_frames WHERE project=?", (project_id,))
+            db.execute("DELETE FROM timelapse_projects WHERE owner=?", (p["owner"],))
+            for table in ("ring_codes", "ring_streams", "ring_alerts", "ring_ops_preferences", "ring_camera_wall"):
+                db.execute(f"DELETE FROM {table} WHERE owner=?", (p["owner"],))
+        data_root = DATA.resolve()
+        for value in frame_paths:
+            try:
+                path = Path(value).resolve()
+                if path.is_relative_to(data_root):
+                    path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+        # Remove one TwinForge place at a time and retire its local reference
+        # immediately. A retry therefore continues safely after a partial
+        # upstream outage instead of getting stuck on a site already removed.
+        for engine_site in engine_sites:
+            engine_call(tf.delete_site, engine_site)
+            with store.connect() as db:
+                db.execute("BEGIN IMMEDIATE")
+                for table in ("incidents", "evidence", "runs", "events"):
+                    db.execute(f"DELETE FROM {table} WHERE site_id=?", (engine_site,))
+                db.execute("DELETE FROM sites WHERE id=? AND owner=?", (engine_site, p["owner"]))
+                db.execute("DELETE FROM plans WHERE engine_site=? AND owner=?", (engine_site, p["owner"]))
+                db.execute("DELETE FROM settings WHERE key=? AND value=?", ("active_site:" + p["owner"], engine_site))
+                db.execute("DELETE FROM settings WHERE key='engine_site' AND value=?", (engine_site,))
+
+        with store.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            for site_id in site_ids:
+                for table in ("incidents", "evidence", "runs", "events"):
+                    db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
+            for table in (
+                "sites", "plans", "sessions", "pairing", "audit", "account_preferences",
+            ):
+                db.execute(f"DELETE FROM {table} WHERE owner=?", (p["owner"],))
+            db.execute("DELETE FROM settings WHERE key=?", ("active_site:" + p["owner"],))
+            db.execute("DELETE FROM accounts WHERE id=?", (p["owner"],))
+
+        response.delete_cookie(COOKIE, path="/")
+
     @app.get("/v1/sites", response_model=list[m.Site])
     def sites(p=Depends(principal)):
         with store.connect() as db:
@@ -353,6 +504,11 @@ def create_app(db_path=None, engine=None, ring_service=None):
     def monitoring(site_id: str, body: m.Monitoring, p=Depends(principal)):
         with store.connect() as db:
             site = owned(db, site_id, p)
+            preferences = read_account_preferences(db, p["owner"])
+            if body.classification_enabled and not (
+                preferences["ring_data_consent"] and preferences["classification_consent"]
+            ):
+                raise HTTPException(409, "Allow Ring data and snapshot classification in Privacy settings first")
             allowed = {c["id"] for c in site["layout"]["cameras"]}
             if len(set(body.camera_ids)) != len(body.camera_ids) or not set(body.camera_ids) <= allowed:
                 raise HTTPException(422, "Select cameras in this site")
@@ -722,6 +878,9 @@ def create_app(db_path=None, engine=None, ring_service=None):
         @app.get("/signin", include_in_schema=False)
         @app.get("/signup", include_in_schema=False)
         @app.get("/workspace", include_in_schema=False)
+        @app.get("/privacy", include_in_schema=False)
+        @app.get("/terms", include_in_schema=False)
+        @app.get("/data-deletion", include_in_schema=False)
         def index():
             return FileResponse(dist / "index.html")
 

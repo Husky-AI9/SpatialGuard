@@ -188,6 +188,7 @@ export default function DesktopLanding({
       <footer className="lp-footer">
         <Brand />
         <p>{hostedWeb ? "Hosted preview" : "Local replay preview"} · Built with TwinForge</p>
+        <div className="landing-legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/data-deletion">Data deletion</a></div>
         <button onClick={openSignUp}>Create account <ArrowUpRight size={14} /></button>
       </footer>
     </div>

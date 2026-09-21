@@ -106,6 +106,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/account/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Account Preferences */
+        get: operations["account_preferences_v1_account_preferences_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Account Preferences */
+        patch: operations["update_account_preferences_v1_account_preferences_patch"];
+        trace?: never;
+    };
     "/v1/sessions": {
         parameters: {
             query?: never;
@@ -186,6 +204,26 @@ export interface paths {
         post?: never;
         /** Revoke */
         delete: operations["revoke_v1_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Account
+         * @description Permanently remove an email account and all owner-scoped records.
+         */
+        delete: operations["delete_account_v1_account_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1049,6 +1087,48 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** AccountDeletion */
+        AccountDeletion: {
+            /** Password */
+            password: string;
+            /**
+             * Confirmation
+             * @constant
+             */
+            confirmation: "DELETE";
+        };
+        /** AccountPreferences */
+        AccountPreferences: {
+            /**
+             * Onboarding Completed
+             * @default false
+             */
+            onboarding_completed: boolean;
+            /**
+             * Ring Data Consent
+             * @default false
+             */
+            ring_data_consent: boolean;
+            /**
+             * Classification Consent
+             * @default false
+             */
+            classification_consent: boolean;
+            /**
+             * Incident Retention Days
+             * @default 90
+             * @enum {integer}
+             */
+            incident_retention_days: 30 | 90 | 365;
+            /**
+             * Audit Retention Days
+             * @default 365
+             * @enum {integer}
+             */
+            audit_retention_days: 90 | 365 | 730;
+            /** Consent Updated At */
+            consent_updated_at?: string | null;
         };
         /** Association */
         Association: {
@@ -2118,6 +2198,59 @@ export interface operations {
             };
         };
     };
+    account_preferences_v1_account_preferences_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPreferences"];
+                };
+            };
+        };
+    };
+    update_account_preferences_v1_account_preferences_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountPreferences"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountPreferences"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     sessions_v1_sessions_get: {
         parameters: {
             query?: never;
@@ -2221,6 +2354,37 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_account_v1_account_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountDeletion"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             204: {

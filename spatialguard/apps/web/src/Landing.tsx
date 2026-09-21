@@ -230,8 +230,8 @@ export default function Landing() {
 
       <footer className="sg-entry-footer">
         <span>{hostedWeb ? "Hosted preview" : "Local replay preview"}</span>
+        <span className="landing-legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/data-deletion">Data deletion</a></span>
         <span>Built with TwinForge</span>
-        <span>Ring connection available in Settings</span>
       </footer>
       </div>
     </>

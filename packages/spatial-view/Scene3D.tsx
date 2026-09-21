@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Layout } from "../sdk-typescript";
 import { bounds, footprint, wallSpans, WALL_THICKNESS_M, type WallSpan } from "./geometry";
-import type { Marker } from "./Map2D";
+import type { EvidenceLink, Marker } from "./Map2D";
 import { activityColor, type ActivityKind } from "./TopDownPerson";
 export const worldToViewer = ([x, y, z]: number[]) =>
   new THREE.Vector3(x, z, -y);
@@ -331,12 +331,14 @@ export default function Scene3D({
   selected,
   onSelect,
   markers = [],
+  evidenceLinks = [],
   cameraModelFactory = cameraModel,
 }: {
   layout: Layout;
   selected: string;
   onSelect: (id: string) => void;
   markers?: Marker[];
+  evidenceLinks?: EvidenceLink[];
   cameraModelFactory?: CameraModelFactory;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -586,7 +588,7 @@ export default function Scene3D({
     });
     layer.clear();
     // Historical estimated paths remain when the current person marker expires.
-    markers.slice(1).forEach((to, i) => {
+    if (!evidenceLinks.length) markers.slice(1).forEach((to, i) => {
       const from = markers[i];
       if (!to.approximate || !from.approximate || to.gapBefore) return;
       const start = worldToViewer([...from.xy, .11]);
@@ -600,6 +602,42 @@ export default function Scene3D({
       segment.position.copy(start.clone().add(end).multiplyScalar(.5));
       segment.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
       layer.add(segment);
+    });
+    const addEvidenceSegment = (
+      start: THREE.Vector3,
+      end: THREE.Vector3,
+      color: THREE.ColorRepresentation,
+      radius: number,
+      opacity: number,
+    ) => {
+      const direction = end.clone().sub(start);
+      if (direction.length() < .001) return;
+      const segment = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius, radius, direction.length(), 7),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity }),
+      );
+      segment.position.copy(start.clone().add(end).multiplyScalar(.5));
+      segment.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+      layer.add(segment);
+    };
+    evidenceLinks.forEach((link) => {
+      const from = markers.find(marker => marker.id === link.fromMarkerId);
+      const to = markers.find(marker => marker.id === link.toMarkerId);
+      if (!from || !to) return;
+      const start = worldToViewer([...from.xy, .13]);
+      const end = worldToViewer([...to.xy, .13]);
+      const first = start.clone().lerp(end, .42);
+      const second = start.clone().lerp(end, .58);
+      addEvidenceSegment(start, first, "#b86c18", .035, .78);
+      addEvidenceSegment(first, second, "#69707c", .026, .68);
+      addEvidenceSegment(second, end, "#b86c18", .035, .78);
+      const unknown = new THREE.Mesh(
+        new THREE.TorusGeometry(.16, .035, 10, 24),
+        new THREE.MeshBasicMaterial({ color: "#69707c", transparent: true, opacity: .82 }),
+      );
+      unknown.rotation.x = Math.PI / 2;
+      unknown.position.copy(first.clone().add(second).multiplyScalar(.5));
+      layer.add(unknown);
     });
     markers.forEach((marker) => {
       if (marker.approximate && !marker.selected) return;
@@ -622,7 +660,21 @@ export default function Scene3D({
         ring.position.copy(worldToViewer([...marker.xy, 0.08]));
         layer.add(ring);
       }
-      if (marker.selected && marker.actorKind) {
+      if (marker.evidenceNode) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(.16, .25, 28),
+          new THREE.MeshBasicMaterial({ color: "#b86c18", transparent: true, opacity: .72, side: THREE.DoubleSide }),
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.copy(worldToViewer([...marker.xy, .12]));
+        layer.add(ring);
+        const point = new THREE.Mesh(
+          new THREE.SphereGeometry(.085, 14, 10),
+          new THREE.MeshStandardMaterial({ color: "#d7902d" }),
+        );
+        point.position.copy(worldToViewer([...marker.xy, .2]));
+        layer.add(point);
+      } else if (marker.selected && marker.actorKind) {
         const actor = activityModel(marker);
         actor.position.copy(worldToViewer([...marker.xy, 0]));
         actor.traverse(object => {
@@ -645,7 +697,7 @@ export default function Scene3D({
         layer.add(point);
       }
     });
-  }, [layout, markers, selected, onSelect, cameraModelFactory]);
+  }, [layout, markers, evidenceLinks, selected, onSelect, cameraModelFactory]);
   return (
     <div
       className="spatial-scene"
@@ -654,11 +706,14 @@ export default function Scene3D({
       data-camera-model="wall-mounted"
       data-door-count={layout.portals.length}
       data-actor-model={activityModelName(markers.find(marker => marker.selected)?.actorKind)}
+      data-evidence-links={evidenceLinks.length}
       aria-description={markers.some(marker => marker.approximate) && !markers.some(marker => marker.approximate && marker.selected)
         ? "Estimated path retained. Person not currently visible."
         : undefined}
       aria-label={
-        markers.some((marker) => marker.approximate)
+        evidenceLinks.length
+          ? "Illustrative 3D home map with camera observations and unknown gaps"
+          : markers.some((marker) => marker.approximate)
           ? "Illustrative 3D home map with approximate movement trail"
           : "Illustrative 3D home map"
       }
@@ -667,7 +722,9 @@ export default function Scene3D({
         className="spatial-scene-canvas"
         ref={canvasHost}
         role="img"
-        aria-label={markers.some(marker => marker.approximate)
+        aria-label={evidenceLinks.length
+          ? "Illustrative 3D home map with camera observations and unknown gaps"
+          : markers.some(marker => marker.approximate)
           ? "Illustrative 3D home map with approximate movement trail"
           : "Illustrative 3D home map"}
       />
