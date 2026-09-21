@@ -617,11 +617,17 @@ body.landing-body {
 .sg-access-dialog > svg { color: #5b4fe8; }
 .sg-access-dialog h2 { margin: 15px 38px 8px 0; font-size: 24px; }
 .sg-access-dialog p { margin: 0; color: #50566f; line-height: 1.6; }
+.sg-access-form { display: grid; gap: 11px; }
+.sg-access-form label { color: #343954; font-size: 13px; font-weight: 700; }
+.sg-access-form input { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid #bfc3d7; border-radius: 8px; color: #191a2f; background: #fff; font: inherit; }
+.sg-access-form input:focus { outline: 3px solid #d9d5ff; border-color: #5b4fe8; }
+.sg-access-error { color: #a83636 !important; font-size: 13px; }
 .sg-access-close { position: absolute; top: 14px; right: 14px; width: 38px; min-height: 38px !important; padding: 0; border: 0; background: transparent; }
 .sg-access-actions { margin-top: 22px; display: flex; justify-content: flex-end; gap: 8px; }
 .sg-access-actions button,
 .sg-access-actions a { padding: 8px 13px; border: 1px solid #bfc3d7; background: #fff; }
 .sg-access-actions a { border-color: #5b4fe8; color: #fff; background: #5b4fe8; }
+.sg-access-actions .sg-access-submit { border-color: #5b4fe8; color: #fff; background: #5b4fe8; }
 
 @media(max-width:900px) {
   .sg-entry { grid-template-rows: 68px minmax(0, 1fr) 38px; }

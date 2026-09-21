@@ -28,8 +28,11 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 COPY services/api/twinforge services/api/twinforge
 COPY packages/sdk-python packages/sdk-python
 COPY spatialguard/services/api spatialguard/services/api
+COPY spatialguard/scripts/container-start.sh spatialguard/scripts/container-start.sh
 COPY --from=web-build /app/spatialguard/apps/web/dist spatialguard/apps/web/dist
+
+RUN chmod +x spatialguard/scripts/container-start.sh
 
 EXPOSE 8010
 
-CMD ["sh", "-c", "python -m uvicorn spatialguard_api.api:create_app --factory --host 0.0.0.0 --port ${PORT:-8010}"]
+CMD ["/app/spatialguard/scripts/container-start.sh"]

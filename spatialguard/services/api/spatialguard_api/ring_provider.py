@@ -1,6 +1,7 @@
 """Official Ring transport. Never expose tokens, remote response bodies or URLs to clients."""
 import csv
 import json
+import os
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -35,6 +36,16 @@ def _record_invalid_media_location(location, url, expected):
 
 
 def credentials():
+    configured = {
+        'client id': os.environ.get('RING_CLIENT_ID', '').strip(),
+        'client secret': os.environ.get('RING_CLIENT_SECRET', '').strip(),
+        'hmac signature key': (
+            os.environ.get('RING_HMAC_SIGNATURE_KEY', '').strip()
+            or os.environ.get('RING_WEBHOOK_SECRET', '').strip()
+        ),
+    }
+    if all(configured.values()):
+        return configured
     path = ROOT / '.data/ring-app-credentials.csv'
     if not path.exists():
         raise HTTPException(503, 'Ring app credentials are not configured')
@@ -203,3 +214,29 @@ class WindowsVault:
 
     def open(self, value):
         return json.loads(self._crypt(value, True))
+
+
+class ServerVault:
+    """Encrypt OAuth tokens with a Railway secret when DPAPI is unavailable."""
+
+    def _fernet(self):
+        key = os.environ.get('SPATIALGUARD_TOKEN_KEY', '').strip().encode()
+        if not key:
+            raise HTTPException(503, 'Ring encrypted token storage is not configured')
+        try:
+            from cryptography.fernet import Fernet
+            return Fernet(key)
+        except (ImportError, ValueError):
+            raise HTTPException(503, 'Ring encrypted token storage is not configured') from None
+
+    def ready(self):
+        self._fernet()
+
+    def seal(self, value):
+        return self._fernet().encrypt(json.dumps(value).encode())
+
+    def open(self, value):
+        try:
+            return json.loads(self._fernet().decrypt(value))
+        except Exception:
+            raise HTTPException(401, 'Ring access expired or was revoked. Link the account again.') from None

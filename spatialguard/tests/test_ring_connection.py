@@ -40,7 +40,8 @@ class FakeProvider:
 
 
 @pytest.fixture
-def service(tmp_path):
+def service(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_TOKEN_KEY', 'w10pB0xMzbZywwobXsZpnjMDlaWkMii75wPXHMAZnBE=')
     return RingService(Store(tmp_path/'db.sqlite'),FakeProvider())
 
 

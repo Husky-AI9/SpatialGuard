@@ -51,6 +51,7 @@ import {
   floorPlanImage,
   initializePlatform,
   lifecycle,
+  localWeb,
   native,
   openExternal,
   request,
@@ -133,6 +134,7 @@ export default function App() {
     [step, setStep] = useState(0),
     [testTrail, setTestTrail] = useState<Marker[]>([]);
   const [code, setCode] = useState(""),
+    [hostedAccessCode, setHostedAccessCode] = useState(""),
     [pairCode, setPairCode] = useState(""),
     [pairExpiry, setPairExpiry] = useState(0),
     [sessions, setSessions] = useState<Session[]>([]),
@@ -147,6 +149,7 @@ export default function App() {
     testActorRef = useRef<ActorPresentation>(DEFAULT_ACTOR),
     refreshRef = useRef<() => Promise<void>>(async () => {});
   current.current = { tab, selected };
+  const hostedWeb = !native && !localWeb;
   activeRef.current = activeSite;
   runRef.current = run;
   const handleError = useCallback((e: unknown) => {
@@ -216,7 +219,10 @@ export default function App() {
       try {
         const hasSession = await initializePlatform();
         if (live) setPaired(hasSession);
-        if (!native) await request("/v1/local-session", "POST");
+        if (!native) {
+          if (localWeb) await request("/v1/local-session", "POST");
+          else await request<Session>("/v1/me");
+        }
         else {
           const session = await request<Session>("/v1/me");
           if (session.expires_at < Date.now() / 1000 + 7 * 86400) {
@@ -599,10 +605,12 @@ export default function App() {
         <p>
           {native && !paired
             ? "Pair with your local workspace"
-            : "Local workspace unavailable"}
+            : hostedWeb
+              ? "Sign in to the hosted workspace"
+              : "Local workspace unavailable"}
         </p>
         <p>
-          Start SpatialGuard on your PC.
+          {hostedWeb ? "Enter the access code configured for this hosted preview." : "Start SpatialGuard on your PC."}
           {native && !paired
             ? " Connect this Android device by USB, then get a pairing code from Settings in the web app."
             : ""}
@@ -641,11 +649,40 @@ export default function App() {
               Pair device
             </button>
           </form>
+        ) : hostedWeb ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void act(async () => {
+                await request<Session>("/v1/hosted-session", "POST", {
+                  access_code: hostedAccessCode,
+                });
+                setHostedAccessCode("");
+                setPaired(true);
+                await refresh();
+              });
+            }}
+          >
+            <label htmlFor="hosted-access-code">Access code</label>
+            <input
+              id="hosted-access-code"
+              type="password"
+              autoComplete="current-password"
+              value={hostedAccessCode}
+              onChange={(e) => setHostedAccessCode(e.target.value)}
+              minLength={12}
+              maxLength={128}
+              required
+            />
+            <button className="primary" disabled={busy || hostedAccessCode.length < 12}>
+              Sign in
+            </button>
+          </form>
         ) : (
           <button
             onClick={() =>
               void act(async () => {
-                if (!native) await request("/v1/local-session", "POST");
+                if (!native && localWeb) await request("/v1/local-session", "POST");
                 setPaired(true);
                 await refresh();
               })

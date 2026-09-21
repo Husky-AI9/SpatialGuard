@@ -237,6 +237,22 @@ def test_pairing_expiry_rate_limit_and_auth_boundaries(setup):
     assert c.get('/v1/sites',headers={'Host':'evil.example'}).status_code==400
 
 
+def test_hosted_preview_requires_an_access_code_and_uses_a_same_origin_cookie(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    monkeypatch.setenv('SPATIALGUARD_HOSTED_ACCESS_CODE', 'hosted-preview-code')
+    app = create_app(tmp_path/'hosted.sqlite', Engine())
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    assert client.post('/v1/hosted-session', json={'access_code': 'not-the-code'}).status_code == 401
+    session = client.post('/v1/hosted-session', json={'access_code': 'hosted-preview-code'})
+    assert session.status_code == 200
+    assert 'Secure' in session.headers['set-cookie']
+    assert client.get('/v1/me').json()['name'] == 'Hosted owner browser'
+    assert client.post('/v1/pairing').status_code == 200
+    assert client.post('/v1/sites', json={'name': 'Not a valid full API fixture'}).status_code == 405
+
+
 def test_cross_owner_and_evidence_isolation(setup):
     app,c,store,engine=setup;result=run(setup)
     with store.connect() as db: db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',('other','other_owner',digest('other-token'),'Other','android',time.time()+1000))

@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from urllib.parse import quote, urlparse
 from fastapi import HTTPException
 from .store import Store, DATA, digest, dump, uid, now, event, audit
-from .ring_provider import Provider, WindowsVault, credentials
+from .ring_provider import Provider, ServerVault, WindowsVault, credentials
 
 
 def hardware_model(attributes):
@@ -47,27 +47,35 @@ def hardware_model(attributes):
 @contextmanager
 def account_lock(store, account):
     # Cross-process lock keeps rotating refresh tokens serial across API/gateway/worker.
-    import msvcrt
     path = store.path.parent / ('ring-lock-' + digest(account))
     with path.open('a+b') as f:
         if f.tell() == 0:
             f.write(b'0'); f.flush()
         f.seek(0)
         try:
-            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
             raise HTTPException(409, 'Ring request in progress. Retry shortly.') from None
         try:
             yield
         finally:
-            f.seek(0); msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+            f.seek(0)
+            if os.name == 'nt':
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 class RingService:
     def __init__(self, store=None, provider=None, vault=None):
         self.store = store or Store()
         self._provider = provider
-        self.vault = vault or WindowsVault()
+        self.vault = vault or (WindowsVault() if os.name == 'nt' else ServerVault())
         self._snapshots = {}
         with self.store.connect() as db:
             db.executescript('''
@@ -142,6 +150,9 @@ class RingService:
     def status(self, owner):
         try:
             self.provider
+            ready = getattr(self.vault, 'ready', None)
+            if ready:
+                ready()
             configured = True
         except HTTPException:
             configured = False

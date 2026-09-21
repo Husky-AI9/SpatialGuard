@@ -12,7 +12,11 @@ from . import engine as tf
 from .engine import LayoutRejected, client, normalize_cameras, publish_layout
 
 COOKIE = "spatialguard_session"
-ORIGIN = os.environ.get("SPATIALGUARD_ORIGIN", "http://127.0.0.1:8010")
+
+
+def configured_origin():
+    """The one browser origin permitted to hold the hosted owner cookie."""
+    return os.environ.get("SPATIALGUARD_ORIGIN", "http://127.0.0.1:8010").rstrip("/")
 
 
 def create_app(db_path=None, engine=None, ring_service=None):
@@ -45,16 +49,33 @@ def create_app(db_path=None, engine=None, ring_service=None):
         if request.client.host not in {"127.0.0.1", "::1", "testclient"} or request.headers.get("x-spatialguard-local") != "1":
             raise HTTPException(403, "Local owner browser required")
         origin = request.headers.get("origin")
-        if origin and origin != ORIGIN:
+        if origin and origin != configured_origin():
             raise HTTPException(403, "Use the local owner browser")
         if request.headers.get("sec-fetch-site", "same-origin") not in {"same-origin", "none"}:
             raise HTTPException(403, "Same-origin browser required")
+
+    def hosted_browser(request):
+        """Require the configured HTTPS site for cookie-authenticated writes."""
+        origin = configured_origin()
+        if not origin.startswith("https://"):
+            raise HTTPException(403, "Hosted browser sessions are not configured")
+        if request.headers.get("origin") != origin:
+            raise HTTPException(403, "Use the configured SpatialGuard site")
+        if request.headers.get("sec-fetch-site", "same-origin") not in {"same-origin", "none"}:
+            raise HTTPException(403, "Same-origin browser required")
+
+    def cookie_browser(request):
+        if (configured_origin().startswith("http://") and
+                request.client.host in {"127.0.0.1", "::1", "testclient"}):
+            local_browser(request)
+        else:
+            hosted_browser(request)
 
     def principal(request: Request):
         bearer = request.headers.get("authorization", "")
         token = bearer[7:] if bearer.startswith("Bearer ") else request.cookies.get(COOKIE, "")
         if not bearer and request.method not in {"GET", "HEAD"}:
-            local_browser(request)
+            cookie_browser(request)
         with store.connect() as db:
             row = db.execute("SELECT * FROM sessions WHERE digest=? AND expires>?", (digest(token), time.time())).fetchone()
         if not row:
@@ -96,6 +117,40 @@ def create_app(db_path=None, engine=None, ring_service=None):
         response.set_cookie(COOKIE, result.token, httponly=True, samesite="strict", max_age=28800)
         return result.session
 
+    @app.post("/v1/hosted-session", response_model=m.Session)
+    def hosted_session(body: m.HostedSessionInput, request: Request, response: Response):
+        """Open one explicit, same-origin owner session for a hosted preview.
+
+        The code is compared in constant time and exists only in the deployment
+        environment, never in JavaScript, the APK, or source code.
+        """
+        hosted_browser(request)
+        configured_code = os.environ.get("SPATIALGUARD_HOSTED_ACCESS_CODE", "")
+        if not configured_code:
+            raise HTTPException(503, "Hosted access is not configured")
+        if not secrets.compare_digest(body.access_code, configured_code):
+            time.sleep(0.15)
+            raise HTTPException(401, "The hosted access code is invalid")
+        with store.connect() as db:
+            current = db.execute(
+                "SELECT * FROM sessions WHERE digest=? AND expires>? AND kind='browser'",
+                (digest(request.cookies.get(COOKIE, "")), time.time()),
+            ).fetchone()
+            if current and current["owner"] == "hosted_owner":
+                return session_data(current)
+            db.execute("DELETE FROM sessions WHERE expires<=?", (time.time(),))
+            db.execute(
+                """DELETE FROM sessions WHERE kind='browser' AND owner='hosted_owner'
+                AND id NOT IN (SELECT id FROM sessions WHERE kind='browser' AND owner='hosted_owner'
+                ORDER BY expires DESC LIMIT 4)"""
+            )
+            result = issue(db, "hosted_owner", "browser", "Hosted owner browser")
+        response.set_cookie(
+            COOKIE, result.token, httponly=True, samesite="lax", secure=True,
+            max_age=28800, path="/",
+        )
+        return result.session
+
     @app.get("/v1/me", response_model=m.Session)
     def me(p=Depends(principal)):
         return session_data(p)
@@ -108,7 +163,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
     @app.post("/v1/pairing", response_model=m.PairCode)
     def pairing(p=Depends(principal)):
         if p["kind"] != "browser":
-            raise HTTPException(403, "Create a code in the local owner browser")
+            raise HTTPException(403, "Create a code in the owner browser")
         code = secrets.token_hex(6).upper()
         expires = time.time()+180
         with store.connect() as db:

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent, type MouseEvent } from "react";
 import {
   ArrowRight,
   Camera,
@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import "./landing.css";
-import { native } from "./platform";
+import { native, localWeb, request } from "./platform";
 
 type AccessDialog = "signin" | "signup" | null;
 
@@ -38,7 +38,30 @@ function Brand() {
 
 export default function Landing() {
   const [accessDialog, setAccessDialog] = useState<AccessDialog>(null);
+  const [accessCode, setAccessCode] = useState("");
+  const [accessError, setAccessError] = useState("");
+  const [accessBusy, setAccessBusy] = useState(false);
   const workspaceHref = native ? "/?workspace=1" : "/workspace";
+  const hostedWeb = !native && !localWeb;
+  const openWorkspace = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!hostedWeb) return;
+    event.preventDefault();
+    setAccessError("");
+    setAccessDialog("signin");
+  };
+  const signIn = async (event: FormEvent) => {
+    event.preventDefault();
+    setAccessBusy(true);
+    setAccessError("");
+    try {
+      await request("/v1/hosted-session", "POST", { access_code: accessCode });
+      window.location.assign(workspaceHref);
+    } catch (error) {
+      setAccessError(error instanceof Error ? error.message : "Could not sign in");
+    } finally {
+      setAccessBusy(false);
+    }
+  };
 
   useEffect(() => {
     document.title = "SpatialGuard — See what happened and where";
@@ -133,7 +156,7 @@ export default function Landing() {
           <h1 id="sg-mobile-title">See what happened.<br /><span>Know where.</span></h1>
           <p className="sg-mobile-intro">Your cameras, movement, and evidence in one clear home view.</p>
           <div className="sg-mobile-actions">
-            <a className="sg-mobile-try" href={workspaceHref}><Play size={17} fill="currentColor" />Try it out</a>
+            <a className="sg-mobile-try" href={workspaceHref} onClick={openWorkspace}><Play size={17} fill="currentColor" />Try it out</a>
             <div>
               <button onClick={() => setAccessDialog("signin")}><LogIn size={16} />Sign in</button>
               <button onClick={() => setAccessDialog("signup")}><UserPlus size={16} />Sign up</button>
@@ -157,7 +180,7 @@ export default function Landing() {
           <h1 id="sg-entry-title">See what happened.<br /><span>Know where.</span></h1>
           <p>SpatialGuard places cameras, movement, and evidence on one home map so you can understand an event without switching between disconnected clips.</p>
           <div className="sg-entry-actions">
-            <a className="sg-entry-primary" href={workspaceHref}><Play size={17} fill="currentColor" />Try it out</a>
+            <a className="sg-entry-primary" href={workspaceHref} onClick={openWorkspace}><Play size={17} fill="currentColor" />Try it out</a>
             <button onClick={() => setAccessDialog("signup")}>Create account <ArrowRight size={17} /></button>
           </div>
           <div className="sg-entry-benefits" aria-label="SpatialGuard benefits">
@@ -236,11 +259,38 @@ export default function Landing() {
             <button className="sg-access-close" aria-label="Close" onClick={() => setAccessDialog(null)}><X size={18} /></button>
             {accessDialog === "signin" ? <LogIn size={24} /> : <UserPlus size={24} />}
             <h2 id="sg-access-title">{accessDialog === "signin" ? "Sign in to SpatialGuard" : "Create your SpatialGuard account"}</h2>
-            <p>Hosted accounts are not enabled in this local preview yet. Continue to the owner workspace to explore the complete demo without creating credentials.</p>
-            <div className="sg-access-actions">
-              <button onClick={() => setAccessDialog(null)}>Not now</button>
-              <a href={workspaceHref}>Continue to workspace <ArrowRight size={16} /></a>
-            </div>
+            {hostedWeb ? (
+              <form className="sg-access-form" onSubmit={signIn}>
+                <p>This hosted preview is protected by an owner access code. It creates a secure browser session for this workspace.</p>
+                <label htmlFor="landing-access-code">Access code</label>
+                <input
+                  id="landing-access-code"
+                  type="password"
+                  autoComplete="current-password"
+                  autoFocus
+                  minLength={12}
+                  maxLength={128}
+                  required
+                  value={accessCode}
+                  onChange={(event) => setAccessCode(event.target.value)}
+                />
+                {accessError && <p className="sg-access-error" role="alert">{accessError}</p>}
+                <div className="sg-access-actions">
+                  <button type="button" onClick={() => setAccessDialog(null)}>Not now</button>
+                  <button className="sg-access-submit" disabled={accessBusy || accessCode.length < 12}>
+                    {accessBusy ? "Signing in…" : "Open workspace"} <ArrowRight size={16} />
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <>
+                <p>Hosted accounts are not enabled in this local preview yet. Continue to the owner workspace to explore the complete demo without creating credentials.</p>
+                <div className="sg-access-actions">
+                  <button onClick={() => setAccessDialog(null)}>Not now</button>
+                  <a href={workspaceHref}>Continue to workspace <ArrowRight size={16} /></a>
+                </div>
+              </>
+            )}
           </section>
         </div>
       )}

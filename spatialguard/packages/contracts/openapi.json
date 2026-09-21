@@ -39,6 +39,45 @@
         }
       }
     },
+    "/v1/hosted-session": {
+      "post": {
+        "summary": "Hosted Session",
+        "description": "Open one explicit, same-origin owner session for a hosted preview.\n\nThe code is compared in constant time and exists only in the deployment\nenvironment, never in JavaScript, the APK, or source code.",
+        "operationId": "hosted_session_v1_hosted_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HostedSessionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me": {
       "get": {
         "summary": "Me",
@@ -2673,6 +2712,23 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HostedSessionInput": {
+        "properties": {
+          "access_code": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Access Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "access_code"
+        ],
+        "title": "HostedSessionInput",
+        "description": "A short-lived preview gate for the single hosted owner workspace."
       },
       "Incident": {
         "properties": {

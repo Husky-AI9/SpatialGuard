@@ -8,6 +8,7 @@ interface SecureSessionPlugin {
 }
 const secure = registerPlugin<SecureSessionPlugin>("SecureSession");
 export const native = Capacitor.isNativePlatform();
+export const localWeb = !native && ["127.0.0.1", "localhost"].includes(window.location.hostname);
 let credential = "",
   apiUrl = "";
 export async function initializePlatform() {
@@ -48,7 +49,7 @@ export async function request<T>(
     "Content-Type": "application/json",
     ...(native
       ? { Authorization: `Bearer ${credential}` }
-      : { "X-SpatialGuard-Local": "1" }),
+      : localWeb ? { "X-SpatialGuard-Local": "1" } : {}),
   };
   let status: number, data: unknown;
   if (native) {
@@ -129,7 +130,7 @@ export async function ringSnapshot(siteId: string, cameraId: string) {
   }
   const r = await fetch(path, {
     credentials: "same-origin",
-    headers: { "X-SpatialGuard-Local": "1" },
+    headers: localWeb ? { "X-SpatialGuard-Local": "1" } : {},
     signal: AbortSignal.timeout(20000),
   });
   if (!r.ok) throw new ApiError(r.status, "Snapshot unavailable");

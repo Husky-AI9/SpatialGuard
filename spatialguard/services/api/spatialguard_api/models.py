@@ -221,6 +221,12 @@ class PairInput(Model):
     name: str = Field(default="Android device", min_length=1, max_length=60)
 
 
+class HostedSessionInput(Model):
+    """A short-lived preview gate for the single hosted owner workspace."""
+
+    access_code: str = Field(min_length=12, max_length=128)
+
+
 class PairCode(Model):
     code: str
     expires_at: float
