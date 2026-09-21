@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import "./landing.css";
+import DesktopLanding from "./DesktopLanding";
 import { native, localWeb, request } from "./platform";
 
 type AccessDialog = "signin" | "signup" | null;
@@ -79,7 +80,15 @@ export default function Landing() {
   }, [accessDialog]);
 
   return (
-    <div className="sg-entry">
+    <>
+      <DesktopLanding
+        hostedWeb={hostedWeb}
+        openSignIn={() => setAccessDialog("signin")}
+        openSignUp={() => setAccessDialog("signup")}
+        openWorkspace={openWorkspace}
+        workspaceHref={workspaceHref}
+      />
+      <div className="sg-entry sg-mobile-entry">
       <section className="sg-mobile-welcome" aria-labelledby="sg-mobile-title">
         <div className="sg-mobile-glow sg-mobile-glow-one" />
         <div className="sg-mobile-glow sg-mobile-glow-two" />
@@ -251,7 +260,7 @@ export default function Landing() {
         <span>Built with TwinForge</span>
         <span>Ring connection available in Settings</span>
       </footer>
-
+      </div>
       {accessDialog && (
         <div className="sg-access-backdrop" role="presentation" onMouseDown={(event) => {
           if (event.target === event.currentTarget) setAccessDialog(null);
@@ -295,6 +304,6 @@ export default function Landing() {
           </section>
         </div>
       )}
-    </div>
+    </>
   );
 }

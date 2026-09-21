@@ -350,14 +350,16 @@ body.landing-body { padding: 0; background: var(--surface); }
 
 /* Single-screen product entry ------------------------------------------------ */
 body.landing-body {
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #dfe2ed;
 }
 
 .sg-entry,
 .sg-entry * { box-sizing: border-box; }
 
+.sg-mobile-entry { display: none; }
 .sg-mobile-welcome { display: none; }
 
 .sg-brand-symbol { display: block; overflow: visible; }
@@ -629,6 +631,22 @@ body.landing-body {
 .sg-access-actions a { border-color: #5b4fe8; color: #fff; background: #5b4fe8; }
 .sg-access-actions .sg-access-submit { border-color: #5b4fe8; color: #fff; background: #5b4fe8; }
 
+.sg-access-dialog button,
+.sg-access-dialog a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lp .lp-local-note { padding: 0; border: 0; text-align: left; }
+
 @media(max-width:900px) {
   .sg-entry { grid-template-rows: 68px minmax(0, 1fr) 38px; }
   .sg-entry-nav { padding: 0 18px; }
@@ -659,6 +677,10 @@ body.landing-body {
 }
 
 @media(max-width:520px) {
+  body.landing-body { height: 100dvh; overflow: hidden; }
+  .lp-desktop { display: none; }
+  .sg-mobile-entry { display: block; }
+
   .sg-entry {
     position: relative;
     display: block;
@@ -865,4 +887,10 @@ body.landing-body {
   .sg-access-dialog { padding: 22px; }
   .sg-access-actions { flex-direction: column-reverse; }
   .sg-access-actions > * { width: 100%; }
+}
+
+/* Keep the native/mobile entry separate from the restored desktop experience. */
+.sg-entry.sg-mobile-entry { display: none; }
+@media(max-width:520px) {
+  .sg-entry.sg-mobile-entry { display: block; }
 }
