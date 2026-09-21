@@ -130,6 +130,12 @@ def test_gateway_has_no_owner_surface_and_validates_raw_signature(service):
     assert web.post('/ring/link',headers={'origin':'https://evil.test'}).status_code==403
 
 
+def test_hosted_app_exposes_ring_gateway_on_the_same_public_port(service):
+    web = TestClient(create_app(service.store.path, ring_service=service))
+    assert web.get('/ring/home').status_code == 200
+    assert web.get('/ring/link').status_code == 200
+
+
 def test_ring_transport_identifies_itself_and_allows_documented_device_query(monkeypatch):
     captured = {}
 

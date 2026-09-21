@@ -631,4 +631,10 @@ def create_app(db_path=None, engine=None, ring_service=None):
         @app.get("/icon.svg")
         def icon():
             return FileResponse(dist / "icon.svg")
+
+    # Railway exposes one public port, so Ring's account-linking callbacks
+    # share the hosted SpatialGuard process. Keep this mount last: owner API
+    # and web routes win first, while the gateway handles only /ring/*.
+    from .ring_gateway import create_gateway
+    app.mount("/", create_gateway(app.state.ring), name="ring-gateway")
     return app
