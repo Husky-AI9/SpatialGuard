@@ -9,7 +9,9 @@ import "./style.css";
 import { native } from "./platform";
 const path = window.location.pathname.replace(/\/$/, "");
 const nativeWorkspaceRequested = new URLSearchParams(window.location.search).has("workspace");
-const isLanding = path === "/landing" || (native && !nativeWorkspaceRequested);
+const localBrowser = ["127.0.0.1", "localhost"].includes(window.location.hostname);
+const workspaceRequested = path === "/workspace" || (native && nativeWorkspaceRequested);
+const isLanding = path === "/landing" || (native && !nativeWorkspaceRequested) || (!native && !localBrowser && !workspaceRequested);
 document.body.classList.toggle("landing-body", isLanding);
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

@@ -561,6 +561,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
         @app.get("/")
         @app.get("/landing", include_in_schema=False)
+        @app.get("/workspace", include_in_schema=False)
         def index():
             return FileResponse(dist / "index.html")
 

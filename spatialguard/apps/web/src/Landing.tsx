@@ -38,7 +38,7 @@ function Brand() {
 
 export default function Landing() {
   const [accessDialog, setAccessDialog] = useState<AccessDialog>(null);
-  const workspaceHref = native ? "/?workspace=1" : "/";
+  const workspaceHref = native ? "/?workspace=1" : "/workspace";
 
   useEffect(() => {
     document.title = "SpatialGuard — See what happened and where";
