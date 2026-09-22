@@ -152,7 +152,8 @@ export default function App() {
     [confirmRemove, setConfirmRemove] = useState(""),
     [planImage, setPlanImage] = useState(""),
     [step, setStep] = useState(0),
-    [testTrail, setTestTrail] = useState<Marker[]>([]);
+    [testTrail, setTestTrail] = useState<Marker[]>([]),
+    [testPackage, setTestPackage] = useState<Marker | null>(null);
   const [pairCode, setPairCode] = useState(""),
     [pairExpiry, setPairExpiry] = useState(0),
     [sessions, setSessions] = useState<Session[]>([]),
@@ -608,10 +609,31 @@ export default function App() {
   const updateTestTrack = useCallback((track: TestTrack | null) => {
     if (!track) {
       setTestTrail([]);
+      setTestPackage(null);
       return;
     }
     if ("state" in track) {
+      if (track.state === "clear-package") {
+        setTestPackage(null);
+        return;
+      }
       setTestTrail((trail) => trail.map((point) => ({ ...point, selected: false })));
+      return;
+    }
+    if (track.entity === "package") {
+      setTestPackage({
+        id: "test-package-drop",
+        xy: track.xy,
+        selected: false,
+        persistent: true,
+        approximate: true,
+        gapBefore: true,
+        uncertainty_m: 0.7,
+        actorKind: "package",
+        actorLabel: "Package dropped",
+        reviewLevel: "routine",
+        label: "Estimated package drop point from test video",
+      });
       return;
     }
     setTestTrail((trail) => {
@@ -631,6 +653,11 @@ export default function App() {
         uncertainty_m: 0.55 + (1 - track.confidence) * 0.75,
         label: "Estimated movement from test video · no camera calibration",
         ...testActorRef.current,
+        ...(track.actorKind ? {
+          actorKind: track.actorKind,
+          actorLabel: track.actorLabel,
+          reviewLevel: track.reviewLevel,
+        } : {}),
       });
       return next;
     });
@@ -666,8 +693,8 @@ export default function App() {
         return [marker];
       }) ?? []
     );
-    return selected ? incidentMarkers : testTrail;
-  }, [selected, selected?.observations, site?.layout.cameras, step, testTrail]);
+    return selected ? incidentMarkers : testPackage ? [...testTrail, testPackage] : testTrail;
+  }, [selected, selected?.observations, site?.layout.cameras, step, testTrail, testPackage]);
   const evidenceLinks = useMemo<EvidenceLink[]>(() => {
     if (!selected || selected.evidence_mode !== "live") return [];
     return selected.associations.map((association, index) => ({

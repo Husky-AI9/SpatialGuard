@@ -350,6 +350,11 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   await expect.poll(() => page.locator(".approximate-marker").count()).toBeGreaterThan(0);
   await expect(page.locator(".motion-box")).toHaveCount(0);
   await page.waitForTimeout(3000);
+  await expect(page.locator(".map-actor-delivery")).toBeVisible();
+  await expect(page.getByLabel("Package dropped")).toBeVisible();
+  await page.getByRole("button", { name: "3D", exact: true }).click();
+  await expect(page.locator(".spatial-scene")).toHaveAttribute("data-persistent-actors", "package");
+  await page.getByRole("button", { name: "2D", exact: true }).click();
   await day.evaluate((element: HTMLVideoElement) => { element.pause(); element.currentTime = 1; });
   await expect(page.locator(".approximate-marker")).toHaveCount(1);
   await page.screenshot({ path: `${output}/person-track-day.png`, fullPage: true });
@@ -377,8 +382,14 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   await page.getByRole("button", { name: "Night delivery" }).click();
   await expect(page.locator(".test-video-status small")).toContainText("Person track ready", { timeout: 15000 });
   await expect(page.locator(".test-video-status-urgent")).toContainText("Urgent review");
-  await page.getByLabel("Delivery test · night").evaluate((element: HTMLVideoElement) => element.play());
+  const threatVideo = page.getByLabel("Delivery test · night");
+  await threatVideo.evaluate((element: HTMLVideoElement) => new Promise<void>((resolve) => {
+    element.pause();
+    element.addEventListener("seeked", () => resolve(), { once: true });
+    element.currentTime = 1;
+  }));
   await expect(page.locator(".map-actor-weapon")).toBeVisible();
+  await threatVideo.evaluate((element: HTMLVideoElement) => element.play());
   await expect(page.getByText("Possible weapon", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${output}/person-icon-threat.png`, fullPage: true });
   await page.getByRole("button", { name: "3D", exact: true }).click();

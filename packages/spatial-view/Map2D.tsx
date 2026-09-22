@@ -24,6 +24,8 @@ export type Marker = {
   gapBefore?: boolean;
   /** Evidence was reported by this camera; this is not a person coordinate. */
   evidenceNode?: boolean;
+  /** Keep an estimated stationary object visible after the moving actor leaves. */
+  persistent?: boolean;
 };
 export type EvidenceLink = {
   id: string;
@@ -471,7 +473,7 @@ export default function Map2D({
           </g>
         );
       })}
-      {markers.map((p) => p.approximate && !p.selected ? null : (
+      {markers.map((p) => p.approximate && !p.selected && !p.persistent ? null : (
         <g key={p.id} pointerEvents="none">
           {p.approximate && p.selected && (
             <circle

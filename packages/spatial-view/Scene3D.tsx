@@ -640,7 +640,7 @@ export default function Scene3D({
       layer.add(unknown);
     });
     markers.forEach((marker) => {
-      if (marker.approximate && !marker.selected) return;
+      if (marker.approximate && !marker.selected && !marker.persistent) return;
       if (marker.approximate && marker.selected) {
         const ring = new THREE.Mesh(
           new THREE.RingGeometry(
@@ -674,7 +674,7 @@ export default function Scene3D({
         );
         point.position.copy(worldToViewer([...marker.xy, .2]));
         layer.add(point);
-      } else if (marker.selected && marker.actorKind) {
+      } else if ((marker.selected || marker.persistent) && marker.actorKind) {
         const actor = activityModel(marker);
         actor.position.copy(worldToViewer([...marker.xy, 0]));
         actor.traverse(object => {
@@ -698,6 +698,7 @@ export default function Scene3D({
       }
     });
   }, [layout, markers, evidenceLinks, selected, onSelect, cameraModelFactory]);
+  const selectedActorKind = markers.find(marker => marker.selected)?.actorKind;
   return (
     <div
       className="spatial-scene"
@@ -705,7 +706,8 @@ export default function Scene3D({
       role="group"
       data-camera-model="wall-mounted"
       data-door-count={layout.portals.length}
-      data-actor-model={activityModelName(markers.find(marker => marker.selected)?.actorKind)}
+      data-actor-model={selectedActorKind ? activityModelName(selectedActorKind) : ""}
+      data-persistent-actors={markers.filter(marker => marker.persistent).map(marker => activityModelName(marker.actorKind)).join(",")}
       data-evidence-links={evidenceLinks.length}
       aria-description={markers.some(marker => marker.approximate) && !markers.some(marker => marker.approximate && marker.selected)
         ? "Estimated path retained. Person not currently visible."

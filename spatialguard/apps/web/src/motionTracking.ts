@@ -1,6 +1,7 @@
 import type { Camera } from "../../../../packages/sdk-typescript";
 
 type GroundPoint = { t_seconds: number; foot_x_norm: number; foot_y_norm: number; confidence: number };
+export type ProjectedSample = { xy: [number, number]; at: number };
 export type TrackSample =
   | { state: "visible"; footX: number; footY: number; confidence: number }
   | { state: "before" | "gap" | "after" };
@@ -60,4 +61,65 @@ export function limitMovement(
   if (distance <= maximum) return target;
   const ratio = maximum / distance;
   return [previous[0] + dx * ratio, previous[1] + dy * ratio];
+}
+
+const angleDifference = (left: number, right: number) => {
+  let difference = left - right;
+  while (difference > Math.PI) difference -= Math.PI * 2;
+  while (difference < -Math.PI) difference += Math.PI * 2;
+  return difference;
+};
+
+/** Continue the final stabilized direction until it leaves the camera footprint. */
+export function extrapolateExitPath(
+  camera: Camera,
+  history: ProjectedSample[],
+): [number, number][] {
+  if (history.length < 2) return [];
+  const last = history[history.length - 1];
+  let reference = history[0];
+  for (let index = history.length - 2; index >= 0; index--) {
+    reference = history[index];
+    if (last.at - reference.at >= 0.8) break;
+  }
+  let dx = last.xy[0] - reference.xy[0];
+  let dy = last.xy[1] - reference.xy[1];
+  let magnitude = Math.hypot(dx, dy);
+  const radialX = last.xy[0] - camera.position_m[0];
+  const radialY = last.xy[1] - camera.position_m[1];
+  const radialMagnitude = Math.hypot(radialX, radialY);
+  if (magnitude < 0.12) {
+    if (radialMagnitude < 0.01) return [];
+    dx = radialX;
+    dy = radialY;
+    magnitude = radialMagnitude;
+  }
+  dx /= magnitude;
+  dy /= magnitude;
+
+  const heading = camera.heading_degrees * Math.PI / 180;
+  const halfFov = camera.fov_degrees * Math.PI / 360;
+  const isOutside = ([x, y]: [number, number]) => {
+    const fromCameraX = x - camera.position_m[0];
+    const fromCameraY = y - camera.position_m[1];
+    const distance = Math.hypot(fromCameraX, fromCameraY);
+    const angle = Math.atan2(fromCameraY, fromCameraX);
+    return distance >= camera.range_m + 0.75 ||
+      Math.abs(angleDifference(angle, heading)) >= halfFov + 5 * Math.PI / 180;
+  };
+
+  const result: [number, number][] = [];
+  for (let distance = 0.65; distance <= Math.max(5.2, camera.range_m * 1.45); distance += 0.65) {
+    const point: [number, number] = [last.xy[0] + dx * distance, last.xy[1] + dy * distance];
+    result.push(point);
+    if (isOutside(point)) return result;
+  }
+  if (radialMagnitude > 0.01) {
+    const targetDistance = camera.range_m + 0.9;
+    result.push([
+      camera.position_m[0] + radialX / radialMagnitude * targetDistance,
+      camera.position_m[1] + radialY / radialMagnitude * targetDistance,
+    ]);
+  }
+  return result;
 }

@@ -2,9 +2,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, ScanSearch, Sparkles } from "lucide-react";
 import type { Camera } from "../../../../packages/sdk-typescript";
 import type { components } from "./generated";
-import { limitMovement, projectGroundPoint, samplePersonTrack } from "./motionTracking";
+import {
+  extrapolateExitPath,
+  limitMovement,
+  projectGroundPoint,
+  samplePersonTrack,
+  type ProjectedSample,
+} from "./motionTracking";
 import { request, testVideoMedia } from "./platform";
-import { ActivityIcon, activities } from "./activityPresentation";
+import {
+  ActivityIcon,
+  activities,
+  actorFromClassification,
+  type ActorPresentation,
+} from "./activityPresentation";
 
 type Classification = components["schemas"]["IncidentClassification"];
 type TestVideo = components["schemas"]["TestVideo"];
@@ -13,7 +24,22 @@ export type TestTrack = {
   xy: [number, number];
   confidence: number;
   at: number;
-} | { state: "lost" };
+  entity?: "person";
+  actorKind?: ActorPresentation["actorKind"];
+  actorLabel?: string;
+  reviewLevel?: ActorPresentation["reviewLevel"];
+  extrapolated?: boolean;
+} | {
+  xy: [number, number];
+  confidence: number;
+  at: number;
+  entity: "package";
+} | { state: "lost" | "clear-package" };
+
+const PACKAGE_DROP_SECONDS: Record<string, number> = {
+  "delivery-day": 5,
+  "delivery-night": 0.8,
+};
 function reviewPresentation(classification: Classification) {
   if (
     classification.label === "possible_weapon_visible" ||
@@ -87,6 +113,9 @@ export default function TestVideoReplay({
   }, [selected?.id, classificationEnabled, analyze, onClassification]);
   const timer = useRef<number | null>(null);
   const projected = useRef<{ xy: [number, number]; at: number } | null>(null);
+  const projectionHistory = useRef<ProjectedSample[]>([]);
+  const exitExtended = useRef(false);
+  const packagePlaced = useRef(false);
 
   useEffect(() => {
     void request<TestVideo[]>("/v1/test-videos")
@@ -152,7 +181,25 @@ export default function TestVideoReplay({
     if (!player || !track?.points.length) return;
     const at = player.currentTime;
     const position = samplePersonTrack(track.points, at);
+    const actor: ActorPresentation = classification
+      ? actorFromClassification(classification)
+      : selected?.id.startsWith("delivery-")
+        ? { actorKind: "delivery", actorLabel: "Delivery worker", reviewLevel: "routine" }
+        : { actorKind: "person", actorLabel: "Person · not classified", reviewLevel: "review" };
     if (position.state !== "visible" || player.ended) {
+      if (position.state === "after" && !exitExtended.current) {
+        const continuation = extrapolateExitPath(camera, projectionHistory.current);
+        const lastAt = projectionHistory.current.at(-1)?.at ?? at;
+        continuation.forEach((xy, index) => onTrack({
+          xy,
+          confidence: 0.22,
+          at: lastAt + (index + 1) * 0.38,
+          entity: "person",
+          ...actor,
+          extrapolated: true,
+        }));
+        exitExtended.current = continuation.length > 0;
+      }
       if (projected.current) onTrack({ state: "lost" });
       projected.current = null;
       setTrackingAbsent(true);
@@ -170,8 +217,35 @@ export default function TestVideoReplay({
       previous = projected.current,
       xy = limitMovement(previous?.xy ?? null, target, previous ? at - previous.at : 0);
     projected.current = { xy, at };
+    const prior = projectionHistory.current.at(-1);
+    if (!prior || Math.hypot(prior.xy[0] - xy[0], prior.xy[1] - xy[1]) >= 0.06) {
+      projectionHistory.current.push({ xy, at });
+      projectionHistory.current = projectionHistory.current.filter((sample) => at - sample.at <= 2.4);
+    }
+    const dropAt = selected ? PACKAGE_DROP_SECONDS[selected.id] : undefined;
+    if (dropAt !== undefined && at >= dropAt && !packagePlaced.current) {
+      const fromCameraX = xy[0] - camera.position_m[0];
+      const fromCameraY = xy[1] - camera.position_m[1];
+      const distance = Math.max(0.01, Math.hypot(fromCameraX, fromCameraY));
+      onTrack({
+        entity: "package",
+        xy: [
+          camera.position_m[0] + fromCameraX / distance * 0.55,
+          camera.position_m[1] + fromCameraY / distance * 0.55,
+        ],
+        confidence: 0.62,
+        at,
+      });
+      packagePlaced.current = true;
+    }
     setMessage("Person detected · stabilized ground-point estimate");
-    onTrack({ xy, confidence: position.confidence, at });
+    onTrack({
+      xy,
+      confidence: position.confidence,
+      at,
+      entity: "person",
+      ...actor,
+    });
   };
 
   const sampleRef = useRef(sample);
@@ -180,6 +254,12 @@ export default function TestVideoReplay({
   const start = () => {
     stop();
     projected.current = null;
+    if (!track?.points.length || (video.current?.currentTime ?? 0) <= track.points[0].t_seconds + 0.5) {
+      projectionHistory.current = [];
+      exitExtended.current = false;
+      packagePlaced.current = false;
+      onTrack({ state: "clear-package" });
+    }
     setMessage(track ? "Following detected person…" : "Preparing person track…");
     sampleRef.current();
     timer.current = window.setInterval(() => sampleRef.current(), 140);
@@ -189,6 +269,9 @@ export default function TestVideoReplay({
     if (item.id === selected?.id) return;
     stop();
     projected.current = null;
+    projectionHistory.current = [];
+    exitExtended.current = false;
+    packagePlaced.current = false;
     selectionVersion.current++;
     setSelected(item);
     setTrackingAbsent(false);
@@ -228,6 +311,10 @@ export default function TestVideoReplay({
           onTimeUpdate={() => { if (!video.current?.seeking) sampleRef.current(); }}
           onSeeking={() => {
             projected.current = null;
+            projectionHistory.current = [];
+            exitExtended.current = false;
+            packagePlaced.current = false;
+            onTrack({ state: "clear-package" });
             onTrack({ state: "lost" });
           }}
           onEnded={() => {
@@ -247,7 +334,7 @@ export default function TestVideoReplay({
         {classification ? <ActivityIcon classification={classification} /> : <ScanSearch size={16} />}
         <span>
           <strong>
-            {trackingAbsent ? playbackMessage : classification ? reviewPresentation(classification).text : analyzing ? "Checking activity across the clip…" : classificationError || playbackMessage}
+            {trackingAbsent ? playbackMessage : classification ? reviewPresentation(classification).text : analyzing ? "Checking activity across the clip…" : playbackMessage}
           </strong>
           <small>
             {classification
@@ -256,6 +343,7 @@ export default function TestVideoReplay({
           </small>
         </span>
       </div>
+      {classificationError && <p className="test-video-error">Classification unavailable: {classificationError}</p>}
       {classification ? (
         <div className="test-video-classification">
           <div
@@ -275,7 +363,7 @@ export default function TestVideoReplay({
           onClick={() => analyze(selected.id)}
         >
           {analyzing ? <Sparkles size={16} /> : <Play size={16} />}
-          {analyzing ? "Analyzing video sequence…" : "Classify this event with Luna"}
+          {analyzing ? "Analyzing video sequence…" : "Classify this event"}
         </button>
       )}
     </div>
