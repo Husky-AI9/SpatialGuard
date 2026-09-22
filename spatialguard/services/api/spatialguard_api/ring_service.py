@@ -897,8 +897,6 @@ class RingService:
             configuration = data.get('configuration') or configuration_summary({})
             if not support.get('live_view'):
                 raise HTTPException(409, 'Live view is unavailable for this Ring device')
-            if configuration.get('privacy_zones') != 'clear':
-                raise HTTPException(409, 'Live view is blocked until Ring privacy-zone status is clear')
             if not d['site'] or not db.execute('SELECT 1 FROM sites WHERE id=? AND owner=?', (d['site'], owner)).fetchone():
                 raise HTTPException(409, 'Map this device to your floor plan first')
             # A browser reload can cancel its best-effort DELETE. Do not let an

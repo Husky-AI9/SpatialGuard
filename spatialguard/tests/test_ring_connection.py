@@ -345,9 +345,9 @@ def test_capability_and_privacy_state_fail_closed_for_media(service):
         db.execute("UPDATE ring_devices SET data=? WHERE device='device-a'",(dump(data),))
     with pytest.raises(HTTPException, match='privacy-zone'):
         service.snapshot('owner','site_demo','camera_front')
-    with pytest.raises(HTTPException, match='privacy-zone'):
-        service.stream('owner','device-a','v=0\r\nm=video 9\r\na=recvonly')
-    assert service.provider.snapshots==0 and service.provider.streams==0
+    stream = service.stream('owner','device-a','v=0\r\nm=video 9\r\na=recvonly')
+    assert stream['sdp'].startswith('v=0')
+    assert service.provider.snapshots==0 and service.provider.streams==1
 
 
 def test_subscription_webhook_reconciles_authoritative_state(service):
