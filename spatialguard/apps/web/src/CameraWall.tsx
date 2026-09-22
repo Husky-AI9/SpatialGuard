@@ -78,6 +78,15 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
     }
   };
 
+  const moveCamera = (deviceId: string, direction: -1 | 1) => {
+    const index = wall.indexOf(deviceId);
+    const destination = index + direction;
+    if (index < 0 || destination < 0 || destination >= wall.length) return;
+    const next = [...wall];
+    [next[index], next[destination]] = [next[destination], next[index]];
+    void saveWall(next);
+  };
+
   return <section className={`camera-wall-view${compact ? " compact" : ""}`} aria-label="Live camera wall">
     <div className="camera-wall-heading">
       <div>
@@ -98,14 +107,21 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
       </label>)}
     </div>
     <div className="camera-wall-grid">
-      {wallDevices.map(device => <article key={device.id} draggable onDragStart={() => setDragging(device.id)} onDragOver={event => event.preventDefault()} onDrop={() => {
+      {wallDevices.map((device, index) => <article key={device.id} role="group" aria-label={`${device.name} camera tile`} draggable onDragStart={() => setDragging(device.id)} onDragOver={event => event.preventDefault()} onDrop={() => {
         if (!dragging || dragging === device.id) return;
         const next = wall.filter(id => id !== dragging);
         next.splice(next.indexOf(device.id), 0, dragging);
         setDragging("");
         void saveWall(next);
       }} className="camera-wall-tile">
-        <div className="wall-tile-head"><GripVertical size={16} /><span className={device.online ? "online" : "offline"}>{device.online ? "Online" : "Offline"}</span></div>
+        <div className="wall-tile-head">
+          <GripVertical size={16} aria-hidden="true" />
+          <span className={device.online ? "online" : "offline"}>{device.online ? "Online" : "Offline"}</span>
+          <span className="wall-order-actions">
+            <button aria-label={`Move ${device.name} earlier`} disabled={index === 0} onClick={() => moveCamera(device.id, -1)}>Up</button>
+            <button aria-label={`Move ${device.name} later`} disabled={index === wallDevices.length - 1} onClick={() => moveCamera(device.id, 1)}>Down</button>
+          </span>
+        </div>
         {active !== device.id
           ? <div className="wall-paused"><Camera size={24} /><p>{active ? "Another camera is active" : "Live view closed"}</p><button disabled={!device.online} onClick={() => setActive(device.id)}>{device.online ? "Start live view" : "Camera offline"}</button></div>
           : <LiveVideo device={device as never} embedded autoReconnect={false} close={() => setActive("")} />}

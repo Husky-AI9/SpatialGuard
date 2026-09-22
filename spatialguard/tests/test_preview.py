@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 from twinforge.fixture import synthetic_layout, replay
 from twinforge.geometry import query_layout, validate_layout
 from twinforge.models import Layout, PointQuery
-from spatialguard_api.api import TEST_ACCOUNT_EMAIL, create_app
+from spatialguard_api.api import create_app
 from spatialguard_api.engine import RING_FOV_DEGREES, relens
 from spatialguard_api.store import cleanup_retention, dump, digest, Store
 from spatialguard_api.worker import process_one
@@ -348,14 +348,15 @@ def test_certification_profile_disables_optional_processing_server_side(tmp_path
 
 def test_reviewer_account_can_be_read_only_with_secret_operator_bypass(tmp_path, monkeypatch):
     monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
-    monkeypatch.setenv('SPATIALGUARD_ENABLE_TEST_ACCOUNT', 'true')
+    monkeypatch.setenv('SPATIALGUARD_REVIEWER_EMAIL', 'reviewer@example.test')
+    monkeypatch.setenv('SPATIALGUARD_REVIEWER_PASSWORD', 'reviewer-password-123')
     monkeypatch.setenv('SPATIALGUARD_DEMO_READ_ONLY', 'true')
     monkeypatch.setenv('SPATIALGUARD_REVIEWER_KEY', 'operator-secret')
     app = create_app(tmp_path/'reviewer.sqlite', Engine())
     client = TestClient(app, base_url='https://testserver', headers={
         'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
     })
-    assert client.post('/v1/auth/signin', json={'email':TEST_ACCOUNT_EMAIL, 'password':'test12345'}).status_code == 200
+    assert client.post('/v1/auth/signin', json={'email':'reviewer@example.test', 'password':'reviewer-password-123'}).status_code == 200
     assert client.get('/v1/sites').status_code == 200
     assert client.post('/v1/sample-site').status_code == 403
     assert client.post('/v1/sample-site', headers={'X-SpatialGuard-Reviewer-Key':'operator-secret'}).status_code == 201
@@ -382,18 +383,18 @@ def test_signup_claims_only_the_authenticated_legacy_workspace(tmp_path, monkeyp
 
 def test_opt_in_test_account_is_hashed_and_isolated(tmp_path, monkeypatch):
     monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
-    monkeypatch.delenv('SPATIALGUARD_ENABLE_TEST_ACCOUNT', raising=False)
-    monkeypatch.setenv('RAILWAY_ENVIRONMENT_ID', 'test-environment')
+    monkeypatch.setenv('SPATIALGUARD_REVIEWER_EMAIL', 'reviewer@example.test')
+    monkeypatch.setenv('SPATIALGUARD_REVIEWER_PASSWORD', 'reviewer-password-123')
     app = create_app(tmp_path/'test-account.sqlite', Engine())
     client = TestClient(app, base_url='https://testserver', headers={
         'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
     })
-    response = client.post('/v1/auth/signin', json={'email': 'test12345@gmail.com', 'password': 'test12345'})
+    response = client.post('/v1/auth/signin', json={'email': 'reviewer@example.test', 'password': 'reviewer-password-123'})
     assert response.status_code == 200, response.text
     assert client.get('/v1/sites').json() == []
     with app.state.store.connect() as db:
-        stored = db.execute('SELECT password_hash FROM accounts WHERE email=?', ('test12345@gmail.com',)).fetchone()[0]
-        assert stored != 'test12345' and stored.startswith('scrypt$')
+        stored = db.execute('SELECT password_hash FROM accounts WHERE email=?', ('reviewer@example.test',)).fetchone()[0]
+        assert stored != 'reviewer-password-123' and stored.startswith('scrypt$')
 
 
 def test_account_privacy_consent_and_permanent_deletion(tmp_path, monkeypatch):
@@ -478,6 +479,59 @@ def test_cross_owner_and_evidence_isolation(setup):
     i=c.get('/v1/incidents/'+result['incident_id']).json()
     assert other.get('/v1/evidence/'+i['evidence_ids'][0]+'/image').status_code==404
     assert other.post('/v1/incidents/'+i['id']+'/review',json={}).status_code==404
+
+
+def test_authorization_fuzz_covers_object_and_session_boundaries(setup):
+    app, owner, store, _ = setup
+    result = run(setup, 'authorization-fuzz')
+    incident = owner.get('/v1/incidents/' + result['incident_id']).json()
+    with store.connect() as db:
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
+                   ('other-session', 'other_owner', digest('other-token'), 'Other', 'android', time.time()+1000))
+    other = TestClient(app, headers={'Authorization':'Bearer other-token'})
+
+    protected_gets = [
+        '/v1/sites/site_demo/cameras', '/v1/sites/site_demo/events',
+        '/v1/sites/site_demo/incidents', '/v1/incidents/' + incident['id'],
+        '/v1/evidence/' + incident['evidence_ids'][0],
+        '/v1/evidence/' + incident['evidence_ids'][0] + '/image',
+    ]
+    for path in protected_gets:
+        assert other.get(path).status_code == 404, path
+    assert other.post('/v1/sites/site_demo/replay', json={'request_id':'foreign-replay'}).status_code == 404
+    assert other.post('/v1/sites/site_demo/sessions?camera_id=camera_front').status_code == 404
+    assert other.delete('/v1/sessions/' + owner.get('/v1/me').json()['id']).status_code == 404
+
+    # Random external identifiers never disclose whether an object exists.
+    for suffix in ('0', 'deadbeef', '../site_demo', 'x' * 80):
+        assert other.get('/v1/incidents/inc_' + suffix).status_code == 404
+        assert other.get('/v1/evidence/evidence_' + suffix).status_code == 404
+    assert other.delete('/v1/sessions/other-session').status_code == 204
+    assert other.get('/v1/me').status_code == 401
+
+
+def test_validation_errors_do_not_echo_sensitive_input(setup):
+    app, _, _, _ = setup
+    client = TestClient(app)
+    secrets = [
+        'owner-private@example.test', 'secret-password-value',
+        'ring-device-ava1-secret', 'oauth-code-private',
+        'data:image/jpeg;base64,private-floor-plan',
+    ]
+    response = client.post('/v1/auth/signin', json={
+        'email': secrets[0], 'password': secrets[1], 'extra': secrets[2],
+    })
+    # Sign-in schema accepts the fields, so use an invalid typed route to exercise
+    # framework validation without allowing the request to reach application code.
+    response = client.post('/v1/pairing/redeem', json={
+        'code': secrets[3], 'name': secrets[4], 'extra': secrets[2],
+    })
+    assert response.status_code in {401, 422}
+    # Pydantic validation responses must never contain the submitted input field.
+    invalid = client.post('/v1/auth/signin', json={'email': secrets[0], 'password': ['not', 'text']})
+    assert invalid.status_code == 422
+    for private in secrets:
+        assert private not in invalid.text
 
 
 def test_engine_failure_is_bounded_and_media_denied(setup):

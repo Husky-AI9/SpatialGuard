@@ -21,7 +21,7 @@ export async function initializePlatform() {
         apiUrl = value.apiUrl;
         if (!apiUrl)
           throw new Error(
-            "This release has no hosted backend configured. Use the local debug preview.",
+            "This app has no hosted service configured. Contact support or connect to your local workspace.",
           );
       }
       return !native || credential.length > 0;

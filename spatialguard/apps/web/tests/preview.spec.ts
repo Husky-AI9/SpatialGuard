@@ -270,9 +270,28 @@ test("live multi-camera evidence shows camera nodes and an unknown gap, not a pe
   await expect(legend.getByText("Unknown gap")).toBeVisible();
   await expect(page.locator(".evidence-link")).toHaveCount(1);
   await expect(page.locator(".map-actor")).toHaveCount(0);
+  const inspector = page.getByLabel("Selected evidence details");
+  await expect(inspector.getByText("Live Ring event")).toBeVisible();
+  await expect(inspector.getByText("Event metadata only", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The same event, two review methods" })).toBeVisible();
+  await expect(page.getByText("Camera-by-camera", { exact: true })).toBeVisible();
+  await page.getByText("Why is this only a possible continuation?").click();
+  await expect(page.getByText("no camera observation establishes the route", { exact: false })).toBeVisible();
   await page.screenshot({ path: path.join(output, "spatial-evidence-graph.png"), fullPage: true });
   await page.getByRole("button", { name: "3D", exact: true }).click();
   await expect(page.locator('.spatial-scene[data-evidence-links="1"] canvas')).toBeVisible();
+});
+
+test("low-power mode keeps 2D evidence available and disables WebGL", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("spatialguard-low-power", "false"));
+  await openDemo(page);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Turn on low-power mode" }).click();
+  await expect(page.getByText("Low-power mode is on", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "Home", exact: true }).click();
+  await expect(page.getByRole("button", { name: "2D", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "3D", exact: true })).toBeDisabled();
+  await expect(page.locator(".spatial-map")).toBeVisible();
 });
 
 test("private day and night clips animate an approximate 2D and 3D movement trail", async ({ page }) => {
@@ -842,6 +861,26 @@ test("setup guide explains consent, maps, and evidence on a phone", async ({ pag
   await page.screenshot({ path: path.join(output, "onboarding-phone.png") });
   await guide.getByRole("button", { name: "Skip setup" }).click();
   await expect(guide).toHaveCount(0);
+});
+
+test("dialogs trap keyboard focus and close without stranding focus", async ({ page }) => {
+  await page.goto("/workspace");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Open setup guide" }).click();
+  const dialog = page.getByRole("dialog", { name: "SpatialGuard setup" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Skip setup" })).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(dialog.getByRole("button", { name: /Continue/ })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+
+  await page.getByTitle("Map from a floor plan").click();
+  const importer = page.getByRole("dialog", { name: "Map from a floor plan" });
+  await expect(importer).toBeVisible();
+  await expect(importer.getByRole("button", { name: "Close" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(importer).toHaveCount(0);
 });
 
 test("Luna classification is opt-in and explains snapshot handling", async ({ page }) => {

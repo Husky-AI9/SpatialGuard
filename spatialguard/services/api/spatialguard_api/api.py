@@ -6,8 +6,9 @@ import time
 import logging
 from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from .store import (
     DATA,
@@ -30,10 +31,7 @@ from .release import capabilities, require_feature
 from .mail import send as send_mail
 
 COOKIE = "spatialguard_session"
-TEST_ACCOUNT_EMAIL = "test12345@gmail.com"
-TEST_ACCOUNT_HASH = "scrypt$16384$8$1$gU_jnmIipTWfapkUzl4nrA==$s3ZRiadAzw-SsCKBe1undbBh8rTOi_EYaEo4DkoLyzU="
-
-
+DUMMY_PASSWORD_HASH = password_hash(secrets.token_urlsafe(32))
 def configured_origin():
     """The one browser origin permitted to hold the hosted owner cookie."""
     return os.environ.get("SPATIALGUARD_ORIGIN", "http://127.0.0.1:8010").rstrip("/")
@@ -41,22 +39,50 @@ def configured_origin():
 
 def create_app(db_path=None, engine=None, ring_service=None):
     store = Store(db_path)
-    test_account_setting = os.environ.get("SPATIALGUARD_ENABLE_TEST_ACCOUNT")
-    enable_test_account = (
-        test_account_setting.lower() in {"1", "true", "yes"}
-        if test_account_setting is not None
-        else bool(os.environ.get("RAILWAY_ENVIRONMENT_ID") or os.environ.get("RAILWAY_PROJECT_ID"))
-    )
-    if enable_test_account:
+    test_account_email = os.environ.get("SPATIALGUARD_REVIEWER_EMAIL", "").strip()
+    test_account_password = os.environ.get("SPATIALGUARD_REVIEWER_PASSWORD", "")
+    if test_account_email and test_account_password:
+        try:
+            test_account_email = normalize_email(test_account_email)
+        except ValueError:
+            raise RuntimeError("SPATIALGUARD_REVIEWER_EMAIL is invalid") from None
+        if len(test_account_password) < 12:
+            raise RuntimeError("SPATIALGUARD_REVIEWER_PASSWORD must contain at least 12 characters")
         with store.connect() as db:
-            db.execute(
-                "INSERT OR IGNORE INTO accounts(id,email,password_hash,created,email_verified) VALUES (?,?,?,?,1)",
-                ("acct_test_preview", TEST_ACCOUNT_EMAIL, TEST_ACCOUNT_HASH, now()),
-            )
+            verifier = password_hash(test_account_password)
+            reviewer = db.execute("SELECT 1 FROM accounts WHERE id='acct_test_preview'").fetchone()
+            conflict = db.execute(
+                "SELECT id FROM accounts WHERE email=? COLLATE NOCASE AND id<>'acct_test_preview'",
+                (test_account_email,),
+            ).fetchone()
+            if conflict:
+                raise RuntimeError("SPATIALGUARD_REVIEWER_EMAIL is already used by another account")
+            if reviewer:
+                db.execute(
+                    "UPDATE accounts SET email=?,password_hash=?,email_verified=1 WHERE id='acct_test_preview'",
+                    (test_account_email, verifier),
+                )
+            else:
+                db.execute(
+                    "INSERT INTO accounts(id,email,password_hash,created,email_verified) VALUES (?,?,?,?,1)",
+                    ("acct_test_preview", test_account_email, verifier, now()),
+                )
     app = FastAPI(title="SpatialGuard", version="0.1.0")
     app.state.store = store
     app.add_middleware(CORSMiddleware, allow_origins=["https://localhost"], allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type"], allow_credentials=False)
+
+    @app.exception_handler(RequestValidationError)
+    async def sanitized_validation_error(_request: Request, exc: RequestValidationError):
+        """Report actionable field errors without reflecting submitted values."""
+        errors = []
+        for item in exc.errors():
+            errors.append({
+                "location": [str(part) for part in item.get("loc", ())],
+                "message": item.get("msg", "Invalid value"),
+                "type": item.get("type", "validation_error"),
+            })
+        return JSONResponse(status_code=422, content={"detail": errors})
 
     @app.middleware("http")
     async def security(request, call_next):
@@ -72,14 +98,25 @@ def create_app(db_path=None, engine=None, ring_service=None):
         # the local host guard for application routes.
         if request.url.path != "/health" and request.headers.get("host") not in allowed_hosts:
             return Response(status_code=400)
+        if (os.environ.get("SPATIALGUARD_MAINTENANCE_MODE", "").lower() in {"1", "true", "yes", "on"}
+                and request.url.path not in {"/health", "/status", "/privacy", "/terms", "/support"}):
+            return Response(
+                content=json.dumps({"detail": "SpatialGuard is temporarily unavailable for maintenance. Retry shortly."}),
+                status_code=503,
+                media_type="application/json",
+                headers={"Retry-After": "300", "X-Request-ID": request_id},
+            )
         response = await call_next(request)
         route = request.scope.get("route")
         route_name = getattr(route, "path", "unmatched")
-        logging.getLogger("spatialguard.request").info(
-            "request_complete method=%s route=%s status=%s duration_ms=%s request_id=%s",
-            request.method, route_name, response.status_code,
-            round((time.perf_counter() - started) * 1000, 1), request_id,
-        )
+        logging.getLogger("spatialguard.request").info(json.dumps({
+            "event": "request.complete",
+            "method": request.method,
+            "route": route_name,
+            "status": response.status_code,
+            "duration_ms": round((time.perf_counter() - started) * 1000, 1),
+            "request_id": request_id,
+        }, separators=(",", ":")))
         response.headers["X-Request-ID"] = request_id
         response.headers["Cache-Control"] = "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -232,7 +269,27 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "application": "spatialguard"}
+        try:
+            with store.connect() as db:
+                db.execute("SELECT 1").fetchone()
+                queued = db.execute(
+                    "SELECT count(*) FROM ring_inbox WHERE state IN ('queued','running')"
+                ).fetchone()[0] if db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ring_inbox'"
+                ).fetchone() else 0
+                failed = db.execute(
+                    "SELECT count(*) FROM ring_inbox WHERE state='failed'"
+                ).fetchone()[0] if db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ring_inbox'"
+                ).fetchone() else 0
+            return {"status": "ok", "application": "spatialguard", "database": "available",
+                    "queue": {"pending": queued, "failed": failed}}
+        except sqlite3.Error:
+            return Response(
+                content=json.dumps({"status": "unavailable", "application": "spatialguard", "database": "unavailable"}),
+                status_code=503,
+                media_type="application/json",
+            )
 
     @app.get("/status")
     def public_status():
@@ -296,7 +353,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             db.execute("BEGIN IMMEDIATE")
             account = db.execute("SELECT * FROM accounts WHERE email=? COLLATE NOCASE", (email,)).fetchone()
             valid_password = password_matches(
-                body.password, account["password_hash"] if account else TEST_ACCOUNT_HASH,
+                body.password, account["password_hash"] if account else DUMMY_PASSWORD_HASH,
             )
             if not account or not valid_password:
                 time.sleep(0.15)
@@ -1167,7 +1224,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
     if dist.exists():
         app.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
 
-        @app.get("/")
+        @app.get("/", include_in_schema=False)
         @app.get("/landing", include_in_schema=False)
         @app.get("/signin", include_in_schema=False)
         @app.get("/signup", include_in_schema=False)
@@ -1181,15 +1238,15 @@ def create_app(db_path=None, engine=None, ring_service=None):
         def index():
             return FileResponse(dist / "index.html")
 
-        @app.get("/manifest.webmanifest")
+        @app.get("/manifest.webmanifest", include_in_schema=False)
         def manifest():
             return FileResponse(dist / "manifest.webmanifest")
 
-        @app.get("/sw.js")
+        @app.get("/sw.js", include_in_schema=False)
         def service_worker():
             return FileResponse(dist / "sw.js", media_type="application/javascript")
 
-        @app.get("/icon.svg")
+        @app.get("/icon.svg", include_in_schema=False)
         def icon():
             return FileResponse(dist / "icon.svg")
 

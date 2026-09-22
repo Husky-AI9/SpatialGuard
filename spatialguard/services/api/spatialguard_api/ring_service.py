@@ -44,6 +44,79 @@ def hardware_model(attributes):
     return None
 
 
+def capability_summary(capabilities):
+    """Reduce Ring capability data to customer-safe feature decisions.
+
+    Unknown or absent capability data is intentionally treated as unsupported.
+    This keeps media controls fail-closed for sensors and newly introduced
+    device families until Ring explicitly reports camera support.
+    """
+    values = capabilities if isinstance(capabilities, dict) else {}
+    video = values.get('video')
+    motion = values.get('motion_detection')
+    components = values.get('components', {}).get('items', [])
+    is_camera = isinstance(video, dict)
+    return {
+        'live_view': is_camera,
+        'snapshots': is_camera,
+        'motion_events': isinstance(motion, dict),
+        'multi_camera': isinstance(components, list) and len(components) > 1,
+    }
+
+
+def configuration_summary(configuration):
+    """Return compliance state without retaining privacy-zone coordinates."""
+    values = configuration if isinstance(configuration, dict) else {}
+    motion = values.get('motion_detection')
+    enhancements = values.get('image_enhancements')
+    privacy_known = isinstance(enhancements, dict) and isinstance(
+        enhancements.get('privacy_zones'), list
+    )
+    privacy_active = privacy_known and bool(enhancements['privacy_zones'])
+    guidance = []
+    if not isinstance(motion, dict):
+        guidance.append('Motion settings are unavailable. Refresh this camera, then check Motion Settings in the Ring app.')
+    elif motion.get('enabled') != 'on':
+        guidance.append('Motion detection is off. Turn it on in the Ring app under this camera’s Motion Settings.')
+    if not privacy_known:
+        guidance.append('Privacy-zone status is unavailable. Refresh before opening or analyzing camera media.')
+    elif privacy_active:
+        guidance.append('Ring privacy zones are active. SpatialGuard blocks media for this camera so masked areas are never processed.')
+    return {
+        'motion_detection': ('on' if isinstance(motion, dict) and motion.get('enabled') == 'on'
+                             else 'off' if isinstance(motion, dict) else 'unknown'),
+        'privacy_zones': 'active' if privacy_active else 'clear' if privacy_known else 'unknown',
+        'guidance': guidance,
+    }
+
+
+def subscription_summary(payload):
+    """Normalize the app-scoped Ring subscription response without plan IDs."""
+    records = payload.get('data', []) if isinstance(payload, dict) else []
+    if not isinstance(records, list):
+        records = []
+    states = []
+    for record in records:
+        attributes = record.get('attributes', {}) if isinstance(record, dict) else {}
+        status = attributes.get('status')
+        kind = attributes.get('sub_type')
+        if status in {'active', 'inactive'} and kind in {'paid', 'trial'}:
+            states.append({
+                'kind': kind,
+                'status': status,
+                'expires_at': attributes.get('expires_at') if isinstance(attributes.get('expires_at'), str) else None,
+            })
+    active = next((item for item in states if item['status'] == 'active'), None)
+    required = os.environ.get('SPATIALGUARD_REQUIRE_RING_SUBSCRIPTION', '').lower() in {'1','true','yes','on'}
+    return {
+        'required': required,
+        'eligible': bool(active) or not required,
+        'state': ('active_' + active['kind']) if active else 'not_active',
+        'expires_at': active['expires_at'] if active else None,
+        'manage_url': 'https://ring.com/my-apps',
+    }
+
+
 @contextmanager
 def account_lock(store, account):
     # Cross-process lock keeps rotating refresh tokens serial across API/gateway/worker.
@@ -105,6 +178,11 @@ class RingService:
                 delay_seconds INTEGER NOT NULL DEFAULT 0, browser_enabled INTEGER NOT NULL DEFAULT 0,
                 email_enabled INTEGER NOT NULL DEFAULT 0, email TEXT NOT NULL DEFAULT '');
             CREATE TABLE IF NOT EXISTS ring_camera_wall(owner TEXT PRIMARY KEY, devices TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS ring_account_metadata(account TEXT PRIMARY KEY,
+                subscription TEXT NOT NULL, checked_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS ring_telemetry(account TEXT NOT NULL, name TEXT NOT NULL,
+                count INTEGER NOT NULL, total REAL NOT NULL, maximum REAL NOT NULL,
+                updated TEXT NOT NULL, PRIMARY KEY(account,name));
             CREATE TABLE IF NOT EXISTS timelapse_projects(id TEXT PRIMARY KEY, owner TEXT NOT NULL,
                 device TEXT NOT NULL, site TEXT NOT NULL, camera TEXT NOT NULL, name TEXT NOT NULL,
                 cadence_minutes INTEGER NOT NULL, start_hour INTEGER NOT NULL, end_hour INTEGER NOT NULL,
@@ -153,6 +231,15 @@ class RingService:
                 db.execute('INSERT INTO ring_alerts VALUES (?,?,?,?,?,?,0,0)',
                            (uid('health'), owner, device, 'recovered', at, at))
 
+    def _metric(self, db, account, name, value=0.0, count=1):
+        """Store bounded aggregate telemetry without provider IDs or payloads."""
+        db.execute(
+            'INSERT INTO ring_telemetry VALUES (?,?,?,?,?,?) '
+            'ON CONFLICT(account,name) DO UPDATE SET count=count+excluded.count,'
+            'total=total+excluded.total,maximum=max(maximum,excluded.maximum),updated=excluded.updated',
+            (account, name, int(count), float(value), float(value), now()),
+        )
+
     @property
     def provider(self):
         return self._provider or Provider()
@@ -167,12 +254,16 @@ class RingService:
         except HTTPException:
             configured = False
         with self.store.connect() as db:
-            a = db.execute('SELECT state FROM ring_accounts WHERE owner=?', (owner,)).fetchone()
+            a = db.execute('SELECT account,state FROM ring_accounts WHERE owner=?', (owner,)).fetchone()
             public = db.execute("SELECT value FROM settings WHERE key='ring_public_url'").fetchone()
+            metadata = (db.execute('SELECT subscription,checked_at FROM ring_account_metadata WHERE account=?',
+                                   (a['account'],)).fetchone() if a else None)
             return {'configured': configured, 'state': a['state'] if a else 'not_connected',
                     'public_url': (os.environ.get('SPATIALGUARD_ORIGIN', '').rstrip('/')
                                    if os.environ.get('SPATIALGUARD_ORIGIN', '').startswith('https://')
-                                   else public[0] if public else None)}
+                                   else public[0] if public else None),
+                    'subscription': json.loads(metadata['subscription']) if metadata else None,
+                    'subscription_checked_at': metadata['checked_at'] if metadata else None}
 
     def code(self, owner):
         code = secrets.token_hex(8).upper()
@@ -374,14 +465,29 @@ class RingService:
         with self.store.connect() as db:
             db.execute("UPDATE ring_accounts SET state='revoked',tokens=NULL,generation=generation+1 WHERE account=?", (account,))
             db.execute('DELETE FROM ring_devices WHERE account=?', (account,))
+            db.execute('DELETE FROM ring_account_metadata WHERE account=?', (account,))
             db.execute("UPDATE ring_streams SET state='revoked' WHERE account=?", (account,))
+
+    def refresh_subscription(self, account):
+        """Reconcile app subscription state after lifecycle webhooks or outages."""
+        summary = subscription_summary(
+            self.provider.api(self.token(account), '/v1/accounts/me/subscriptions')
+        )
+        with self.store.connect() as db:
+            db.execute('INSERT INTO ring_account_metadata VALUES (?,?,?) '
+                       'ON CONFLICT(account) DO UPDATE SET subscription=excluded.subscription,checked_at=excluded.checked_at',
+                       (account, dump(summary), now()))
+        return summary
 
     def devices(self, owner, refresh=False):
         a = self.account(owner)
         if refresh:
             token = self.token(a['account'])
             try:
-                data = self.provider.api(token, '/v1/devices?include=status,capabilities,location')
+                data = self.provider.api(token, '/v1/devices?include=status,capabilities,location,configurations')
+                subscription = subscription_summary(
+                    self.provider.api(token, '/v1/accounts/me/subscriptions')
+                )
             except HTTPException as e:
                 if e.status_code == 401: self.invalidate(a['account'])
                 raise
@@ -394,10 +500,16 @@ class RingService:
                 def related(name):
                     ref = d.get('relationships', {}).get(name, {}).get('data', {}) or {}
                     return included.get((ref.get('type'), ref.get('id')), {})
-                status, caps = related('status'), related('capabilities')
+                status, caps, config = related('status'), related('capabilities'), related('configurations')
+                support = capability_summary(caps)
+                configuration = configuration_summary(config)
+                guidance = list(configuration['guidance'])
+                if not support['live_view']:
+                    guidance.append('This authorized Ring device does not report camera video support, so live view and snapshots are unavailable.')
                 normalized.append({'id': d['id'], 'name': attrs.get('description') or attrs.get('name') or 'Ring device',
                                    'status': status, 'capabilities': caps, 'checked_at': now(),
-                                   'hardware_model': hardware_model(attrs)})
+                                   'hardware_model': hardware_model(attrs), 'support': support,
+                                   'configuration': configuration, 'guidance': guidance})
             with self.store.connect() as db:
                 if not db.execute("SELECT 1 FROM ring_accounts WHERE account=? AND generation=? AND state='connected'", (a['account'], a['generation'])).fetchone():
                     raise HTTPException(401, 'Ring connection changed')
@@ -411,6 +523,9 @@ class RingService:
                     online = d.get('status', {}).get('online')
                     if isinstance(online, bool):
                         self._record_health(db, a['account'], d['id'], online, 'inventory')
+                db.execute('INSERT INTO ring_account_metadata VALUES (?,?,?) '
+                           'ON CONFLICT(account) DO UPDATE SET subscription=excluded.subscription,checked_at=excluded.checked_at',
+                           (a['account'], dump(subscription), now()))
         with self.store.connect() as db:
             return [{**json.loads(r['data']), 'site_id':r['site'], 'camera_id':r['camera']} for r in db.execute('SELECT * FROM ring_devices WHERE account=?', (a['account'],))]
 
@@ -449,6 +564,12 @@ class RingService:
         if cached and cached[0] > time.time():
             return cached[1:]
         device = json.loads(mapped['data'])
+        support = device.get('support') or capability_summary(device.get('capabilities'))
+        configuration = device.get('configuration') or configuration_summary({})
+        if not support.get('snapshots'):
+            raise HTTPException(409, 'This Ring device does not support camera snapshots')
+        if configuration.get('privacy_zones') != 'clear':
+            raise HTTPException(409, 'Camera media is blocked until Ring privacy-zone status is clear')
         components = device.get('capabilities', {}).get('components', {}).get('items', [])
         component = None
         if isinstance(components, list) and len(components) == 1:
@@ -472,6 +593,7 @@ class RingService:
         return result
 
     def webhook(self, raw, signature):
+        started = time.perf_counter()
         expected = 'sha256=' + hmac.new(self.provider.creds['hmac signature key'].encode(), raw, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, signature):
             raise HTTPException(401, 'Invalid Ring signature')
@@ -487,7 +609,10 @@ class RingService:
         with self.store.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             event_id = digest(account + ':' + str(d.get('id') or rid))
-            if db.execute('SELECT 1 FROM ring_inbox WHERE id=?', (event_id,)).fetchone(): return
+            if db.execute('SELECT 1 FROM ring_inbox WHERE id=?', (event_id,)).fetchone():
+                self._metric(db, account, 'duplicates_suppressed', count=1)
+                self._metric(db, account, 'webhook_ack_ms', (time.perf_counter()-started)*1000)
+                return
             a = db.execute("SELECT * FROM ring_accounts WHERE account=? AND state='connected'", (account,)).fetchone()
             consent = bool(a and account_preferences(db, a['owner'])['ring_data_consent'])
             # Keep only a provider revocation after permission is withdrawn so
@@ -518,6 +643,7 @@ class RingService:
                 self._record_health(db, account, device, False, 'webhook')
             elif kind == 'device_online':
                 self._record_health(db, account, device, True, 'webhook')
+            self._metric(db, account, 'webhook_ack_ms', (time.perf_counter()-started)*1000)
 
     def operations(self, owner):
         account = self.account(owner)
@@ -751,6 +877,13 @@ class RingService:
             db.execute('BEGIN IMMEDIATE')
             d = db.execute('SELECT * FROM ring_devices WHERE account=? AND device=?', (a['account'], device)).fetchone()
             if not d: raise HTTPException(404, 'Authorized camera not found')
+            data = json.loads(d['data'])
+            support = data.get('support') or capability_summary(data.get('capabilities'))
+            configuration = data.get('configuration') or configuration_summary({})
+            if not support.get('live_view'):
+                raise HTTPException(409, 'Live view is unavailable for this Ring device')
+            if configuration.get('privacy_zones') != 'clear':
+                raise HTTPException(409, 'Live view is blocked until Ring privacy-zone status is clear')
             if not d['site'] or not db.execute('SELECT 1 FROM sites WHERE id=? AND owner=?', (d['site'], owner)).fetchone():
                 raise HTTPException(409, 'Map this device to your floor plan first')
             # A browser reload can cancel its best-effort DELETE. Do not let an

@@ -1302,74 +1302,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Index */
-        get: operations["index__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/manifest.webmanifest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Manifest */
-        get: operations["manifest_manifest_webmanifest_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/sw.js": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Service Worker */
-        get: operations["service_worker_sw_js_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/icon.svg": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Icon */
-        get: operations["icon_icon_svg_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2190,6 +2122,14 @@ export interface components {
             camera_id: string | null;
             /** Hardware Model */
             hardware_model?: ("video_doorbell" | "stick_up_cam") | null;
+            /** Support */
+            support?: {
+                [key: string]: boolean;
+            };
+            /** Configuration */
+            configuration?: Record<string, never>;
+            /** Guidance */
+            guidance?: string[];
         };
         /** RingMapping */
         RingMapping: {
@@ -2206,6 +2146,25 @@ export interface components {
             state: string;
             /** Public Url */
             public_url: string | null;
+            subscription?: components["schemas"]["RingSubscription"] | null;
+            /** Subscription Checked At */
+            subscription_checked_at?: string | null;
+        };
+        /** RingSubscription */
+        RingSubscription: {
+            /** Required */
+            required: boolean;
+            /** Eligible */
+            eligible: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "active_paid" | "active_trial" | "not_active";
+            /** Expires At */
+            expires_at?: string | null;
+            /** Manage Url */
+            manage_url: string;
         };
         /** Room */
         Room: {
@@ -4717,86 +4676,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    index__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    manifest_manifest_webmanifest_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    service_worker_sw_js_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    icon_icon_svg_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };

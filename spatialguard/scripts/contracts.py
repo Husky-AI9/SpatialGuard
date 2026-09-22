@@ -2,7 +2,13 @@ import json
 import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[2]
-sys.path.insert(0,str(ROOT/'spatialguard/services/api'))
+for source_root in (
+    ROOT / 'services/api',
+    ROOT / 'packages/sdk-python',
+    ROOT / 'spatialguard/packages/ring-adapter',
+    ROOT / 'spatialguard/services/api',
+):
+    sys.path.insert(0, str(source_root))
 from spatialguard_api.api import create_app
 target=ROOT/'spatialguard/packages/contracts/openapi.json'
 target.parent.mkdir(parents=True,exist_ok=True)

@@ -102,3 +102,22 @@ def test_sequence_rejects_unbounded_or_empty_input(monkeypatch):
     for images in ([], [b"x"] * 7, [b"valid", b""]):
         with pytest.raises(classifier.ClassifierUnavailable):
             classifier.classify_images(images, "image/jpeg")
+
+
+def test_ring_watermark_is_preserved_and_excluded_from_scene_evidence(monkeypatch):
+    """The classifier receives the full provider image, including both top corners."""
+    configure(monkeypatch)
+    captured = {}
+    image = b"ring-watermark-top-left|device-app-time-top-right|scene-pixels"
+
+    def open_request(request, timeout):
+        captured["payload"] = json.loads(request.data)
+        return Response(completed("no_relevant_activity"))
+
+    monkeypatch.setattr(classifier.urllib.request, "urlopen", open_request)
+    classifier.classify_image(image, "image/jpeg")
+    content = captured["payload"]["input"][0]["content"]
+    import base64
+    assert base64.b64decode(content[1]["image_url"].split(",", 1)[1]) == image
+    assert "Treat that watermark as" in content[0]["text"]
+    assert "never classify its logo" in content[0]["text"]

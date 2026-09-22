@@ -2618,70 +2618,6 @@
           }
         }
       }
-    },
-    "/": {
-      "get": {
-        "summary": "Index",
-        "operationId": "index__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/manifest.webmanifest": {
-      "get": {
-        "summary": "Manifest",
-        "operationId": "manifest_manifest_webmanifest_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/sw.js": {
-      "get": {
-        "summary": "Service Worker",
-        "operationId": "service_worker_sw_js_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/icon.svg": {
-      "get": {
-        "summary": "Icon",
-        "operationId": "icon_icon_svg_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -4799,6 +4735,24 @@
               }
             ],
             "title": "Hardware Model"
+          },
+          "support": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "type": "object",
+            "title": "Support"
+          },
+          "configuration": {
+            "type": "object",
+            "title": "Configuration"
+          },
+          "guidance": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Guidance"
           }
         },
         "additionalProperties": false,
@@ -4853,6 +4807,27 @@
               }
             ],
             "title": "Public Url"
+          },
+          "subscription": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RingSubscription"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subscription_checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscription Checked At"
           }
         },
         "additionalProperties": false,
@@ -4863,6 +4838,51 @@
           "public_url"
         ],
         "title": "RingStatus"
+      },
+      "RingSubscription": {
+        "properties": {
+          "required": {
+            "type": "boolean",
+            "title": "Required"
+          },
+          "eligible": {
+            "type": "boolean",
+            "title": "Eligible"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active_paid",
+              "active_trial",
+              "not_active"
+            ],
+            "title": "State"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "manage_url": {
+            "type": "string",
+            "title": "Manage Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "required",
+          "eligible",
+          "state",
+          "manage_url"
+        ],
+        "title": "RingSubscription"
       },
       "Room": {
         "properties": {

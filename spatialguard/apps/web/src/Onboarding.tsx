@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Camera, Check, Map, Shield } from "lucide-react";
+import { useDialogFocus } from "./useDialogFocus";
 
 export type AccountPreferences = {
   onboarding_completed: boolean;
@@ -38,6 +39,7 @@ export default function Onboarding({
       setBusy(false);
     }
   };
+  const dialog = useDialogFocus(true, () => void finish(false), !busy);
   const pages = [
     <div className="onboarding-copy" key="account">
       <span className="onboarding-icon"><Shield size={24} /></span>
@@ -92,7 +94,7 @@ export default function Onboarding({
 
   return (
     <div className="modal-backdrop onboarding-backdrop" role="presentation">
-      <section className="onboarding-dialog" role="dialog" aria-modal="true" aria-label="SpatialGuard setup">
+      <section {...dialog} className="onboarding-dialog" role="dialog" aria-modal="true" aria-label="SpatialGuard setup">
         <header>
           <span>SpatialGuard setup</span>
           <span>{page + 1} of {pages.length}</span>

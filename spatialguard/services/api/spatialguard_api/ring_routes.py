@@ -9,10 +9,20 @@ from .store import account_preferences, audit, access_log, event
 from .release import capabilities, require_feature
 
 
+class RingSubscription(Model):
+    required: bool
+    eligible: bool
+    state: Literal['active_paid', 'active_trial', 'not_active']
+    expires_at: str | None = None
+    manage_url: str
+
+
 class RingStatus(Model):
     configured: bool
     state: str
     public_url: str | None
+    subscription: RingSubscription | None = None
+    subscription_checked_at: str | None = None
 
 
 class RingMapping(Model):
@@ -29,6 +39,9 @@ class RingDevice(Model):
     site_id: str | None
     camera_id: str | None
     hardware_model: Literal['video_doorbell', 'stick_up_cam'] | None = None
+    support: dict[str, bool] = Field(default_factory=dict)
+    configuration: dict = Field(default_factory=dict)
+    guidance: list[str] = Field(default_factory=list)
 
 
 class StreamOffer(Model):
@@ -271,26 +284,72 @@ def install(app, store, principal, service=None):
     @app.get('/v1/ring/pipeline-metrics')
     def pipeline_metrics(p=Depends(principal)):
         require_ring_consent(p['owner'])
-        from datetime import datetime
+        from datetime import datetime, timezone
+        import time
+        account = ring.account(p['owner'])['account']
         with store.connect() as db:
             rows = db.execute(
                 "SELECT i.received,i.processed,i.state,i.attempts FROM ring_inbox i "
                 "JOIN ring_accounts a ON a.account=i.account WHERE a.owner=? ORDER BY i.rowid DESC LIMIT 500",
                 (p['owner'],),
             ).fetchall()
+            telemetry = {row['name']: dict(row) for row in db.execute(
+                'SELECT name,count,total,maximum,updated FROM ring_telemetry WHERE account=?',
+                (account,),
+            )}
+            health = db.execute(
+                'SELECT device,at,online FROM ring_health WHERE account=? ORDER BY device,at',
+                (account,),
+            ).fetchall()
+            leaked = db.execute(
+                "SELECT count(*) FROM ring_streams WHERE account=? AND state IN ('opening','active','closing') AND expires<?",
+                (account, time.time()),
+            ).fetchone()[0]
         durations = []
         for row in rows:
             if row['processed']:
                 durations.append(max(0, (datetime.fromisoformat(row['processed']) - datetime.fromisoformat(row['received'])).total_seconds() * 1000))
+        def aggregate(name):
+            value = telemetry.get(name)
+            return {
+                'sample_size': value['count'] if value else 0,
+                'average': round(value['total']/value['count'], 1) if value and value['count'] else None,
+                'maximum': round(value['maximum'], 1) if value else None,
+            }
+        offline = {}
+        recoveries = []
+        for item in health:
+            if not item['online']:
+                offline[item['device']] = item['at']
+            elif item['device'] in offline:
+                recoveries.append(max(0, item['at']-offline.pop(item['device'])))
+        pending = [row for row in rows if row['state'] in {'queued','running'}]
+        oldest_queue_age = None
+        if pending:
+            oldest = min(datetime.fromisoformat(row['received']) for row in pending)
+            oldest_queue_age = round(max(0, (datetime.now(timezone.utc)-oldest).total_seconds()), 1)
+        failures = sum(row['state'] == 'failed' for row in rows)
         return {
             'sample_size': len(rows),
             'processed': sum(row['state'] in {'succeeded','ignored'} for row in rows),
-            'failed': sum(row['state'] == 'failed' for row in rows),
+            'failed': failures,
             'retrying': sum(row['state'] == 'running' and row['attempts'] > 0 for row in rows),
-            'duplicate_suppression': 'provider request and event IDs are idempotent',
+            'error_rate_percent': round(failures/len(rows)*100, 2) if rows else 0,
+            'duplicates_suppressed': int(telemetry.get('duplicates_suppressed', {}).get('count', 0)),
+            'dead_letters': int(telemetry.get('dead_letters', {}).get('count', 0)),
+            'oldest_queue_age_seconds': oldest_queue_age,
+            'provider_session_leaks': leaked,
+            'webhook_ack_latency_ms': aggregate('webhook_ack_ms'),
+            'queue_latency_ms': aggregate('queue_latency_ms'),
+            'incident_creation_latency_ms': aggregate('incident_ready_ms'),
             'processing_latency_ms': {
                 'average': round(sum(durations) / len(durations), 1) if durations else None,
                 'maximum': round(max(durations), 1) if durations else None,
+            },
+            'recovery_time_seconds': {
+                'sample_size': len(recoveries),
+                'average': round(sum(recoveries)/len(recoveries), 1) if recoveries else None,
+                'maximum': round(max(recoveries), 1) if recoveries else None,
             },
         }
 

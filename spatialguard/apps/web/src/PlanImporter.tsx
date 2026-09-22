@@ -4,6 +4,7 @@ import Map2D from "@twinforge/spatial-view/Map2D";
 import type { Layout } from "../../../../packages/sdk-typescript";
 import type { components } from "./generated";
 import { request } from "./platform";
+import { useDialogFocus } from "./useDialogFocus";
 const Scene3D = lazy(() => import("@twinforge/spatial-view/Scene3D"));
 type PlanJob = components["schemas"]["PlanJob"];
 type Site = components["schemas"]["Site"];
@@ -142,9 +143,10 @@ export default function PlanImporter({
 
   const working = !!job && ["queued", "running"].includes(job.state);
   const ready = job?.state === "needs_review" && job.layout;
+  const dialog = useDialogFocus(true, onClose, !working && !busy);
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && !working && onClose()}>
-      <section className="modal plan-importer" role="dialog" aria-modal="true" aria-labelledby="plan-title">
+      <section {...dialog} className="modal plan-importer" role="dialog" aria-modal="true" aria-labelledby="plan-title">
         <div className="panel-heading">
           <h2 id="plan-title">Map from a floor plan</h2>
           <button aria-label="Close" disabled={working || busy} onClick={onClose}>

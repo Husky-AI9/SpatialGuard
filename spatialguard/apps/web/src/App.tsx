@@ -41,6 +41,7 @@ import HomeCctv from "./HomeCctv";
 import Operations from "./Operations";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
 import AccountSecurity from "./AccountSecurity";
+import { useDialogFocus } from "./useDialogFocus";
 import type { TestTrack } from "./TestVideoReplay";
 import type { components } from "./generated";
 import type {
@@ -129,6 +130,12 @@ export default function App() {
     [busy, setBusy] = useState(false),
     [run, setRun] = useState<Run | null>(null),
     [view, setView] = useState("2D"),
+    [lowPower, setLowPower] = useState(() => {
+      const saved = window.localStorage.getItem("spatialguard-low-power");
+      if (saved !== null) return saved === "true";
+      const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches || Boolean(connection?.saveData);
+    }),
     [room, setRoom] = useState(""),
     [placing, setPlacing] = useState(false),
     [sites, setSites] = useState<Site[]>([]),
@@ -153,6 +160,7 @@ export default function App() {
     [deleteConfirmation, setDeleteConfirmation] = useState(""),
     [deleteError, setDeleteError] = useState("");
   const [features, setFeatures] = useState<ProductCapabilities>({ profile: "preview", classification: true, timelapse: true, uptime_history: true, offline_alerts: true, test_video: true, synthetic_replay: true, reviewer_diagnostics: false });
+  const deleteDialog = useDialogFocus(deleteOpen, () => setDeleteOpen(false));
   const cursor = useRef(0),
     activeRef = useRef(""),
     current = useRef({ tab, selected }),
@@ -161,7 +169,7 @@ export default function App() {
     refreshRef = useRef<() => Promise<void>>(async () => {});
   current.current = { tab, selected };
   const hostedWeb = !native && !localWeb;
-  const environmentLabel = hostedWeb ? "Hosted preview" : "Local preview";
+  const environmentLabel = hostedWeb ? "Cloud workspace" : "Local workspace";
   activeRef.current = activeSite;
   runRef.current = run;
   useEffect(() => {
@@ -174,6 +182,10 @@ export default function App() {
       window.clearTimeout(timer);
     };
   }, [tab]);
+  useEffect(() => {
+    window.localStorage.setItem("spatialguard-low-power", String(lowPower));
+    if (lowPower && view === "3D") setView("2D");
+  }, [lowPower, view]);
   const handleError = useCallback((e: unknown) => {
     setError(e instanceof Error ? e.message : "Connection failed");
     if (e instanceof ApiError && e.status === 401) {
@@ -740,6 +752,8 @@ export default function App() {
                 <button
                   key={v}
                   aria-pressed={view === v}
+                  disabled={v === "3D" && lowPower}
+                  title={v === "3D" && lowPower ? "Turn off low-power mode in Settings to use 3D" : undefined}
                   onClick={() => {
                     setView(v);
                     setPlacing(false);
@@ -1070,6 +1084,18 @@ export default function App() {
             : "synthetic fixture time"}
         </span>
       </div>
+      <section className="evidence-inspector" aria-label="Selected evidence details" aria-live="polite">
+        <h3>Evidence details</h3>
+        <dl>
+          <div><dt>Timestamp</dt><dd>{observation ? time(observation.observed_at) : "Unavailable"}</dd></div>
+          <div><dt>Camera</dt><dd>{place.layout.cameras.find((c) => c.id === observation?.source_id)?.name ?? "Unknown camera"}</dd></div>
+          <div><dt>Evidence mode</dt><dd>{selected.evidence_mode === "live" ? "Live Ring event" : selected.evidence_mode === "simulator" ? "Official simulator" : "Synthetic replay"}</dd></div>
+          <div><dt>Associated media</dt><dd>{image ? "Available for this replay observation" : selected.evidence_mode === "live" ? "Event metadata only; snapshot is not retained" : "Unavailable"}</dd></div>
+          <div><dt>Triggering rule</dt><dd>{selected.rule}</dd></div>
+          <div><dt>Certainty</dt><dd>{observation?.location.kind === "unknown" ? "Observed camera event; position and identity unknown" : "Observed at an illustrative replay position"}</dd></div>
+          <div><dt>Layout revision</dt><dd>{selected.revision_id}</dd></div>
+        </dl>
+      </section>
       <ol className="timeline">
         {selected.observations.map((o, i) => {
           const association = selected.associations.find(
@@ -1085,6 +1111,11 @@ export default function App() {
                     s unobserved
                     <br />
                     <small>{association.reason}</small>
+                    <details className="uncertainty-inspector">
+                      <summary>Why is this only a possible continuation?</summary>
+                      <p><strong>Supporting facts:</strong> two mapped cameras reported activity {association.unobserved_gap_seconds} seconds apart inside the fixed five-minute incident window.</p>
+                      <p><strong>Missing evidence:</strong> no camera observation establishes the route, location during the gap, or that both events involve the same person.</p>
+                    </details>
                   </span>
                 </div>
               )}
@@ -1102,6 +1133,24 @@ export default function App() {
           );
         })}
       </ol>
+      <section className="evidence-comparison" aria-labelledby="evidence-comparison-title">
+        <div className="comparison-heading">
+          <span className="eyebrow">Why SpatialGuard helps</span>
+          <h3 id="evidence-comparison-title">The same event, two review methods</h3>
+        </div>
+        <div className="comparison-grid">
+          <article>
+            <h4>Camera-by-camera</h4>
+            <p>Separate event times with no relationship or explanation of what happened between views.</p>
+            <ol>{selected.observations.map((item) => <li key={item.observation_id}>{time(item.observed_at)} · {place.layout.cameras.find(camera => camera.id === item.source_id)?.name ?? "Unknown camera"}</li>)}</ol>
+          </article>
+          <article className="comparison-spatial">
+            <h4>Spatial evidence graph</h4>
+            <p>Ordered observations, {selected.associations.length} possible continuation{selected.associations.length === 1 ? "" : "s"}, and every unobserved gap kept explicit.</p>
+            <ol>{selected.observations.map((item, index) => <li key={item.observation_id}><strong>Observed</strong> {time(item.observed_at)} · {place.layout.cameras.find(camera => camera.id === item.source_id)?.name ?? "Unknown camera"}{index > 0 && selected.associations[index - 1] ? <small>Unknown for {selected.associations[index - 1].unobserved_gap_seconds}s before this observation</small> : null}</li>)}</ol>
+          </article>
+        </div>
+      </section>
       <div className="review-footer">
         <span>
           Pinned revision {selected.revision_id.slice(-6)}
@@ -1135,7 +1184,7 @@ export default function App() {
   );
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${lowPower ? " low-power" : ""}`}>
       {importing && (
         <PlanImporter
           onClose={() => setImporting(false)}
@@ -1368,7 +1417,7 @@ export default function App() {
             <div className="settings-page">
               <section>
                 <h2>Account</h2>
-                <p>{currentSession?.email ?? "Local preview owner"}</p>
+                <p>{currentSession?.email ?? "Local workspace owner"}</p>
                 {currentSession?.email && (
                   <button
                     onClick={() => void act(async () => {
@@ -1590,6 +1639,14 @@ export default function App() {
                 ))}
               </section>
               <section>
+                <h2>Display and performance</h2>
+                <p>Low-power mode keeps incident review in the accessible 2D view and avoids WebGL and nonessential animation.</p>
+                <button aria-pressed={lowPower} onClick={() => setLowPower(value => !value)}>
+                  {lowPower ? "Use full graphics" : "Turn on low-power mode"}
+                </button>
+                <p className="fine" role="status">{lowPower ? "Low-power mode is on. The evidence timeline and 2D map remain available." : "Full graphics are available. Your reduced-motion system setting is still respected."}</p>
+              </section>
+              <section>
                 <h2>Data and evidence</h2>
                 <p>
                   Replay evidence is synthetic. Live Ring incidents retain event
@@ -1630,7 +1687,7 @@ export default function App() {
       )}
       {deleteOpen && (
         <div className="modal-backdrop" role="presentation">
-          <section className="delete-account-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+          <section {...deleteDialog} className="delete-account-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
             <button className="modal-close" aria-label="Close" onClick={() => setDeleteOpen(false)}><X size={18} /></button>
             <p className="eyebrow">Permanent action</p>
             <h2 id="delete-account-title">Delete SpatialGuard account?</h2>

@@ -10,7 +10,10 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from twinforge.fixture import synthetic_layout
 from spatialguard_api.store import Store, digest, dump, now
-from spatialguard_api.ring_service import RingService, hardware_model
+from spatialguard_api.ring_service import (
+    RingService, capability_summary, configuration_summary, hardware_model,
+    subscription_summary,
+)
 from spatialguard_api.ring_provider import Provider, WindowsVault
 from spatialguard_api.ring_gateway import create_gateway
 from spatialguard_api.ring_worker import _candidate_incident, process_one
@@ -28,9 +31,27 @@ class FakeProvider:
     def api(self, token, path, method='GET', body=None):
         self.calls.append((path,method,body))
         if path=='/v1/users/me': return {'data':{'type':'users','id':'account-a'}}
+        if path=='/v1/accounts/me/subscriptions':
+            return {'data':[{'type':'subscriptions','id':'subscription-a','attributes':{
+                'sub_type':'paid','status':'active','plan_id':'private-plan-id',
+                'expires_at':'2027-01-01T00:00:00Z'}}]}
         if path.startswith('/v1/devices?'):
-            return {'data':[{'type':'devices','id':'device-a','attributes':{'name':'Front camera'},'relationships':{'status':{'data':{'type':'device-status','id':'status-a'}}}}],
-                    'included':[{'type':'device-status','id':'status-a','attributes':{'online':True}}]}
+            return {'data':[{'type':'devices','id':'device-a','attributes':{'name':'Front camera'},'relationships':{
+                        'status':{'data':{'type':'device-status','id':'status-a'}},
+                        'capabilities':{'data':{'type':'device-capabilities','id':'capabilities-a'}},
+                        'configurations':{'data':{'type':'device-configurations','id':'configurations-a'}},
+                    }}],
+                    'included':[
+                        {'type':'device-status','id':'status-a','attributes':{'online':True}},
+                        {'type':'device-capabilities','id':'capabilities-a','attributes':{
+                            'video':{'max_resolution':1080}, 'motion_detection':{},
+                            'components':{'items':[{'component_id':'0'}]},
+                        }},
+                        {'type':'device-configurations','id':'configurations-a','attributes':{
+                            'motion_detection':{'enabled':'on','motion_zones':[],'component_id':'0'},
+                            'image_enhancements':{'privacy_zones':[]},
+                        }},
+                    ]}
         return {}
     def stream(self, token, device, sdp):
         self.streams+=1
@@ -130,6 +151,15 @@ def test_gateway_has_no_owner_surface_and_validates_raw_signature(service):
     assert web.post('/ring/token',content=b'x'*8200).status_code==413
     assert web.get('/ring/home').headers['cache-control']=='no-store'
     assert web.post('/ring/link',headers={'origin':'https://evil.test'}).status_code==403
+
+
+def test_signed_malformed_webhook_is_rejected_before_queueing(service):
+    raw=b'{"meta":{"account_id":"account-a"},"data":{"type":"motion_detected"}}'
+    signature='sha256='+hmac.new(service.provider.creds['hmac signature key'].encode(),raw,hashlib.sha256).hexdigest()
+    with pytest.raises(HTTPException, match='Malformed'):
+        service.webhook(raw,signature)
+    with service.store.connect() as db:
+        assert db.execute('SELECT count(*) FROM ring_inbox').fetchone()[0]==0
 
 
 def test_gateway_accepts_public_origin_behind_host_rewriting(service, monkeypatch):
@@ -268,10 +298,51 @@ def test_jsonapi_inventory_and_site_mapping_isolation(service):
     devices=service.devices('owner')
     assert devices[0]['status']['online'] is True
     assert devices[0]['camera_id']=='camera_front'
+    assert devices[0]['support']=={
+        'live_view': True, 'snapshots': True,
+        'motion_events': True, 'multi_camera': False,
+    }
+    assert devices[0]['configuration']['privacy_zones']=='clear'
+    status=service.status('owner')
+    assert status['subscription']['state']=='active_paid'
+    assert status['subscription']['eligible'] is True
+    assert 'private-plan-id' not in json.dumps(status)
     with pytest.raises(HTTPException):service.devices('other')
     with pytest.raises(HTTPException):service.mapping('owner','device-a','wrong-site','camera_front')
     with pytest.raises(HTTPException):service.mapping('owner','device-a','site_demo','missing-camera')
     with pytest.raises(HTTPException):service.mapping('owner','unauthorized-device','site_demo','camera_hall')
+
+
+def test_capability_and_privacy_state_fail_closed_for_media(service):
+    assert capability_summary({})['live_view'] is False
+    assert configuration_summary({})['privacy_zones']=='unknown'
+    assert subscription_summary({'data':[]})['eligible'] is True
+    mapped(service)
+    with service.store.connect() as db:
+        row=db.execute("SELECT data FROM ring_devices WHERE device='device-a'").fetchone()
+        data=json.loads(row['data'])
+        data['configuration']['privacy_zones']='active'
+        db.execute("UPDATE ring_devices SET data=? WHERE device='device-a'",(dump(data),))
+    with pytest.raises(HTTPException, match='privacy-zone'):
+        service.snapshot('owner','site_demo','camera_front')
+    with pytest.raises(HTTPException, match='privacy-zone'):
+        service.stream('owner','device-a','v=0\r\nm=video 9\r\na=recvonly')
+    assert service.provider.snapshots==0 and service.provider.streams==0
+
+
+def test_subscription_webhook_reconciles_authoritative_state(service):
+    mapped(service); engine=Engine()
+    original=service.provider.api
+    def api(token,path,method='GET',body=None):
+        if path=='/v1/accounts/me/subscriptions': return {'data':[]}
+        return original(token,path,method,body)
+    service.provider.api=api
+    service.webhook(*delivery(service,kind='subscription_deactivated',rid='sub-off',eid='sub-off'))
+    assert process_one(service,engine)
+    assert service.status('owner')['subscription']['state']=='not_active'
+    with service.store.connect() as db:
+        row=db.execute("SELECT state,processed,error FROM ring_inbox WHERE kind='subscription_deactivated'").fetchone()
+    assert row['state']=='succeeded' and row['processed'] and row['error'] is None
 
 
 def test_operations_tracks_health_delay_recovery_and_saved_wall(service):
@@ -373,6 +444,30 @@ def test_duplicate_events_survive_restart_unknown_location_preserved(service):
         assert incident['observations'][0]['location']['kind']=='unknown'
         assert not incident['associations']
         assert db.execute("SELECT count(*) FROM events WHERE kind='incident.created'").fetchone()[0]==1
+
+
+def test_pipeline_metrics_measure_ack_queue_incident_and_duplicate(service):
+    mapped(service); engine=Engine()
+    raw,signature=delivery(service)
+    service.webhook(raw,signature)
+    service.webhook(raw,signature)
+    assert process_one(service,engine)
+    token='metrics-session-token'
+    with service.store.connect() as db:
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',
+                   ('metrics-session','owner',digest(token),'Metrics test','android',time.time()+600))
+    client=TestClient(create_app(service.store.path,ring_service=service),
+                      headers={'authorization':'Bearer '+token})
+    response=client.get('/v1/ring/pipeline-metrics')
+    assert response.status_code==200
+    metrics=response.json()
+    assert metrics['sample_size']==1
+    assert metrics['duplicates_suppressed']==1
+    assert metrics['webhook_ack_latency_ms']['sample_size']==2
+    assert metrics['queue_latency_ms']['sample_size']==1
+    assert metrics['incident_creation_latency_ms']['sample_size']==1
+    assert metrics['error_rate_percent']==0
+    assert metrics['provider_session_leaks']==0
 
 
 def test_live_multicamera_events_share_fixed_five_minute_incident(service):
@@ -515,6 +610,36 @@ def test_revocation_blocks_stream_and_pending_incident(service):
     with service.store.connect() as db:assert db.execute('SELECT count(*) FROM incidents').fetchone()[0]==0
 
 
+def test_device_removal_closes_media_and_worker_records_lifecycle(service):
+    mapped(service); engine=Engine()
+    stream=service.stream('owner','device-a','v=0\r\nm=video 9\r\na=recvonly')
+    service.webhook(*delivery(service,kind='device_removed',eid='device-removed',rid='device-removed'))
+    with service.store.connect() as db:
+        assert db.execute("SELECT 1 FROM ring_devices WHERE device='device-a'").fetchone() is None
+        assert db.execute('SELECT expires FROM ring_streams WHERE id=?',(stream['id'],)).fetchone()['expires']==0
+    assert process_one(service,engine)
+    with service.store.connect() as db:
+        assert db.execute("SELECT state FROM ring_inbox WHERE kind='device_removed'").fetchone()['state']=='succeeded'
+
+
+def test_worker_failure_has_bounded_retries_and_dead_letter_metric(service):
+    mapped(service)
+    class FailingEngine:
+        def observations(self, values): raise RuntimeError('private payload must not escape')
+    service.webhook(*delivery(service,eid='poison-event',rid='poison-request'))
+    for _ in range(3):
+        assert process_one(service,FailingEngine())
+        with service.store.connect() as db:
+            db.execute("UPDATE ring_inbox SET lease=0 WHERE id=?",(digest('account-a:poison-event'),))
+    assert not process_one(service,FailingEngine())
+    with service.store.connect() as db:
+        row=db.execute("SELECT state,attempts,error FROM ring_inbox WHERE id=?",(digest('account-a:poison-event'),)).fetchone()
+        metric=db.execute("SELECT count FROM ring_telemetry WHERE account=? AND name='dead_letters'",('account-a',)).fetchone()
+    assert row['state']=='failed' and row['attempts']==3
+    assert row['error']=='Processing failed; retry is bounded'
+    assert metric['count']==1
+
+
 def test_stream_authorization_concurrency_and_expiry_cleanup(service):
     mapped(service)
     with pytest.raises(HTTPException):service.stream('other','device-a','v=0\r\nm=video 9\r\na=recvonly')
@@ -540,6 +665,35 @@ def test_owner_api_refuses_forwarded_auto_login_and_cross_owner_access(service):
     assert c.post('/v1/local-session').status_code==200
     assert c.get('/v1/ring').json()['state']=='not_connected'
     assert c.get('/v1/ring/devices').status_code==409
+
+
+def test_request_logs_and_errors_redact_customer_and_ring_data(service, caplog):
+    app=create_app(service.store.path,ring_service=service)
+    client=TestClient(app)
+    secrets_in_request={
+        'email':'private-owner@example.test',
+        'password':'password-secret-value',
+    }
+    with caplog.at_level('INFO', logger='spatialguard.request'):
+        response=client.post('/v1/auth/signin?device=ava1.ring.device.secret',json=secrets_in_request,
+                             headers={'x-spatialguard-client':'android','x-request-id':'bad@email'})
+    combined='\n'.join(record.getMessage() for record in caplog.records)
+    assert response.status_code==401
+    for private in (*secrets_in_request.values(),'ava1.ring.device.secret','bad@email'):
+        assert private not in combined
+        assert private not in response.text
+    record=json.loads(caplog.records[-1].getMessage())
+    assert record['route']=='/v1/auth/signin' and record['status']==401
+    assert set(record)=={'event','method','route','status','duration_ms','request_id'}
+
+
+def test_maintenance_mode_preserves_health_and_blocks_application(service, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_MAINTENANCE_MODE','true')
+    client=TestClient(create_app(service.store.path,ring_service=service))
+    assert client.get('/health').status_code==200
+    blocked=client.get('/v1/ring')
+    assert blocked.status_code==503 and blocked.headers['retry-after']=='300'
+    assert 'maintenance' in blocked.json()['detail'].lower()
 
 
 def test_refresh_rotation_is_persisted_and_deduplicated(service):

@@ -1065,6 +1065,40 @@ small {
 .evidence-caption span {
   color: var(--muted);
 }
+
+.evidence-inspector,
+.evidence-comparison {
+  margin: 16px 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 94%, var(--accent) 6%);
+}
+.evidence-inspector h3,
+.evidence-comparison h3 { margin: 0 0 12px; }
+.evidence-inspector dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; margin: 0; }
+.evidence-inspector dl > div { min-width: 0; }
+.evidence-inspector dt { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.evidence-inspector dd { margin: 3px 0 0; line-height: 1.45; overflow-wrap: anywhere; }
+.uncertainty-inspector { margin-top: 8px; }
+.uncertainty-inspector summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+.uncertainty-inspector p { margin: 7px 0 0; line-height: 1.45; }
+.comparison-heading .eyebrow { display: block; margin-bottom: 4px; }
+.comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.comparison-grid article { padding: 15px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel); }
+.comparison-grid article h4 { margin: 0 0 7px; }
+.comparison-grid article p { color: var(--muted); line-height: 1.45; }
+.comparison-grid ol { margin: 12px 0 0; padding-left: 20px; }
+.comparison-grid li { margin: 8px 0; }
+.comparison-grid li small { display: block; color: var(--muted); margin-top: 3px; }
+.comparison-spatial { box-shadow: inset 3px 0 var(--accent); }
+
+@media (max-width: 640px) {
+  .evidence-inspector dl,
+  .comparison-grid { grid-template-columns: 1fr; }
+  .evidence-inspector,
+  .evidence-comparison { margin-inline: 12px; padding: 14px; }
+}
 .timeline {
   list-style: none;
   padding: 0 20px;
@@ -1413,9 +1447,19 @@ code {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *, *::before, *::after {
     scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
+}
+.app-shell.low-power *,
+.app-shell.low-power *::before,
+.app-shell.low-power *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }
 
 /* Chromium paints its `outline-style: auto` ring on a focused SVG <g> for plain
@@ -2583,6 +2627,16 @@ select.site-name:hover {
 .wall-tile-head span { margin-left: auto; }
 .wall-tile-head .online { color: #78ddb0; }
 .wall-tile-head .offline { color: #ff9399; }
+.wall-tile-head .wall-order-actions { display: flex; gap: 5px; margin-left: 0; }
+.wall-order-actions button {
+  min-height: 28px;
+  padding: 3px 8px;
+  border-color: #7770df;
+  background: #5b4fe8;
+  color: #fff;
+  font-size: 11px;
+}
+.wall-order-actions button:disabled { opacity: .42; }
 .camera-wall-tile .ring-video { color: #fff; }
 .camera-wall-tile .ring-video h3 { margin: 0; padding: 10px 12px 7px; font-size: 15px; }
 .ring-video-viewport {

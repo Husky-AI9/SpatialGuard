@@ -87,8 +87,35 @@ def process_one(service, engine, classifier=classify_image):
         if not r: return False
         row = dict(r)
         db.execute("UPDATE ring_inbox SET state='running',lease=?,attempts=attempts+1 WHERE id=?", (time.time()+90, row['id']))
+        try:
+            queued_ms = max(0, (datetime.now().astimezone() - datetime.fromisoformat(row['received'])).total_seconds() * 1000)
+            service._metric(db, row['account'], 'queue_latency_ms', queued_ms)
+        except (TypeError, ValueError):
+            pass
     try:
         snapshot = json.loads(row['snapshot']) if row['snapshot'] else None
+        if row['kind'] in {
+            'subscription_activated', 'subscription_deactivated',
+            'device_added', 'device_removed', 'device_online', 'device_offline',
+            'app_integration_added', 'app_integration_removed',
+        }:
+            if row['kind'] in {'subscription_activated', 'subscription_deactivated'}:
+                service.refresh_subscription(row['account'])
+            elif row['kind'] == 'device_added':
+                with store.connect() as db:
+                    linked = db.execute(
+                        "SELECT owner FROM ring_accounts WHERE account=? AND state='connected'",
+                        (row['account'],),
+                    ).fetchone()
+                if linked:
+                    service.devices(linked['owner'], True)
+            # Removal and connectivity state are applied transactionally by
+            # webhook ingestion. The durable worker still records completion
+            # so operators can distinguish handled lifecycle events from gaps.
+            with store.connect() as db:
+                db.execute("UPDATE ring_inbox SET state='succeeded',processed=?,error=NULL WHERE id=?",
+                           (now(), row['id']))
+            return True
         def current(db):
             if not snapshot or row['kind'] not in ('motion_detected','button_press'): return False
             a = db.execute("SELECT owner FROM ring_accounts WHERE account=? AND state='connected' AND generation=?", (row['account'], snapshot['generation'])).fetchone()
@@ -164,10 +191,15 @@ def process_one(service, engine, classifier=classify_image):
                                    (incident.id, digest(row['account'])))
                         event(db, incident.site_id, 'incident.created', incident.id)
             db.execute("UPDATE ring_inbox SET state='succeeded',processed=?,error=NULL WHERE id=?", (now(), row['id']))
+            service._metric(db, row['account'], 'incident_ready_ms', max(
+                0, (datetime.now().astimezone() - datetime.fromisoformat(row['received'])).total_seconds() * 1000
+            ))
     except Exception:
         with store.connect() as db:
             final = row['attempts'] >= 2
             db.execute('UPDATE ring_inbox SET state=?,lease=?,processed=?,error=? WHERE id=?',
                        ('failed' if final else 'running', time.time()+5, now() if final else None,
                         'Processing failed; retry is bounded' if final else 'Retry scheduled', row['id']))
+            service._metric(db, row['account'], 'processing_errors', count=1)
+            service._metric(db, row['account'], 'dead_letters' if final else 'retries_scheduled', count=1)
     return True

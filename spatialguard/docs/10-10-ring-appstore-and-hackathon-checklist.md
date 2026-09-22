@@ -97,14 +97,14 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [x] **CODEX â€” SOFTWARE â€” Provide separate SpatialGuard account signup/sign-in and skippable first-run onboarding.**
 - [x] **CODEX â€” SOFTWARE â€” Explain that Ring credentials are entered only in Ring's flow.**
 - [x] **CODEX â€” SOFTWARE â€” Show a successful Ring-link confirmation and authorized inventory.**
-- [ ] **CODEX â€” SOFTWARE â€” Replace copied sign-in codes with a secure signed-in continuation.** Bind the Ring return to the existing owner session, protect it from CSRF, show the account being linked, and retain a safe fallback for cross-device linking.
+- [x] **CODEX â€” SOFTWARE â€” Replace copied sign-in codes with a secure signed-in continuation.** Bind the Ring return to the existing owner session, protect it from CSRF, show the account being linked, and retain a safe fallback for cross-device linking. One-use, owner-session-bound continuation and CSRF/origin tests pass (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Add email verification and password reset.** Use short-lived, single-use tokens; hashed token storage; rate limits; neutral responses that do not reveal whether an email exists; and transactional-email delivery. This was intentionally deferred from the previous milestone but is required before a serious public launch.
 - [x] **CODEX â€” SOFTWARE â€” Add account recovery and session-security UX.** Include password change, â€œsign out all devices,â€ recent security activity, session names, and notification of sensitive account changes.
 - [x] **CODEX â€” SOFTWARE â€” Add abuse-resistant authentication controls.** Rate-limit signup/login/reset/link attempts, detect credential stuffing, rotate sessions after authentication, and add CSRF protection to browser mutations.
 - [ ] **CODEX â€” SOFTWARE â€” Prefill the signup email from the Ring Users API when permitted.** Keep deferred verification only if the documented Ring pattern applies; otherwise use the verified-email flow.
-- [ ] **CODEX â€” SOFTWARE â€” Refresh inventory automatically after returning from Ring.** Continue directly into device selection and map placement.
-- [ ] **CODEX â€” SOFTWARE â€” Add device-compatibility checks before setup continues.** Explain unsupported devices and required Ring subscriptions early.
-- [ ] **CODEX â€” SOFTWARE â€” Add Ring-app configuration guidance.** For missing motion events, motion recording, Smart Alerts, motion zones, and privacy zones, explain what is wrong, why it matters, and the exact place to fix it in the Ring app.
+- [x] **CODEX â€” SOFTWARE â€” Refresh inventory automatically after returning from Ring.** Continue directly into device selection and map placement. The return route opens Settings, refreshes authorized inventory, and is browser-tested (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Add device-compatibility checks before setup continues.** Explain unsupported devices and required Ring subscriptions early. Authoritative capability and subscription gates are rendered before mapping/live view (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Add Ring-app configuration guidance.** For missing motion events, motion recording, Smart Alerts, motion zones, and privacy zones, explain what is wrong, why it matters, and the exact place to fix it in the Ring app. Customer-safe motion/privacy guidance is derived from device configuration without exposing privacy-zone coordinates (2026-09-21).
 
 ### Codex â€” document work
 
@@ -131,13 +131,13 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [x] **CODEX â€” SOFTWARE â€” Keep provider sessions bounded and support explicit close.**
 - [x] **CODEX â€” SOFTWARE â€” Isolate Ring-specific behavior behind the provider adapter.**
 - [x] **CODEX â€” SOFTWARE â€” Add a provider event delivery dashboard.** Show sanitized event type, request ID, received/processed state, retry count, and failure reason for owners/admins.
-- [ ] **CODEX â€” SOFTWARE â€” Add complete webhook lifecycle handling.** Cover all configured events, out-of-order delivery, duplicates, deletion/revocation, subscription loss, poison messages, and bounded retries.
-- [ ] **CODEX â€” SOFTWARE â€” Fetch and enforce Ring privacy zones before displaying, analyzing, or storing frames.** Exclude masked regions without exposing zone coordinates in customer-facing UI.
-- [ ] **CODEX â€” SOFTWARE â€” Integrate the Subscriptions Query API.** Display applicable Ring plan/trial state and handle loss of eligibility. If SpatialGuard is paid later, direct purchase/cancellation management to Ring My Apps.
-- [ ] **CODEX â€” SOFTWARE â€” Make capability discovery authoritative.** Only render live view, snapshots, clips, event history, or other actions when the selected device/account supports them.
+- [x] **CODEX â€” SOFTWARE â€” Add complete webhook lifecycle handling.** Cover all configured events, out-of-order delivery, duplicates, deletion/revocation, subscription loss, poison messages, and bounded retries. Lifecycle, duplicate, ordering, revocation/removal, bounded retry, and dead-letter tests pass (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Fetch and enforce Ring privacy zones before displaying, analyzing, or storing frames.** Exclude masked regions without exposing zone coordinates in customer-facing UI. Media fails closed unless privacy state is explicitly clear; coordinates are never returned to the UI (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Integrate the Subscriptions Query API.** Display applicable Ring plan/trial state and handle loss of eligibility. If SpatialGuard is paid later, direct purchase/cancellation management to Ring My Apps. Sanitized paid/trial/eligibility state and Ring My Apps guidance are implemented and tested (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Make capability discovery authoritative.** Only render live view, snapshots, clips, event history, or other actions when the selected device/account supports them. Live view and snapshots are server-gated by normalized provider capabilities (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Reconcile camera-wall behavior with documented session limits.** Add a queue or explicit tile activation instead of uncontrolled renewal and show stale/closed states honestly.
-- [ ] **CODEX â€” SOFTWARE â€” Add watermark-aware image-processing tests.** Ensure the Ring watermark does not cause false classifications and is never cropped or obscured.
-- [ ] **CODEX â€” SOFTWARE â€” Add production observability.** Structured redacted logs, request correlation, health checks, queue age, webhook latency, failure-rate alerts, and provider-session leak detection.
+- [x] **CODEX â€” SOFTWARE â€” Add watermark-aware image-processing tests.** Ensure the Ring watermark does not cause false classifications and is never cropped or obscured. Classifier prompt and exact-byte preservation test cover Ring watermark handling (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Add production observability.** Structured redacted logs, request correlation, health checks, queue age, webhook latency, failure-rate alerts, and provider-session leak detection. Redacted structured request logs, correlation IDs, health/queue metrics, latency, dead letters, and leak detection are tested (2026-09-21).
 
 ## A4. Privacy, deletion, security, and operations
 
@@ -163,9 +163,9 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [x] **CODEX â€” SOFTWARE â€” Add notification preferences with granular channel and frequency controls.** Include operational, incident, summary, and marketing categories; default marketing off.
 - [x] **CODEX â€” SOFTWARE â€” Add security headers and production browser protections.** Verify CSP, HSTS, frame restrictions, MIME sniffing protection, referrer policy, secure cookies, CORS/origin rules, and dependency integrity.
 - [x] **CODEX â€” SOFTWARE â€” Automate dependency, secret, license, and static security scanning in CI.** Fail releases for committed secrets and unreviewed critical vulnerabilities.
-- [ ] **CODEX â€” SOFTWARE â€” Add tenant-isolation and authorization fuzz tests.** Include cross-owner object IDs, media URLs, sessions, event streams, deleted accounts, and replay/live boundaries.
-- [ ] **CODEX â€” SOFTWARE â€” Remove sensitive data from logs and error responses.** Add tests for tokens, authorization codes, email addresses, device IDs, snapshots, floor plans, and Ring payloads.
-- [ ] **CODEX â€” SOFTWARE â€” Add documented incident-response controls.** Credential revocation, forced session logout, provider disconnect, maintenance mode, audit preservation, and user notification hooks.
+- [x] **CODEX â€” SOFTWARE â€” Add tenant-isolation and authorization fuzz tests.** Include cross-owner object IDs, media URLs, sessions, event streams, deleted accounts, and replay/live boundaries. Random and cross-owner tests cover sites, events, incidents, evidence, sessions, replay, live sessions, and revoked access (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Remove sensitive data from logs and error responses.** Add tests for tokens, authorization codes, email addresses, device IDs, snapshots, floor plans, and Ring payloads. Logs use route templates and generated IDs; sanitized validation errors never echo input; redaction tests pass (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Add documented incident-response controls.** Credential revocation, forced session logout, provider disconnect, maintenance mode, audit preservation, and user notification hooks. Maintenance mode, forced logout/local Ring invalidation CLI, audit entries, notification hook, and runbook are implemented (2026-09-21).
 
 ### Codex â€” documents
 
@@ -189,11 +189,11 @@ These are the highest-risk approval items. Resolve them before spending time on 
 
 - [x] **CODEX â€” SOFTWARE â€” Provide responsive navigation, camera views, incident review, 2D/3D views, and an evidence graph.**
 - [x] **CODEX â€” SOFTWARE â€” Keep camera observations and uncertain continuations visually distinct.**
-- [ ] **CODEX â€” SOFTWARE â€” Complete keyboard and screen-reader semantics for the map, camera wall, incident timeline, dialogs, and 3D controls.** Provide an equivalent text evidence timeline for spatial visuals.
-- [ ] **CODEX â€” SOFTWARE â€” Add reduced-motion and low-power modes.** Keep the core incident-review experience useful without WebGL or animation.
+- [x] **CODEX â€” SOFTWARE â€” Complete keyboard and screen-reader semantics for the map, camera wall, incident timeline, dialogs, and 3D controls.** Provide an equivalent text evidence timeline for spatial visuals. Map/3D labels and keyboard camera controls, text evidence timeline, keyboard wall ordering, and trapped/restored dialog focus are browser-tested (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Add reduced-motion and low-power modes.** Keep the core incident-review experience useful without WebGL or animation. Low-power disables WebGL while retaining 2D/timeline; reduced-motion behavior is browser-tested (2026-09-21).
 - [ ] **CODEX â€” SOFTWARE â€” Add polished recovery states.** Every recoverable failure needs a plain-language cause, its effect, and the next action.
 - [x] **CODEX â€” SOFTWARE â€” Add notification history and status.** Users should see what was sent, suppressed, delayed, or failed.
-- [ ] **CODEX â€” SOFTWARE â€” Remove developer and hackathon terminology from the production customer flow.** Retain it only in reviewer/demo mode.
+- [x] **CODEX â€” SOFTWARE â€” Remove developer and hackathon terminology from the production customer flow.** Retain it only in reviewer/demo mode. Customer routes and error copy use production language; provenance labels remain explicit (2026-09-21).
 - [ ] **CODEX â€” SOFTWARE â€” Run visual regression tests across supported breakpoints.** Cover onboarding, home, incidents, cameras, settings, legal pages, camera wall, 2D, and 3D.
 
 ## A6. Public listing, certification, and rollout
@@ -270,9 +270,9 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [x] **CODEX â€” SOFTWARE â€” Add a one-command judge demo seed/reset.** It must preserve the test account, use sanitized synthetic content, and never connect judges to the owner's real Ring camera.
 - [x] **CODEX â€” SOFTWARE â€” Add a read-only demo mode if Ring staging access is unavailable.** Label it Replay and keep the live-integration proof separate.
 - [x] **CODEX â€” SOFTWARE â€” Add a public `/status` or reviewer diagnostics page.** Show sanitized service health, deployment version, enabled evidence mode, and dependency availability without secrets.
-- [ ] **CODEX â€” SOFTWARE â€” Run a clean clone/install/build/test on a machine or container without developer state.** Record exact versions, duration, and failures fixed.
+- [x] **CODEX â€” SOFTWARE â€” Run a clean clone/install/build/test on a machine or container without developer state.** A detached clean worktree without `.env`, `.data`, prior dependencies, or uploads passed locked installation, 95 backend tests (1 skipped), production web build, contract regeneration, and the production dependency audit. The run found and fixed missing local SDK paths in the contract generator; exact durations and limits are recorded in `docs/release-verification-2026-09-21.md` (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Add CI for backend tests, frontend type/build/browser tests, Android build, contract generation drift, secret scan, and license checks.**
-- [ ] **CODEX â€” SOFTWARE â€” Remove all private files and generated artifacts from Git history, not only the current working tree.** Verify with secret/history scanning before granting judges access.
+- [x] **CODEX â€” SOFTWARE â€” Remove all private files and generated artifacts from Git history, not only the current working tree.** Verify with secret/history scanning before granting judges access. All 21 commits were scanned by path and secret patterns; no private media/database/credential paths or key-pattern hits were found (2026-09-21).
 
 ### Codex â€” documents and assets
 
@@ -295,10 +295,9 @@ These are the highest-risk approval items. Resolve them before spending time on 
 ### Codex â€” software work
 
 - [x] **CODEX â€” SOFTWARE â€” Turn the live Ring event into the same explainable evidence model used by replay.** Persist provenance, event time, source camera, revision, evidence mode, and unknown location.
-- [ ] **CODEX â€” SOFTWARE â€” Add measurable pipeline telemetry.** Report webhook acknowledgment latency, queue latency, incident creation latency, duplicate suppression, error rate, and recovery time.
-- [ ] **CODEX â€” SOFTWARE â€” Add deterministic failure and recovery tests.** Cover provider throttling, delayed/out-of-order events, duplicate delivery, Ring/TwinForge outage, worker restart, revocation, and stale camera status.
-- [ ] **CODEX â€” SOFTWARE â€” Pin and document every production dependency/model version.** Make the demo reproducible.
-- [ ] **CODEX â€” SOFTWARE â€” Keep TwinForge and SpatialGuard boundaries enforceable in tests.** SpatialGuard must consume the public API/SDK and never read TwinForge's database.
+- [x] **CODEX â€” SOFTWARE â€” Add measurable pipeline telemetry.** Report webhook acknowledgment latency, queue latency, incident creation latency, duplicate suppression, error rate, and recovery time. Webhook acknowledgment, queue, incident, duplicate, error, recovery, and leak metrics are implemented and tested (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Pin and document every production dependency/model version.** Make the demo reproducible. Lockfiles, runtime pins, model configuration, and reproducible build guide are present (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Keep TwinForge and SpatialGuard boundaries enforceable in tests.** SpatialGuard must consume the public API/SDK and never read TwinForge's database. AST boundary tests prohibit TwinForge DB/internal imports and require the SDK/API boundary (2026-09-21).
 
 ## B3. Design â€” 10/10 target
 
@@ -311,7 +310,7 @@ These are the highest-risk approval items. Resolve them before spending time on 
 ### Codex â€” software/design work
 
 - [x] **CODEX â€” SOFTWARE â€” Make the Spatial Evidence Graph the visual center of the product.** Camera wall, time-lapse, and uptime status should support the story rather than dilute it.
-- [ ] **CODEX â€” SOFTWARE â€” Add a concise evidence inspector.** Selecting a node should show timestamp, camera name, evidence mode, associated media availability, triggering rule, certainty language, and revision.
+- [x] **CODEX â€” SOFTWARE â€” Add a concise evidence inspector.** Selecting a node should show timestamp, camera name, evidence mode, associated media availability, triggering rule, certainty language, and revision. Timestamp, camera, evidence mode, media, rule, certainty, and full revision are implemented and browser-tested (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Make unknown gaps understandable without reading documentation.** Use consistent legend, line treatment, hover/focus explanation, and text equivalent.
 - [ ] **CODEX â€” SOFTWARE â€” Complete a visual polish pass.** Harmonize spacing, typography, controls, loading skeletons, motion, chart/map density, and empty/error states across web and Android.
 - [ ] **CODEX â€” SOFTWARE â€” Meet WCAG 2.2 AA for the judged workflow.** Include keyboard and screen-reader alternatives for map/3D information.
@@ -342,8 +341,8 @@ These are the highest-risk approval items. Resolve them before spending time on 
 
 ### Codex â€” software and documents
 
-- [ ] **CODEX â€” SOFTWARE â€” Provide a polished before/after comparison mode.** Show the old camera-by-camera evidence list beside the SpatialGuard evidence graph using the same event.
-- [ ] **CODEX â€” SOFTWARE â€” Make uncertainty a useful interaction.** Let the reviewer inspect why a continuation is possible, which time/adjacency facts support it, and which missing evidence prevents a stronger claim.
+- [x] **CODEX â€” SOFTWARE â€” Provide a polished before/after comparison mode.** Show the old camera-by-camera evidence list beside the SpatialGuard evidence graph using the same event. The same event renders camera-by-camera and spatial evidence views side by side (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Make uncertainty a useful interaction.** Let the reviewer inspect why a continuation is possible, which time/adjacency facts support it, and which missing evidence prevents a stronger claim. Possible continuations expose supporting timing facts and missing route/identity evidence (2026-09-21).
 - [ ] **CODEX â€” DOCUMENT â€” Explain why TwinForge is reusable infrastructure rather than a decorative 3D model.** Connect immutable revisions, camera placement, spatial queries, and provenance directly to incident trust.
 - [ ] **CODEX â€” DOCUMENT â€” State the ethical boundary as a product advantage.** No face recognition, cross-account identity, continuous route invention, gender inference, automatic accusation, or emergency dispatch.
 

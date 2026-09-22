@@ -43,7 +43,7 @@ test("camera wall is available from Home and Cameras while Operations stays task
   await expect(page.getByText("Recorded playback remains disabled", { exact: false })).toBeVisible();
 });
 
-test("Ring setup shows real endpoint URLs and single-use sign-in instructions", async ({
+test("Ring setup keeps customer flow clear and provides single-use fallback", async ({
   page,
 }) => {
   await allowRingData(page);
@@ -67,7 +67,9 @@ test("Ring setup shows real endpoint URLs and single-use sign-in instructions", 
   await expect(
     page.getByText("App credentials configured.", { exact: false }),
   ).toBeVisible();
-  await expect(page.locator(".ring-endpoints")).toContainText("/ring/webhook");
+  await expect(page.getByRole("button", { name: "Open Ring Appstore" })).toBeVisible();
+  await expect(page.getByText("Developer connection settings")).toHaveCount(0);
+  await expect(page.getByText("Staging Apps", { exact: false })).toHaveCount(0);
   await page.screenshot({
     path: "../../../.data/spatialguard/ring-settings-desktop.png",
     fullPage: true,
@@ -120,6 +122,9 @@ test("phone Ring inventory handles mapping and provider errors without fake live
     checked_at: new Date().toISOString(),
     site_id: null,
     camera_id: null,
+    support: { live_view: true, snapshots: true, motion_events: true, multi_camera: false },
+    configuration: { motion_detection: "on", privacy_zones: "clear", guidance: [] },
+    guidance: ["Smart Alerts are unavailable. Review this camera in the Ring app."],
   };
   await page.route("**/v1/ring", (r) =>
     r.fulfill({
@@ -127,6 +132,11 @@ test("phone Ring inventory handles mapping and provider errors without fake live
         configured: true,
         state: "connected",
         public_url: "https://gateway.example.test",
+        subscription: {
+          required: false, eligible: true, state: "active_paid",
+          expires_at: "2027-01-01T00:00:00Z", manage_url: "https://ring.com/my-apps",
+        },
+        subscription_checked_at: new Date().toISOString(),
       },
     }),
   );
@@ -145,6 +155,9 @@ test("phone Ring inventory handles mapping and provider errors without fake live
   await expect(
     page.getByRole("heading", { name: "Front camera" }),
   ).toBeVisible();
+  await expect(page.getByText("Ring plan active")).toBeVisible();
+  await expect(page.getByText("Compatible camera", { exact: false })).toBeVisible();
+  await expect(page.getByText("Smart Alerts are unavailable", { exact: false })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Open live view" }),
   ).toBeDisabled();

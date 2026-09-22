@@ -33,10 +33,13 @@ Variables:
 SpatialGuard stores salted scrypt password verifiers and gives each account an
 isolated owner ID. The browser stores only a Secure, HttpOnly, SameSite cookie;
 Android receives a separate revocable bearer session after email/password sign
-in. Railway deployments can create the isolated reviewer account when
-`SPATIALGUARD_ENABLE_TEST_ACCOUNT=true`; its credentials are intentionally not
-shown in the app. Set the variable to `false` for a public release. The reviewer
-account does not inherit another owner's site or Ring connection.
+in. Railway creates the isolated reviewer account only when both
+`SPATIALGUARD_REVIEWER_EMAIL` and `SPATIALGUARD_REVIEWER_PASSWORD` are present.
+Keep both in Railway Variables and private reviewer instructions; never commit
+or show them in the app. `SPATIALGUARD_DEMO_READ_ONLY=true` protects the demo
+from ordinary reviewer writes. The reset script additionally requires the
+operator-only `SPATIALGUARD_REVIEWER_KEY`. The reviewer account does not inherit
+another owner's site or Ring connection.
 
 To use that private account with a real test camera, sign in with its credentials,
 seed its demo place with `spatialguard/scripts/judge-demo.py`, then complete the

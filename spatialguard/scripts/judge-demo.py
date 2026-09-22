@@ -11,9 +11,14 @@ import time
 import urllib.request
 
 origin = (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8010").rstrip("/")
-email = os.environ.get("SPATIALGUARD_REVIEWER_EMAIL", "test12345@gmail.com")
-password = os.environ.get("SPATIALGUARD_REVIEWER_PASSWORD", "test12345")
+email = os.environ.get("SPATIALGUARD_REVIEWER_EMAIL", "")
+password = os.environ.get("SPATIALGUARD_REVIEWER_PASSWORD", "")
 reviewer_key = os.environ.get("SPATIALGUARD_REVIEWER_KEY", "")
+if not email or not password or not reviewer_key:
+    raise SystemExit(
+        "Set SPATIALGUARD_REVIEWER_EMAIL, SPATIALGUARD_REVIEWER_PASSWORD, and "
+        "SPATIALGUARD_REVIEWER_KEY before resetting reviewer data."
+    )
 cookies = http.cookiejar.CookieJar()
 client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookies))
 

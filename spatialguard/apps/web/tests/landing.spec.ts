@@ -9,12 +9,12 @@ test("desktop landing restores the spatial 3D-house experience", async ({ page }
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("See what happened.Know where.");
   await expect(page.getByRole("img", { name: "Illustrative cutaway 3D home" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Try SpatialGuard" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Try SpatialGuard" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Follow activity/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "See the delivery. Follow the whole moment." })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBeTruthy();
 
-  await page.getByRole("button", { name: /Local replay preview/ }).click();
+  await page.getByRole("button", { name: /Local replay/ }).click();
   await expect(page).toHaveURL(/\/signin$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.getByRole("link", { name: "Back to SpatialGuard" }).click();
@@ -44,7 +44,7 @@ test("landing fits a phone and preserves glass contrast", async ({ page }) => {
 
 test("try it out opens the local workspace", async ({ page }) => {
   await page.goto("/landing");
-  await page.getByRole("link", { name: "Try SpatialGuard" }).click();
+  await page.getByRole("link", { name: "Try SpatialGuard" }).first().click();
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.locator(".lp-desktop")).toHaveCount(0);
 });
@@ -52,7 +52,7 @@ test("try it out opens the local workspace", async ({ page }) => {
 test("privacy, terms, and deletion guidance are public and readable", async ({ page }) => {
   for (const [route, heading] of [
     ["/privacy", "Privacy notice"],
-    ["/terms", "Preview terms"],
+    ["/terms", "Terms of service"],
     ["/data-deletion", "Delete your data"],
   ] as const) {
     await page.goto(route);

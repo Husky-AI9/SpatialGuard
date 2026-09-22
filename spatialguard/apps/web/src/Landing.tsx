@@ -39,7 +39,7 @@ export default function Landing() {
   const workspaceHref = native ? "/?workspace=1" : "/workspace";
   const hostedWeb = !native && !localWeb;
   const accountRequired = hostedWeb || native;
-  const previewLabel = accountRequired ? "Private account required" : "Local replay preview: no account required";
+  const previewLabel = accountRequired ? "Private account required" : "Local replay: no account required";
   const openAuth = (mode: "signin" | "signup") =>
     window.location.assign(native ? `/?auth=${mode}` : `/${mode}`);
   const openWorkspace = (event: MouseEvent<HTMLAnchorElement>) => {
@@ -175,9 +175,9 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="sg-entry-visual" aria-label="SpatialGuard home monitoring preview">
+        <section className="sg-entry-visual" aria-label="SpatialGuard home monitoring overview">
           <header>
-            <div><strong>Home overview</strong><span>Replay preview</span></div>
+            <div><strong>Home overview</strong><span>Replay example</span></div>
             <span className="sg-entry-protected"><Check size={14} />Monitoring on</span>
           </header>
 
@@ -231,7 +231,7 @@ export default function Landing() {
       </main>
 
       <footer className="sg-entry-footer">
-        <span>{hostedWeb ? "Hosted preview" : "Local replay preview"}</span>
+        <span>{hostedWeb ? "Cloud service" : "Local replay"}</span>
         <span className="landing-legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/data-deletion">Data deletion</a></span>
         <span>Built with TwinForge</span>
       </footer>

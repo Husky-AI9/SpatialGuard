@@ -279,36 +279,10 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
           </p>
         )}
       {error && <p role="alert">{error}</p>}
-      {status?.public_url ? (
-        <details>
-          <summary>Developer connection settings</summary>
-          <p>
-            Enter these HTTPS addresses in your private Ring app’s
-            account-linking configuration:
-          </p>
-          <dl className="ring-endpoints">
-            {[
-              ["Account Link URL", "link"],
-              ["App Homepage URL", "home"],
-              ["Token Exchange URL", "token"],
-              ["Webhook URL", "webhook"],
-            ].map(([label, path]) => (
-              <div key={path}>
-                <dt>{label}</dt>
-                <dd>
-                  {status.public_url}/ring/{path}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </details>
-      ) : null}
       <p>
-        Open the Ring Appstore, choose SpatialGuard, and authorize your cameras.
-        In this private preview, the app is listed as “test” under Staging Apps
-        and your Ring account must already be invited. When the linking page
-        asks for a code, create one here and paste it there. Then return here
-        and check the connection.
+        Open the Ring Appstore, choose SpatialGuard, and authorize the cameras
+        you want to use. Return here after linking to review compatibility and
+        place each camera on your home map.
       </p>
       <div className="button-row">
         <button
@@ -343,6 +317,23 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
       )}
       {status?.state === "connected" && (
         <>
+          {status.subscription && (
+            <div className="ring-readiness" aria-label="Ring plan status">
+              <strong>
+                {status.subscription.state === "active_paid" ? "Ring plan active" :
+                  status.subscription.state === "active_trial" ? "Ring trial active" :
+                    status.subscription.required ? "Ring plan required" : "No SpatialGuard plan required"}
+              </strong>
+              <p>
+                {status.subscription.eligible
+                  ? "Your current Ring Appstore access is eligible for the enabled SpatialGuard features."
+                  : "Subscription access ended. Camera media and event features remain unavailable until Ring reports an eligible plan."}
+              </p>
+              <button onClick={() => void openExternal(status.subscription!.manage_url)}>
+                Manage in Ring My Apps
+              </button>
+            </div>
+          )}
           <div className="button-row">
             <button
               disabled={busy}
@@ -381,11 +372,22 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
             Authorized by Ring · inventory checked{" "}
             {new Date(d.checked_at).toLocaleString()}
           </p>
+          <p className="fine">
+            {d.support?.live_view && d.support?.motion_events
+              ? "Compatible camera · live view and motion events available"
+              : "Compatibility needs attention · camera features are unavailable"}
+          </p>
+          {d.guidance?.length ? (
+            <div className="ring-guidance" role="status" aria-label={`${d.name} setup guidance`}>
+              <strong>Check this camera in the Ring app</strong>
+              <ul>{d.guidance.map(item => <li key={item}>{item}</li>)}</ul>
+            </div>
+          ) : null}
           <label>
             Floor-plan camera
             <select
               aria-label={`Floor-plan camera for ${d.name}`}
-              disabled={busy}
+              disabled={busy || !d.support?.motion_events}
               value={
                 d.site_id && d.camera_id ? `${d.site_id}/${d.camera_id}` : ""
               }
@@ -414,7 +416,11 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
               )}
             </select>
           </label>
-          <button disabled={!d.camera_id || busy} onClick={() => setView(d)}>
+          <button
+            disabled={!d.camera_id || busy || !d.support?.live_view ||
+              d.configuration?.privacy_zones !== "clear" || status?.subscription?.eligible === false}
+            onClick={() => setView(d)}
+          >
             Open live view
           </button>
         </div>

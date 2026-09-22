@@ -81,7 +81,7 @@ export default function DesktopLanding({
               </button>
             </div>
             <button className="lp-local-note" onClick={openSignIn}>
-              {hostedWeb ? "Private workspace · email sign-in required" : "Local replay preview · no account required"}
+              {hostedWeb ? "Private workspace · email sign-in required" : "Local replay · no account required"}
             </button>
           </div>
 
@@ -182,12 +182,12 @@ export default function DesktopLanding({
 
       <section className="lp-privacy" aria-labelledby="lp-privacy-title">
         <div><span className="lp-section-number">03 / Evidence boundaries</span><h2 id="lp-privacy-title">Clear about what is<br /><em>observed and unknown.</em></h2></div>
-        <div className="lp-privacy-copy"><p>Every incident distinguishes observed evidence, a possible continuation, and a coverage gap. Live view is time-bounded and is not recorded as incident evidence by SpatialGuard.</p><a href={workspaceHref} onClick={openWorkspace}>Try the hosted preview <ArrowRight size={16} /></a></div>
+        <div className="lp-privacy-copy"><p>Every incident distinguishes observed evidence, a possible continuation, and a coverage gap. Live view is time-bounded and is not recorded as incident evidence by SpatialGuard.</p><a href={workspaceHref} onClick={openWorkspace}>Try SpatialGuard <ArrowRight size={16} /></a></div>
       </section>
 
       <footer className="lp-footer">
         <Brand />
-        <p>{hostedWeb ? "Hosted preview" : "Local replay preview"} · Built with TwinForge</p>
+        <p>{hostedWeb ? "Cloud service" : "Local replay"} · Built with TwinForge</p>
         <div className="landing-legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/data-deletion">Data deletion</a></div>
         <button onClick={openSignUp}>Create account <ArrowUpRight size={14} /></button>
       </footer>
