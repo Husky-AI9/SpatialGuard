@@ -148,6 +148,23 @@ export async function ringSnapshot(siteId: string, cameraId: string) {
   if (!r.ok) throw new ApiError(r.status, "Snapshot unavailable");
   return URL.createObjectURL(await r.blob());
 }
+export async function testVideoMedia(videoId: string) {
+  const path = `/v1/test-videos/${encodeURIComponent(videoId)}/media`;
+  if (!native) return path;
+  if (native) {
+    const r = await CapacitorHttp.get({
+      url: apiUrl + path,
+      headers: { Authorization: `Bearer ${credential}` },
+      responseType: "blob",
+      connectTimeout: 10000,
+      readTimeout: 30000,
+    });
+    if (r.status !== 200) throw new ApiError(r.status, "Test video unavailable");
+    const bytes = Uint8Array.from(atob(r.data), (c) => c.charCodeAt(0));
+    return URL.createObjectURL(new Blob([bytes], { type: "video/mp4" }));
+  }
+  throw new Error("Unsupported platform");
+}
 export async function openExternal(url: string) {
   if (native) await Browser.open({ url });
   else window.open(url, "_blank", "noopener,noreferrer");

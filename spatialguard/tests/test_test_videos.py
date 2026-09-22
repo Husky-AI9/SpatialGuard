@@ -21,18 +21,21 @@ def test_catalog_paths_are_fixed_and_unknown_ids_are_rejected(tmp_path, monkeypa
 def test_classifier_frame_is_decoded_to_memory_only(tmp_path, monkeypatch):
     monkeypatch.setattr(videos, "VIDEO_ROOT", tmp_path)
     (tmp_path / "delivery-night.mp4").write_bytes(b"private-video")
-    monkeypatch.setattr(videos.shutil, "which", lambda name: "ffmpeg")
     captured = {}
 
-    def run(command, **options):
-        captured["command"] = command
-        captured["options"] = options
-        return SimpleNamespace(stdout=b"jpeg-frame")
+    class Capture:
+        def isOpened(self): return True
+        def set(self, key, value): captured["seek"] = (key, value)
+        def read(self): return True, "decoded-frame"
+        def release(self): captured["released"] = True
 
-    monkeypatch.setattr(videos.subprocess, "run", run)
+    monkeypatch.setattr(videos.cv2, "VideoCapture", lambda path: Capture())
+    monkeypatch.setattr(videos.cv2, "imencode", lambda suffix, frame, options: (
+        True, SimpleNamespace(tobytes=lambda: b"jpeg-frame")
+    ))
     assert videos.frame_for("delivery-night") == b"jpeg-frame"
-    assert captured["command"][-1] == "pipe:1"
-    assert captured["options"]["capture_output"] is True
+    assert captured["seek"][1] == 700
+    assert captured["released"] is True
     assert not list(tmp_path.glob("*.jpg"))
 
 

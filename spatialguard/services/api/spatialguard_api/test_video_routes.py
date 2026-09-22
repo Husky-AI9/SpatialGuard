@@ -1,10 +1,10 @@
 """Local, owner-only replay of private Ring clips for detector evaluation."""
 from pathlib import Path
 import json
-import shutil
-import subprocess
+import os
 
-from fastapi import Depends, HTTPException
+import cv2
+from fastapi import Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
 from .classifier import ClassifierUnavailable, classify_images
@@ -45,36 +45,20 @@ def path_for(video_id: str) -> Path:
 def frame_for(video_id: str, at_seconds: float | None = None) -> bytes:
     video = CATALOG.get(video_id)
     path = path_for(video_id)
-    ffmpeg = shutil.which("ffmpeg")
-    if not ffmpeg:
-        raise ClassifierUnavailable("FFmpeg is unavailable for test-video analysis.")
+    capture = cv2.VideoCapture(str(path))
+    if not capture.isOpened():
+        raise ClassifierUnavailable("The test video frame could not be decoded.")
     try:
-        result = subprocess.run(
-            [
-                ffmpeg,
-                "-v",
-                "error",
-                "-ss",
-                str(video.classification_frame_seconds if at_seconds is None else at_seconds),
-                "-i",
-                str(path),
-                "-frames:v",
-                "1",
-                "-f",
-                "image2pipe",
-                "-vcodec",
-                "mjpeg",
-                "pipe:1",
-            ],
-            capture_output=True,
-            check=True,
-            timeout=20,
-        )
-    except (OSError, subprocess.SubprocessError):
-        raise ClassifierUnavailable("The test video frame could not be decoded.") from None
-    if not result.stdout:
+        capture.set(cv2.CAP_PROP_POS_MSEC, 1000 * (video.classification_frame_seconds if at_seconds is None else at_seconds))
+        ok, frame = capture.read()
+    finally:
+        capture.release()
+    if not ok:
         raise ClassifierUnavailable("The test video did not contain a readable frame.")
-    return result.stdout
+    encoded, jpeg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 88])
+    if not encoded:
+        raise ClassifierUnavailable("The test video frame could not be encoded.")
+    return jpeg.tobytes()
 
 
 def classification_frames(video_id: str) -> list[bytes]:
@@ -116,14 +100,20 @@ def person_track_for(video_id: str) -> TestVideoTrack:
 
 
 def install(app, principal):
+    def fixture_owner(p):
+        if p["owner"] not in {"local_owner", "acct_test_preview"}:
+            raise HTTPException(404, "Test videos are unavailable")
+
     @app.get("/v1/test-videos", response_model=list[TestVideo])
     def test_videos(p=Depends(principal)):
         require_feature("test_video")
+        fixture_owner(p)
         return [video for key, video in CATALOG.items() if (VIDEO_ROOT / f"{key}.mp4").is_file()]
 
     @app.get("/v1/test-videos/{video_id}/media", response_class=FileResponse)
     def test_video_media(video_id: str, p=Depends(principal)):
         require_feature("test_video")
+        fixture_owner(p)
         return FileResponse(
             path_for(video_id),
             media_type="video/mp4",
@@ -135,6 +125,7 @@ def install(app, principal):
     @app.get("/v1/test-videos/{video_id}/track", response_model=TestVideoTrack)
     def test_video_track(video_id: str, p=Depends(principal)):
         require_feature("test_video")
+        fixture_owner(p)
         try:
             return person_track_for(video_id)
         except PersonDetectorUnavailable as exc:
@@ -147,7 +138,62 @@ def install(app, principal):
     def classify_test_video(video_id: str, p=Depends(principal)):
         require_feature("test_video")
         require_feature("classification")
+        fixture_owner(p)
         try:
             return classify_images(classification_frames(video_id), "image/jpeg")
         except ClassifierUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
+
+    @app.put("/v1/test-videos/{video_id}/media", response_model=TestVideo, include_in_schema=False)
+    async def provision_test_video(video_id: str, request: Request, p=Depends(principal)):
+        """One-time private fixture provisioning for the isolated reviewer account."""
+        require_feature("test_video")
+        fixture_owner(p)
+        if p["owner"] != "acct_test_preview":
+            raise HTTPException(403, "Reviewer fixture account required")
+        video = CATALOG.get(video_id)
+        if not video:
+            raise HTTPException(404, "Test video not found")
+        target = VIDEO_ROOT / f"{video_id}.mp4"
+        if target.exists():
+            raise HTTPException(409, "Test video is already provisioned")
+        declared = int(request.headers.get("content-length", "0") or 0)
+        if declared <= 0 or declared > 12_000_000:
+            raise HTTPException(413, "Test video must be between 1 byte and 12 MB")
+        body = await request.body()
+        if not body or len(body) > 12_000_000:
+            raise HTTPException(413, "Test video must be between 1 byte and 12 MB")
+        VIDEO_ROOT.mkdir(parents=True, exist_ok=True)
+        temporary = VIDEO_ROOT / f".{video_id}.{os.getpid()}.upload.mp4"
+        try:
+            temporary.write_bytes(body)
+            capture = cv2.VideoCapture(str(temporary))
+            try:
+                valid = capture.isOpened() and capture.get(cv2.CAP_PROP_FRAME_COUNT) > 1
+            finally:
+                capture.release()
+            if not valid:
+                raise HTTPException(422, "Uploaded test video could not be decoded")
+            temporary.replace(target)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return video
+
+    @app.put("/v1/test-videos/{video_id}/track", response_model=TestVideoTrack, include_in_schema=False)
+    def provision_test_track(video_id: str, body: TestVideoTrack, p=Depends(principal)):
+        require_feature("test_video")
+        fixture_owner(p)
+        if p["owner"] != "acct_test_preview":
+            raise HTTPException(403, "Reviewer fixture account required")
+        path = path_for(video_id)
+        if body.video_id != video_id or not body.points:
+            raise HTTPException(422, "Track must match the test video and contain points")
+        cache = VIDEO_ROOT / f"{video_id}.track.json"
+        if cache.exists():
+            raise HTTPException(409, "Test track is already provisioned")
+        cache.write_text(json.dumps({
+            "source_mtime": path.stat().st_mtime_ns,
+            "model_mtime": MODEL.stat().st_mtime_ns if MODEL.is_file() else 0,
+            "track": body.model_dump(mode="json"),
+        }), encoding="utf-8")
+        return body

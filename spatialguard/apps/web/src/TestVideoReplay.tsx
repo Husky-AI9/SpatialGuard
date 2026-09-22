@@ -3,7 +3,7 @@ import { Play, ScanSearch, Sparkles } from "lucide-react";
 import type { Camera } from "../../../../packages/sdk-typescript";
 import type { components } from "./generated";
 import { limitMovement, projectGroundPoint, samplePersonTrack } from "./motionTracking";
-import { request } from "./platform";
+import { request, testVideoMedia } from "./platform";
 import { ActivityIcon, activities } from "./activityPresentation";
 
 type Classification = components["schemas"]["IncidentClassification"];
@@ -46,6 +46,8 @@ export default function TestVideoReplay({
   const [analyzing, setAnalyzing] = useState(false);
   const [trackingAbsent, setTrackingAbsent] = useState(false);
   const [classificationError, setClassificationError] = useState("");
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaError, setMediaError] = useState("");
   const classificationCache = useRef(new Map<string, Promise<Classification>>());
   const selectionVersion = useRef(0);
   const video = useRef<HTMLVideoElement>(null);
@@ -126,6 +128,25 @@ export default function TestVideoReplay({
     };
   }, [selected?.id]);
 
+  useEffect(() => {
+    if (!selected) return;
+    let active = true;
+    let objectUrl = "";
+    setMediaUrl("");
+    setMediaError("");
+    void testVideoMedia(selected.id)
+      .then((url) => {
+        objectUrl = url;
+        if (active) setMediaUrl(url);
+        else URL.revokeObjectURL(url);
+      })
+      .catch((error) => active && setMediaError(error.message || "Test video is unavailable."));
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [selected?.id]);
+
   const sample = () => {
     const player = video.current;
     if (!player || !track?.points.length) return;
@@ -178,6 +199,7 @@ export default function TestVideoReplay({
   };
 
   if (!selected) return <div className="test-video-empty">{message}</div>;
+  const playbackMessage = mediaError || (!mediaUrl ? "Loading private test video..." : message);
   return (
     <div className="test-video-replay">
       <div className="test-video-tabs" aria-label="Private Ring test videos">
@@ -195,10 +217,11 @@ export default function TestVideoReplay({
         <video
           ref={video}
           key={selected.id}
-          src={`/v1/test-videos/${selected.id}/media`}
+          src={mediaUrl || undefined}
           controls
           playsInline
           preload="metadata"
+          aria-busy={!mediaUrl}
           onPlay={start}
           onPause={() => { stop(); sampleRef.current(); }}
           onSeeked={() => sampleRef.current()}
@@ -224,12 +247,12 @@ export default function TestVideoReplay({
         {classification ? <ActivityIcon classification={classification} /> : <ScanSearch size={16} />}
         <span>
           <strong>
-            {trackingAbsent ? message : classification ? reviewPresentation(classification).text : analyzing ? "Checking activity across the clip…" : classificationError || message}
+            {trackingAbsent ? playbackMessage : classification ? reviewPresentation(classification).text : analyzing ? "Checking activity across the clip…" : classificationError || playbackMessage}
           </strong>
           <small>
             {classification
-              ? `${classification.display_label} · ${classification.confidence} confidence · ${message}`
-              : `${message} · estimated map position`}
+              ? `${classification.display_label} · ${classification.confidence} confidence · ${playbackMessage}`
+              : `${playbackMessage} · estimated map position`}
           </small>
         </span>
       </div>

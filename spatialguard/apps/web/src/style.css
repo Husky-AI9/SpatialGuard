@@ -2513,7 +2513,7 @@ select.site-name:hover {
   .cctv-toolbar-actions,
   .cctv-toolbar > .view-toggle { width: 100%; }
   .cctv-toolbar .view-toggle button { flex: 1; }
-  .camera-feed-workspace { grid-template-rows: minmax(0, 74%) minmax(0, 26%); }
+  .camera-feed-workspace { grid-template-rows: minmax(300px, 1fr) 310px; }
   .cctv-stage .ring-video.embedded video { object-fit: contain; }
   .cctv-camera-row { min-width: 280px; }
   .cctv-camera-row .pair-camera-button { margin-right: 4px; }

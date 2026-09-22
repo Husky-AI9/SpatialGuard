@@ -127,7 +127,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         if configured_origin().startswith("https://"):
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
         return response
 
     def local_browser(request):
@@ -171,7 +171,13 @@ def create_app(db_path=None, engine=None, ring_service=None):
         reviewer_bypass = bool(reviewer_key) and secrets.compare_digest(
             request.headers.get("x-spatialguard-reviewer-key", ""), reviewer_key,
         )
+        fixture_upload = (
+            request.method == "PUT"
+            and request.url.path.startswith("/v1/test-videos/")
+            and request.url.path.endswith(("/media", "/track"))
+        )
         if (row["owner"] == "acct_test_preview" and request.method not in {"GET", "HEAD"}
+                and not fixture_upload
                 and os.environ.get("SPATIALGUARD_DEMO_READ_ONLY", "").lower() in {"1", "true", "yes"}
                 and not reviewer_bypass):
             raise HTTPException(403, "This replay workspace is read-only")
