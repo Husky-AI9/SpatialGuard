@@ -422,6 +422,8 @@ def create_app(db_path=None, engine=None, ring_service=None):
     @app.post("/v1/auth/password/request", response_model=m.AuthMessage)
     def request_password_reset(body: m.PasswordRequest, request: Request):
         email = normalize_email(body.email)
+        owner = None
+        reset_url = None
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             throttle(db, "reset:" + request.client.host + ":" + digest(email)[:16], 5)
@@ -431,16 +433,23 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 token = create_auth_token(db, account["id"], "password_reset")
                 audit(db, account["id"], "password_reset.requested", "account")
                 reset_url = configured_origin() + "/reset-password?token=" + token
-                try:
-                    delivered = send_mail(
-                        "Reset your SpatialGuard password", email,
-                        "Use this single-use link within 30 minutes:\n\n" + reset_url,
-                    )
-                except Exception:
-                    delivered = False
+                owner = account["id"]
+
+        # SMTP is an external network operation and may take the full socket
+        # timeout. Never hold SQLite's write lock while waiting for it: the
+        # worker and unrelated authentication requests share this preview DB.
+        if owner and reset_url:
+            try:
+                delivered = send_mail(
+                    "Reset your SpatialGuard password", email,
+                    "Use this single-use link within 30 minutes:\n\n" + reset_url,
+                )
+            except Exception:
+                delivered = False
+            with store.connect() as db:
                 db.execute(
                     "INSERT INTO notification_history(owner,category,channel,state,detail,at) VALUES (?,?,?,?,?,?)",
-                    (account["id"], "security", "email", "sent" if delivered else "failed", "Password reset", now()),
+                    (owner, "security", "email", "sent" if delivered else "failed", "Password reset", now()),
                 )
         return {"message": "If that email has an account, password reset instructions have been sent."}
 

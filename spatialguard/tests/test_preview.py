@@ -7,6 +7,7 @@ from twinforge.fixture import synthetic_layout, replay
 from twinforge.geometry import query_layout, validate_layout
 from twinforge.models import Layout, PointQuery
 from spatialguard_api.api import create_app
+import spatialguard_api.api as api_module
 from spatialguard_api.engine import RING_FOV_DEGREES, relens
 from spatialguard_api.store import cleanup_retention, dump, digest, Store
 from spatialguard_api.worker import process_one
@@ -288,6 +289,35 @@ def test_password_reset_is_neutral_single_use_and_revokes_sessions(tmp_path, mon
     assert client.post('/v1/auth/signin', json={
         'email':credentials['email'], 'password':'new-password',
     }).status_code == 200
+
+
+def test_password_reset_does_not_hold_database_lock_during_email(tmp_path, monkeypatch):
+    monkeypatch.setenv('SPATIALGUARD_ORIGIN', 'https://testserver')
+    app = create_app(tmp_path/'reset-mail-lock.sqlite', Engine())
+    client = TestClient(app, base_url='https://testserver', headers={
+        'Origin': 'https://testserver', 'Sec-Fetch-Site': 'same-origin',
+    })
+    credentials = {'email': 'owner@example.com', 'password': 'old-password'}
+    assert client.post('/v1/auth/signup', json=credentials).status_code == 201
+
+    def mail_with_concurrent_write(*_args):
+        with app.state.store.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            db.execute(
+                "INSERT INTO settings(key,value) VALUES ('mail-lock-check','ok')"
+            )
+        return True
+
+    monkeypatch.setattr(api_module, 'send_mail', mail_with_concurrent_write)
+    response = client.post('/v1/auth/password/request', json={'email': credentials['email']})
+    assert response.status_code == 200
+    with app.state.store.connect() as db:
+        assert db.execute(
+            "SELECT value FROM settings WHERE key='mail-lock-check'"
+        ).fetchone()['value'] == 'ok'
+        assert db.execute(
+            "SELECT state FROM notification_history WHERE detail='Password reset'"
+        ).fetchone()['state'] == 'sent'
 
 
 def test_email_verification_token_is_hashed_single_use(tmp_path, monkeypatch):
