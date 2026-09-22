@@ -738,10 +738,16 @@ test("camera workspace starts mapped live view and contains its scrolling", asyn
       },
     }),
   );
-  await page.route("**/v1/ring/devices/*/streams", (route) =>
-    route.fulfill({ status: 503, json: { detail: "Synthetic live-view stop" } }),
-  );
   await openDemo(page);
+  await page.unroute("**/v1/ring/devices/*/streams");
+  let liveRequests = 0;
+  await page.route("**/v1/ring/devices/*/streams", (route) => {
+    liveRequests += 1;
+    return route.fulfill({
+      status: 409,
+      json: { detail: "Live view is blocked until Ring privacy-zone status is clear" },
+    });
+  });
   const demo = await page.evaluate(async () => {
     const sites = await fetch("/v1/sites").then((response) => response.json());
     return sites.find((candidate: { name: string }) => candidate.name === "Demo home");
@@ -783,6 +789,13 @@ test("camera workspace starts mapped live view and contains its scrolling", asyn
   );
   await expect(page.locator(".cctv-thumb img").first()).toBeVisible();
   await expect(page.getByLabel("Live video from Front Door")).toBeVisible();
+  await expect(display.getByRole("status")).toHaveText(
+    "Live view is blocked until Ring privacy-zone status is clear",
+    { timeout: 10000 },
+  );
+  await expect(display.getByRole("button", { name: "Reconnect" })).toBeVisible();
+  await page.waitForTimeout(1800);
+  expect(liveRequests).toBe(1);
   await expect(page.locator(".cctv-incident-scroll")).toHaveCSS("overflow-y", "auto");
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.locator(".camera-marker[aria-pressed=true]")).toHaveCount(1);

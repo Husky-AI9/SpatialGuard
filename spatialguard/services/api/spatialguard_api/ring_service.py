@@ -481,6 +481,21 @@ class RingService:
 
     def devices(self, owner, refresh=False):
         a = self.account(owner)
+        if not refresh:
+            # Older deployments can contain valid cached devices created before
+            # capability and privacy summaries were stored. Refresh those rows
+            # once so the media gate has authoritative current information.
+            with self.store.connect() as db:
+                cached = db.execute(
+                    'SELECT data FROM ring_devices WHERE account=?',
+                    (a['account'],),
+                ).fetchall()
+            if cached and any(
+                'support' not in (value := json.loads(row['data'])) or
+                'configuration' not in value
+                for row in cached
+            ):
+                return self.devices(owner, True)
         if refresh:
             token = self.token(a['account'])
             try:

@@ -33,9 +33,8 @@ test("landing fits a phone and preserves glass contrast", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Try it out" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign up" })).toBeVisible();
-  await expect(page.getByRole("img", { name: "SpatialGuard logo" })).toBeVisible();
-  await expect(page.getByRole("img", { name: /Detailed protected home/ })).toHaveCount(0);
-  expect(await page.locator(".sg-mobile-logo-mark").evaluate((element) => getComputedStyle(element).backdropFilter)).not.toBe("none");
+  await expect(page.getByRole("img", { name: /Detailed protected home/ })).toBeVisible();
+  expect(await page.locator(".sg-mobile-scene").evaluate((element) => getComputedStyle(element).backdropFilter)).not.toBe("none");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/signin$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();

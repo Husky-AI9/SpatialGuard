@@ -23,8 +23,10 @@ export function LiveVideo({
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const pinch = useRef<number | null>(null);
+  const consecutiveFailures = useRef(0);
   const [message, setMessage] = useState("Opening a bounded live session…");
   const [attempt, setAttempt] = useState(0);
+  const [manualReconnect, setManualReconnect] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   useEffect(() => {
@@ -41,6 +43,7 @@ export function LiveVideo({
     };
   }, [fullscreen]);
   useEffect(() => {
+    setManualReconnect(false);
     setMessage(attempt ? "Renewing live session…" : "Opening a bounded live session…");
     const pc = new RTCPeerConnection({
       iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -63,12 +66,16 @@ export function LiveVideo({
         void request(`/v1/ring/streams/${id}`, "DELETE").catch(() => {});
       }
     };
-    const retry = (text: string) => {
+    const retry = (text: string, retryable = true) => {
       if (disposed) return;
       stop();
       setMessage(text);
-      if (autoReconnect && !document.hidden)
+      if (retryable && autoReconnect && !document.hidden && consecutiveFailures.current < 2) {
+        consecutiveFailures.current += 1;
         reconnect = setTimeout(() => setAttempt(value => value + 1), 1400);
+      } else {
+        setManualReconnect(true);
+      }
     };
     const hidden = () => {
       if (document.hidden) {
@@ -81,6 +88,7 @@ export function LiveVideo({
     };
     document.addEventListener("visibilitychange", hidden);
     pc.ontrack = (e) => {
+      consecutiveFailures.current = 0;
       if (video.current)
         video.current.srcObject = e.streams[0] ?? new MediaStream([e.track]);
       setMessage("Live integration · video only · not recorded");
@@ -128,6 +136,7 @@ export function LiveVideo({
         return;
       }
       await pc.setRemoteDescription({ type: "answer", sdp: r.sdp });
+      consecutiveFailures.current = 0;
       timer = setTimeout(
         () => {
           retry(autoReconnect
@@ -156,14 +165,18 @@ export function LiveVideo({
     })().catch((e) => {
       if (disposed) return;
       const detail = e instanceof Error ? e.message : "Live video unavailable";
-      if (autoReconnect)
-        retry(e instanceof ApiError && e.status === 409
+      const closingPrevious = e instanceof ApiError && e.status === 409 &&
+        detail.includes("already open or closing");
+      const temporary = closingPrevious ||
+        (e instanceof ApiError && [429, 502, 503, 504].includes(e.status));
+      retry(
+        closingPrevious
           ? "Finishing the previous session. Reconnecting…"
-          : `${detail} Reconnecting…`);
-      else {
-        stop();
-        setMessage(detail);
-      }
+          : temporary
+            ? `${detail} Reconnecting…`
+            : detail,
+        temporary,
+      );
     });
     return () => {
       stop();
@@ -218,7 +231,10 @@ export function LiveVideo({
         <button aria-pressed={fullscreen} onClick={() => setFullscreen(value => !value)}>
           {fullscreen ? "Exit fullscreen" : "Fullscreen"}
         </button>
-        {!autoReconnect && <button onClick={() => setAttempt(value => value + 1)}>Reconnect</button>}
+        {(!autoReconnect || manualReconnect) && <button onClick={() => {
+          consecutiveFailures.current = 0;
+          setAttempt(value => value + 1);
+        }}>Reconnect</button>}
         <button onClick={close}>Close live view</button>
       </div>
     </div>

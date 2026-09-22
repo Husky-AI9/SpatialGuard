@@ -59,9 +59,71 @@ export default function Landing() {
         <div className="sg-mobile-glow sg-mobile-glow-one" />
         <div className="sg-mobile-glow sg-mobile-glow-two" />
 
-        <div className="sg-mobile-logo-stage" role="img" aria-label="SpatialGuard logo">
-          <span className="sg-mobile-logo-mark"><SpatialGuardMark size={96} /></span>
-          <strong>SpatialGuard</strong>
+        <header className="sg-mobile-brand">
+          <span className="sg-mobile-brand-mark"><SpatialGuardMark size={27} /></span>
+          <span>SpatialGuard</span>
+        </header>
+
+        <div className="sg-mobile-scene" aria-label="A protected home connected to its cameras">
+          <span className="sg-mobile-status"><span /> Monitoring on</span>
+          <svg viewBox="0 0 320 230" role="img" aria-label="Detailed protected home with cameras, a delivery path, and a parcel">
+            <defs>
+              <linearGradient id="sg-house-face" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#ffffff" />
+                <stop offset="1" stopColor="#e8e8f8" />
+              </linearGradient>
+              <linearGradient id="sg-roof-face" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#272a49" />
+                <stop offset="1" stopColor="#42466e" />
+              </linearGradient>
+            </defs>
+            <ellipse className="sg-mobile-lawn" cx="160" cy="203" rx="132" ry="18" />
+            <path className="sg-mobile-walkway" d="M211 178h31l26 42h-83Z" />
+            <path className="sg-mobile-home-shadow" d="M48 105 160 29l112 76v92H48Z" />
+            <path className="sg-mobile-home" d="M52 101 160 30l108 71v94H52Z" />
+            <path className="sg-mobile-roof" d="m36 105 124-84 124 84-13 12-111-74-111 74Z" />
+            <path className="sg-mobile-chimney" d="M222 48h22v39l-22-15Z" />
+            <path className="sg-mobile-siding" d="M56 116h208M56 129h208M56 142h208M56 155h208M56 168h208M56 181h208" />
+
+            <g className="sg-mobile-garage">
+              <rect x="68" y="120" width="80" height="75" rx="3" />
+              <path d="M74 139h68M74 157h68M74 175h68M94 121v74M122 121v74" />
+              <circle cx="108" cy="186" r="2" />
+            </g>
+            <g className="sg-mobile-window">
+              <rect x="160" y="117" width="37" height="35" rx="2" />
+              <path d="M178.5 118v33M161 134.5h35" />
+            </g>
+            <g className="sg-mobile-door">
+              <rect x="207" y="112" width="35" height="83" rx="3" />
+              <rect x="214" y="121" width="21" height="24" rx="2" />
+              <circle cx="234" cy="165" r="2.4" />
+              <path d="M201 195h48" />
+            </g>
+            <g className="sg-mobile-plant" transform="translate(257 174)">
+              <path d="M0 17h20l-3 12H3Z" />
+              <circle cx="4" cy="10" r="7" /><circle cx="11" cy="6" r="9" /><circle cx="18" cy="11" r="7" />
+            </g>
+
+            <path className="sg-mobile-coverage-cone" d="M235 93 304 67A76 76 0 0 1 309 145Z" />
+            <path className="sg-mobile-coverage-cone" d="M55 137 8 112A69 69 0 0 0 10 177Z" />
+            <path className="sg-mobile-path" d="M304 214c-30-8-48-21-55-30-13-16-31-10-52 1" />
+            <g className="sg-mobile-camera" transform="translate(235 94)">
+              <circle r="18" />
+              <Camera x="-9" y="-9" width="18" height="18" />
+            </g>
+            <g className="sg-mobile-camera" transform="translate(55 137)">
+              <circle r="18" />
+              <Camera x="-9" y="-9" width="18" height="18" />
+            </g>
+            <g className="sg-mobile-parcel" transform="translate(179 164) scale(1.15)">
+              <path className="sg-mobile-parcel-top" d="m0 8 14-8 15 8-15 8Z" />
+              <path className="sg-mobile-parcel-left" d="M0 8v18l14 8V16Z" />
+              <path className="sg-mobile-parcel-right" d="M14 16v18l15-8V8Z" />
+              <path className="sg-mobile-parcel-tape" d="m8 3 15 8v7" />
+            </g>
+          </svg>
+          <span className="sg-mobile-event"><PackageCheck size={16} /> Possible delivery</span>
         </div>
 
         <div className="sg-mobile-sheet">

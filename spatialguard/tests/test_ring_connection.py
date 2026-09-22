@@ -313,6 +313,26 @@ def test_jsonapi_inventory_and_site_mapping_isolation(service):
     with pytest.raises(HTTPException):service.mapping('owner','unauthorized-device','site_demo','camera_hall')
 
 
+def test_legacy_cached_device_refreshes_before_media_use(service):
+    mapped(service)
+    with service.store.connect() as db:
+        row = db.execute("SELECT data FROM ring_devices WHERE device='device-a'").fetchone()
+        legacy = json.loads(row['data'])
+        legacy.pop('support')
+        legacy.pop('configuration')
+        legacy.pop('guidance')
+        db.execute("UPDATE ring_devices SET data=? WHERE device='device-a'", (dump(legacy),))
+    service.provider.calls.clear()
+
+    device = service.devices('owner')[0]
+
+    assert device['configuration']['privacy_zones'] == 'clear'
+    assert device['support']['live_view'] is True
+    assert any(path.startswith('/v1/devices?') for path, _, _ in service.provider.calls)
+    answer = service.stream('owner', 'device-a', 'v=0\r\nm=video 9\r\na=recvonly')
+    assert answer['sdp'].startswith('v=0')
+
+
 def test_capability_and_privacy_state_fail_closed_for_media(service):
     assert capability_summary({})['live_view'] is False
     assert configuration_summary({})['privacy_zones']=='unknown'
