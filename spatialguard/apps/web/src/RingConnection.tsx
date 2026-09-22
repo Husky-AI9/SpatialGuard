@@ -89,9 +89,16 @@ export function LiveVideo({
     document.addEventListener("visibilitychange", hidden);
     pc.ontrack = (e) => {
       consecutiveFailures.current = 0;
-      if (video.current)
-        video.current.srcObject = e.streams[0] ?? new MediaStream([e.track]);
-      setMessage("Live integration · video only · not recorded");
+      const element = video.current;
+      if (element) {
+        element.srcObject = e.streams[0] ?? new MediaStream([e.track]);
+        setMessage("Connecting to camera video…");
+        const play = () => void element.play().catch(() => {
+          if (!disposed) setMessage("Tap the video to start playback.");
+        });
+        if (element.readyState >= HTMLMediaElement.HAVE_METADATA) play();
+        else element.addEventListener("loadedmetadata", play, { once: true });
+      }
     };
     pc.onconnectionstatechange = () => {
       if (["failed", "disconnected"].includes(pc.connectionState)) {
@@ -219,6 +226,8 @@ export function LiveVideo({
             setZoom(value => Math.max(1, Math.min(3, value * change)));
           }}
           onTouchEnd={() => { pinch.current = null; }}
+          onPlaying={() => setMessage("Live integration · video only · not recorded")}
+          onClick={() => void video.current?.play()}
           onDoubleClick={() => setFullscreen(value => !value)}
           aria-label={`Live video from ${device.name}`}
         />
