@@ -1274,11 +1274,9 @@ export default function App() {
             </button>
           </div>
         </header>
-        <div className="connection" role="status">
-          {online
-            ? `Workspace connected · checked ${time(lastSync)}`
-            : `Disconnected · ${lastSync ? "last checked " + time(lastSync) : "reconnect to update"}`}
-        </div>
+        {!online && <div className="connection" role="status">
+          {`Disconnected · ${lastSync ? "last checked " + time(lastSync) : "reconnect to update"}`}
+        </div>}
         {error && <RecoveryNotice message={error} onRetry={() => void refresh()} />}
         <main className="content">
           {(tab === "Home" || tab === "Incidents") && (

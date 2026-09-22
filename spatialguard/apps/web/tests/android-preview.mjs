@@ -183,8 +183,8 @@ try {
   execFileSync('powershell.exe',['-NoProfile','-File',path.resolve('../../scripts/start.ps1')],{windowsHide:true});
   await page.getByRole("button", { name: "Refresh workspace" }).click();
   await expect(
-    page.getByRole("status").filter({ hasText: "Workspace connected" }),
-  ).toBeVisible({ timeout: 30000 });
+    page.getByRole("status").filter({ hasText: "Disconnected" }),
+  ).toHaveCount(0, { timeout: 30000 });
   record("Native offline/reconnect and backend restart passed");
   await page.reload({waitUntil:'commit'});
   await expect(

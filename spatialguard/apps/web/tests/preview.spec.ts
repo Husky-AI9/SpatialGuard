@@ -543,8 +543,8 @@ test("phone navigation, pairing and disconnected state", async ({
   await context.setOffline(false);
   await page.getByRole("button", { name: "Refresh workspace" }).click();
   await expect(
-    page.getByRole("status").filter({ hasText: "Workspace connected" }),
-  ).toBeVisible();
+    page.getByRole("status").filter({ hasText: "Disconnected" }),
+  ).toHaveCount(0);
 });
 test("empty incidents and failed evidence are explicit", async ({ page }) => {
   await openDemo(page);
