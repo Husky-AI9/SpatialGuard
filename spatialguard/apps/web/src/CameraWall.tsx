@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Camera, GripVertical, RefreshCw, Video } from "lucide-react";
 import { LiveVideo } from "./RingConnection";
 import { request } from "./platform";
+import RecoveryNotice from "./RecoveryNotice";
 
 type WallDevice = {
   id: string;
@@ -99,7 +100,7 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
         <button aria-label="Refresh camera wall" disabled={loading} onClick={() => void load(true)}><RefreshCw size={15} /></button>
       </div>
     </div>
-    {error && <p className="operations-error" role="alert">{error}</p>}
+    {error && <RecoveryNotice message={error} onRetry={() => void load()} />}
     <div className="wall-picker" aria-label="Cameras shown on wall">
       {data.devices.map(device => <label key={device.id}>
         <input type="checkbox" checked={wall.includes(device.id)} disabled={!wall.includes(device.id) && wall.length >= 16} onChange={event => void saveWall(event.target.checked ? [...wall, device.id] : wall.filter(id => id !== device.id))} />

@@ -5,6 +5,7 @@ import type { Layout } from "../../../../packages/sdk-typescript";
 import type { components } from "./generated";
 import { request } from "./platform";
 import { useDialogFocus } from "./useDialogFocus";
+import RecoveryNotice from "./RecoveryNotice";
 const Scene3D = lazy(() => import("@twinforge/spatial-view/Scene3D"));
 type PlanJob = components["schemas"]["PlanJob"];
 type Site = components["schemas"]["Site"];
@@ -233,7 +234,7 @@ export default function PlanImporter({
               Stairs, roofs, and window details are not traced, and rooms that open
               into each other without a door become one space.
             </p>
-            {error && <p role="alert">{error}</p>}
+            {error && <RecoveryNotice message={error} />}
             <div className="button-row">
               <button type="button" onClick={onClose}>
                 Cancel
@@ -274,7 +275,7 @@ export default function PlanImporter({
         )}
         {job && ["failed", "cancelled"].includes(job.state) && (
           <div className="plan-progress">
-            <p role="alert">{job.error || "Tracing was cancelled. Nothing was added."}</p>
+            <RecoveryNotice message={job.error || "Tracing was cancelled. Nothing was added."} />
             <div className="button-row">
               <button onClick={discard} disabled={busy}>
                 Try another drawing
@@ -366,7 +367,7 @@ export default function PlanImporter({
               . Accepting records that you reviewed this traced geometry; it does not
               make it measured.
             </p>
-            {error && <p role="alert">{error}</p>}
+            {error && <RecoveryNotice message={error} />}
             <div className="button-row">
               <button onClick={discard} disabled={busy}>
                 Discard

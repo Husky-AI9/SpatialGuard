@@ -1,4 +1,4 @@
-# SpatialGuard release verification — 2026-09-21
+# SpatialGuard release verification â€” 2026-09-21
 
 ## Candidate
 
@@ -25,7 +25,7 @@
 | Production web build | Pass | 11.1 seconds wall time |
 | Contract generation and drift | Pass | Both OpenAPI files and the TypeScript client regenerated without semantic drift |
 | Production dependency audit | Pass | `npm audit --omit=dev`: 0 known vulnerabilities |
-| Browser suite | Pass | 38 tests in the same candidate source tree before clean-checkout verification |
+| Browser suite | Pass | 41 tests after recovery and automated WCAG coverage were added |
 | Android debug build | Pass | 154 Gradle tasks, Java 21, same candidate source tree |
 
 ## Failure found and fixed

@@ -883,6 +883,28 @@ test("dialogs trap keyboard focus and close without stranding focus", async ({ p
   await expect(importer).toHaveCount(0);
 });
 
+test("recoverable failures explain the cause, effect, and next action", async ({ page }) => {
+  let attempts = 0;
+  await page.route("**/v1/sites", async route => {
+    attempts += 1;
+    if (attempts === 1) {
+      await route.fulfill({
+        status: 503,
+        json: { detail: "Provider connection timed out" },
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto("/workspace");
+  const notice = page.getByRole("alert");
+  await expect(notice.getByText("SpatialGuard could not reach the service")).toBeVisible();
+  await expect(notice.getByText(/may be stale/)).toBeVisible();
+  await expect(notice.getByText("Check your connection and try again.")).toBeVisible();
+  await notice.getByRole("button", { name: "Try again" }).click();
+  await expect(notice).toHaveCount(0);
+});
+
 test("Luna classification is opt-in and explains snapshot handling", async ({ page }) => {
   await allowProviderFeatures(page);
   await page.route("**/v1/classifier", (route) =>

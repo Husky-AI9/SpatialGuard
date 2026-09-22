@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, Camera, Check, Map, Shield } from "lucide-react";
 import { useDialogFocus } from "./useDialogFocus";
+import RecoveryNotice from "./RecoveryNotice";
 
 export type AccountPreferences = {
   onboarding_completed: boolean;
@@ -100,7 +101,7 @@ export default function Onboarding({
           <span>{page + 1} of {pages.length}</span>
         </header>
         <div>{pages[page]}</div>
-        {error && <p className="form-error" role="alert">{error}</p>}
+        {error && <RecoveryNotice message={error} onRetry={() => void finish(draft.ring_data_consent)} retryLabel="Save again" />}
         <footer>
           <button className="quiet" disabled={busy} onClick={() => void finish(false)}>Skip setup</button>
           <div className="button-row">

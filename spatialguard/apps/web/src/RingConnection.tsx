@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, request, openExternal } from "./platform";
+import RecoveryNotice from "./RecoveryNotice";
 import type { components } from "./generated";
 type Status = components["schemas"]["RingStatus"];
 type Device = components["schemas"]["RingDevice"];
@@ -278,7 +279,7 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
             again in Ring if needed.
           </p>
         )}
-      {error && <p role="alert">{error}</p>}
+      {error && <RecoveryNotice message={error} onRetry={() => void act(() => load(true))} retryLabel="Retry Ring" />}
       <p>
         Open the Ring Appstore, choose SpatialGuard, and authorize the cameras
         you want to use. Return here after linking to review compatibility and

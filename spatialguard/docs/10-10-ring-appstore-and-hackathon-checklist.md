@@ -191,7 +191,7 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [x] **CODEX â€” SOFTWARE â€” Keep camera observations and uncertain continuations visually distinct.**
 - [x] **CODEX â€” SOFTWARE â€” Complete keyboard and screen-reader semantics for the map, camera wall, incident timeline, dialogs, and 3D controls.** Provide an equivalent text evidence timeline for spatial visuals. Map/3D labels and keyboard camera controls, text evidence timeline, keyboard wall ordering, and trapped/restored dialog focus are browser-tested (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Add reduced-motion and low-power modes.** Keep the core incident-review experience useful without WebGL or animation. Low-power disables WebGL while retaining 2D/timeline; reduced-motion behavior is browser-tested (2026-09-21).
-- [ ] **CODEX â€” SOFTWARE â€” Add polished recovery states.** Every recoverable failure needs a plain-language cause, its effect, and the next action.
+- [x] **CODEX â€” SOFTWARE â€” Add polished recovery states.** A shared, responsive recovery notice explains the cause, the stale/unavailable-data effect, and the next action for workspace, Ring, camera inventory, camera wall, operations, onboarding, and floor-plan failures. Retry actions are included where the operation is safely repeatable and browser-tested (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Add notification history and status.** Users should see what was sent, suppressed, delayed, or failed.
 - [x] **CODEX â€” SOFTWARE â€” Remove developer and hackathon terminology from the production customer flow.** Retain it only in reviewer/demo mode. Customer routes and error copy use production language; provenance labels remain explicit (2026-09-21).
 - [ ] **CODEX â€” SOFTWARE â€” Run visual regression tests across supported breakpoints.** Cover onboarding, home, incidents, cameras, settings, legal pages, camera wall, 2D, and 3D.
@@ -313,7 +313,7 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [x] **CODEX â€” SOFTWARE â€” Add a concise evidence inspector.** Selecting a node should show timestamp, camera name, evidence mode, associated media availability, triggering rule, certainty language, and revision. Timestamp, camera, evidence mode, media, rule, certainty, and full revision are implemented and browser-tested (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Make unknown gaps understandable without reading documentation.** Use consistent legend, line treatment, hover/focus explanation, and text equivalent.
 - [ ] **CODEX â€” SOFTWARE â€” Complete a visual polish pass.** Harmonize spacing, typography, controls, loading skeletons, motion, chart/map density, and empty/error states across web and Android.
-- [ ] **CODEX â€” SOFTWARE â€” Meet WCAG 2.2 AA for the judged workflow.** Include keyboard and screen-reader alternatives for map/3D information.
+- [ ] **CODEX â€” SOFTWARE â€” Meet WCAG 2.2 AA for the judged workflow.** Automated axe-core WCAG 2 A/AA, 2.1 AA, and 2.2 AA checks now pass for the landing, authentication, legal, desktop workspace, and phone workspace; keyboard/dialog/equivalent-timeline tests also pass. Keep this open until manual screen-reader, 200% zoom, reflow, and physical-device checks are recorded.
 
 ## B4. Potential Impact â€” 10/10 target
 

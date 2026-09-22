@@ -6,6 +6,7 @@ import CameraWall from "./CameraWall";
 import { LiveVideo } from "./RingConnection";
 import type { components } from "./generated";
 import { request } from "./platform";
+import RecoveryNotice from "./RecoveryNotice";
 
 type Device = components["schemas"]["RingDevice"];
 type RingStatus = components["schemas"]["RingStatus"];
@@ -224,7 +225,7 @@ export default function CameraWorkspace({
               {ringState === "connected" ? "Ring connected" : "Replay"}
             </span>
           </header>
-          {ringError && <p className="cctv-provider-error" role="status">{ringError}</p>}
+          {ringError && <RecoveryNotice message={ringError} />}
           <div className="cctv-camera-scroll">
             {cameras.map((camera) => {
               const ring = mappedDevice(camera.id);

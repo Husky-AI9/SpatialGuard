@@ -42,6 +42,7 @@ import Operations from "./Operations";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
 import AccountSecurity from "./AccountSecurity";
 import { useDialogFocus } from "./useDialogFocus";
+import RecoveryNotice from "./RecoveryNotice";
 import type { TestTrack } from "./TestVideoReplay";
 import type { components } from "./generated";
 import type {
@@ -702,7 +703,7 @@ export default function App() {
             ? "Use your email and password to continue."
             : "Start SpatialGuard on your PC."}
         </p>
-        {error && <p role="alert">{error}</p>}
+        {error && <RecoveryNotice message={error} />}
         {native || hostedWeb ? (
           <div className="button-row">
             <a className="primary" href={native ? "/?auth=signin" : "/signin"}>Sign in</a>
@@ -1278,12 +1279,7 @@ export default function App() {
             ? `Workspace connected · checked ${time(lastSync)}`
             : `Disconnected · ${lastSync ? "last checked " + time(lastSync) : "reconnect to update"}`}
         </div>
-        {error && (
-          <div className="notice error" role="alert">
-            {error}
-            <button onClick={() => void refresh()}>Retry</button>
-          </div>
-        )}
+        {error && <RecoveryNotice message={error} onRetry={() => void refresh()} />}
         <main className="content">
           {(tab === "Home" || tab === "Incidents") && (
             <>

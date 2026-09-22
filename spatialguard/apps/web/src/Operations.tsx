@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bell, Camera, Check, Clock3, Download, RefreshCw, Share2, Timer, Wifi, WifiOff, X } from "lucide-react";
 import { request } from "./platform";
+import RecoveryNotice from "./RecoveryNotice";
 
 type HealthPoint = { at: string; online: boolean; source: string };
 type Device = {
@@ -100,7 +101,7 @@ export default function Operations({ features }: { features: FeatureFlags }) {
     <div className="operations-tabs" role="tablist" aria-label="Operations tools">
       {sections.map(name => <button key={name} role="tab" aria-selected={section === name} onClick={() => setSection(name)}>{name === "Health" ? <Wifi size={16} /> : <Timer size={16} />}{name}</button>)}
     </div>
-    {error && <p role="alert" className="operations-error">{error}</p>}
+    {error && <RecoveryNotice message={error} onRetry={() => void load()} />}
 
     {section === "Health" && <div className="health-layout">
       <div className="health-main">
