@@ -87,8 +87,17 @@ def test_classification_samples_activity_in_order_without_clip_name_bias(tmp_pat
 
     def frame(video_id, at):
         times.append(at)
-        return b"frame"
+        return f"frame-{at}".encode()
 
     monkeypatch.setattr(videos, "frame_for", frame)
-    assert len(videos.classification_frames("delivery-night")) == 6
-    assert times == [2, 3.5, 5, 7, 9, 11.5]
+    assert len(videos.classification_frames("delivery-night")) == 3
+    assert times == [2, 7, 11.5]
+
+
+def test_classification_deduplicates_identical_test_video_frames(tmp_path, monkeypatch):
+    monkeypatch.setattr(videos, "VIDEO_ROOT", tmp_path)
+    (tmp_path / "delivery-day.mp4").write_bytes(b"private-video")
+    monkeypatch.setattr(videos, "person_track_for", lambda _: SimpleNamespace(points=[]))
+    monkeypatch.setattr(videos, "frame_for", lambda *_: b"same-frame")
+
+    assert videos.classification_frames("delivery-day") == [b"same-frame"]

@@ -1,5 +1,6 @@
 """Local, owner-only replay of private Ring clips for detector evaluation."""
 from pathlib import Path
+import hashlib
 import json
 import os
 
@@ -62,7 +63,7 @@ def frame_for(video_id: str, at_seconds: float | None = None) -> bytes:
 
 
 def classification_frames(video_id: str) -> list[bytes]:
-    """Sample the detected activity interval, not just one glare-obscured first frame."""
+    """Return up to three distinct, chronological views of the activity interval."""
     video = CATALOG.get(video_id)
     path_for(video_id)
     try:
@@ -71,9 +72,19 @@ def classification_frames(video_id: str) -> list[bytes]:
         points = []
     start = points[0].t_seconds if points else 0
     end = points[-1].t_seconds if points else video.duration_seconds - .2
-    # Six chronological views, including the near-door activity and departure.
-    times = [start + (end - start) * ratio for ratio in (0, .15, .3, .5, .7, .95)]
-    return [frame_for(video_id, round(at, 2)) for at in times]
+    # Match live Ring classification: one request containing three representative
+    # views. The final sample includes the departure without seeking beyond the
+    # detected interval.
+    times = [start + (end - start) * ratio for ratio in (0, .5, .95)]
+    frames: list[bytes] = []
+    seen: set[str] = set()
+    for at in times:
+        frame = frame_for(video_id, round(at, 2))
+        digest = hashlib.sha256(frame).hexdigest()
+        if digest not in seen:
+            seen.add(digest)
+            frames.append(frame)
+    return frames
 
 
 def person_track_for(video_id: str) -> TestVideoTrack:

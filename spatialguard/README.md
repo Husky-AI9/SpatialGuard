@@ -66,8 +66,9 @@ temporal filtering, a walking-speed limit, and 0.22 m trail spacing suppress
 detector jitter. This needs no calibration, but it is an estimate rather than a
 measured person position. The source videos are served only to the authenticated local owner from
 ignored `.data/spatialguard/test-ring-video/`. With classification enabled, opening
-a test clip sends six chronological frames from its detected activity interval to
-Luna. Otherwise the owner can use the classification button. Frames are decoded
+a test clip sends up to three distinct chronological frames from its detected
+activity interval to Luna in one request, matching live Ring event classification.
+Otherwise the owner can use the classification button. Frames are decoded
 in memory and are not saved; results are reused while switching clips in the current
 viewer session. Late responses cannot relabel a different selected clip.
 Once classified, the current 2D marker becomes an activity glyph with a name:
