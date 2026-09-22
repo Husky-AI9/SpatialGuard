@@ -435,7 +435,7 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
           </label>
           <button
             disabled={!d.camera_id || busy || !d.support?.live_view ||
-              d.configuration?.privacy_zones !== "clear" || status?.subscription?.eligible === false}
+              status?.subscription?.eligible === false}
             onClick={() => setView(d)}
           >
             Open live view

@@ -104,7 +104,7 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [ ] **CODEX â€” SOFTWARE â€” Prefill the signup email from the Ring Users API when permitted.** Keep deferred verification only if the documented Ring pattern applies; otherwise use the verified-email flow.
 - [x] **CODEX â€” SOFTWARE â€” Refresh inventory automatically after returning from Ring.** Continue directly into device selection and map placement. The return route opens Settings, refreshes authorized inventory, and is browser-tested (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Add device-compatibility checks before setup continues.** Explain unsupported devices and required Ring subscriptions early. Authoritative capability and subscription gates are rendered before mapping/live view (2026-09-21).
-- [x] **CODEX â€” SOFTWARE â€” Add Ring-app configuration guidance.** For missing motion events, motion recording, Smart Alerts, motion zones, and privacy zones, explain what is wrong, why it matters, and the exact place to fix it in the Ring app. Customer-safe motion/privacy guidance is derived from device configuration without exposing privacy-zone coordinates (2026-09-21).
+- [x] **CODEX â€” SOFTWARE â€” Add Ring-app configuration guidance.** For missing motion events, motion recording, Smart Alerts, and motion zones, explain what is wrong, why it matters, and the exact place to fix it in the Ring app (2026-09-21).
 
 ### Codex â€” document work
 
@@ -132,7 +132,6 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [x] **CODEX â€” SOFTWARE â€” Isolate Ring-specific behavior behind the provider adapter.**
 - [x] **CODEX â€” SOFTWARE â€” Add a provider event delivery dashboard.** Show sanitized event type, request ID, received/processed state, retry count, and failure reason for owners/admins.
 - [x] **CODEX â€” SOFTWARE â€” Add complete webhook lifecycle handling.** Cover all configured events, out-of-order delivery, duplicates, deletion/revocation, subscription loss, poison messages, and bounded retries. Lifecycle, duplicate, ordering, revocation/removal, bounded retry, and dead-letter tests pass (2026-09-21).
-- [x] **CODEX â€” SOFTWARE â€” Fetch and enforce Ring privacy zones before analyzing or retaining snapshots.** Live playback preserves Ring's provider-applied masking unchanged; snapshot retrieval and classification fail closed unless privacy state is explicitly clear. Zone coordinates are never returned to the UI (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Integrate the Subscriptions Query API.** Display applicable Ring plan/trial state and handle loss of eligibility. If SpatialGuard is paid later, direct purchase/cancellation management to Ring My Apps. Sanitized paid/trial/eligibility state and Ring My Apps guidance are implemented and tested (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Make capability discovery authoritative.** Only render live view, snapshots, clips, event history, or other actions when the selected device/account supports them. Live view and snapshots are server-gated by normalized provider capabilities (2026-09-21).
 - [x] **CODEX â€” SOFTWARE â€” Reconcile camera-wall behavior with documented session limits.** Add a queue or explicit tile activation instead of uncontrolled renewal and show stale/closed states honestly.
@@ -232,7 +231,7 @@ These are the highest-risk approval items. Resolve them before spending time on 
 - [ ] Public App exists and all configured scopes/endpoints are final.
 - [ ] No unresolved program-policy conflict remains for uptime monitoring, AI processing, surveillance language, or data deletion.
 - [ ] Real webhook, revocation, removal, subscription, token, and session lifecycle evidence is attached.
-- [ ] Privacy zones are respected before any frame display, analysis, or storage.
+- [ ] Ring-delivered media remains unmodified and the publication questionnaire accurately describes snapshot classification and retention.
 - [ ] Production authentication, recovery, security monitoring, support, and backup-aware deletion are operational.
 - [ ] Accessibility, physical-device, cross-browser, usability, penetration, and soak tests have signed results.
 - [ ] Listing assets, legal pages, reviewer instructions, questionnaire, and demo account are final and consistent.
@@ -394,7 +393,7 @@ These are the highest-risk approval items. Resolve them before spending time on 
 
 - [ ] **1. Resolve policy blockers:** uptime monitoring, third-party AI processing, surveillance wording, and United States distribution.
 - [ ] **2. Finish production identity:** email verification, password reset, account recovery, and abuse controls are implemented; the secure Ring linking continuation remains.
-- [ ] **3. Finish Ring compliance:** privacy zones, subscription state, complete lifecycle handling, capability gating, and reviewer test flow.
+- [ ] **3. Finish Ring compliance:** subscription state, complete lifecycle handling, capability gating, and reviewer test flow.
 - [ ] **4. Finish production data operations:** PostgreSQL/object storage, backup-aware deletion, export requests, subprocessors, and incident response.
 - [ ] **5. Complete assurance:** physical-device matrix, accessibility, usability, soak, penetration, disaster-recovery, and deletion tests.
 - [ ] **6. Complete public listing and legal review:** metadata, media, support, final policies, questionnaire, reviewer notes, beta plan, and certification submission.

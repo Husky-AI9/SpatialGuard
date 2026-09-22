@@ -65,27 +65,17 @@ def capability_summary(capabilities):
 
 
 def configuration_summary(configuration):
-    """Return compliance state without retaining privacy-zone coordinates."""
+    """Return customer-safe motion configuration guidance."""
     values = configuration if isinstance(configuration, dict) else {}
     motion = values.get('motion_detection')
-    enhancements = values.get('image_enhancements')
-    privacy_known = isinstance(enhancements, dict) and isinstance(
-        enhancements.get('privacy_zones'), list
-    )
-    privacy_active = privacy_known and bool(enhancements['privacy_zones'])
     guidance = []
     if not isinstance(motion, dict):
         guidance.append('Motion settings are unavailable. Refresh this camera, then check Motion Settings in the Ring app.')
     elif motion.get('enabled') != 'on':
         guidance.append('Motion detection is off. Turn it on in the Ring app under this camera’s Motion Settings.')
-    if not privacy_known:
-        guidance.append('Privacy-zone status is unavailable. Refresh before opening or analyzing camera media.')
-    elif privacy_active:
-        guidance.append('Ring privacy zones are active. SpatialGuard blocks media for this camera so masked areas are never processed.')
     return {
         'motion_detection': ('on' if isinstance(motion, dict) and motion.get('enabled') == 'on'
                              else 'off' if isinstance(motion, dict) else 'unknown'),
-        'privacy_zones': 'active' if privacy_active else 'clear' if privacy_known else 'unknown',
         'guidance': guidance,
     }
 
@@ -580,11 +570,8 @@ class RingService:
             return cached[1:]
         device = json.loads(mapped['data'])
         support = device.get('support') or capability_summary(device.get('capabilities'))
-        configuration = device.get('configuration') or configuration_summary({})
         if not support.get('snapshots'):
             raise HTTPException(409, 'This Ring device does not support camera snapshots')
-        if configuration.get('privacy_zones') != 'clear':
-            raise HTTPException(409, 'Camera media is blocked until Ring privacy-zone status is clear')
         components = device.get('capabilities', {}).get('components', {}).get('items', [])
         component = None
         if isinstance(components, list) and len(components) == 1:
@@ -894,7 +881,6 @@ class RingService:
             if not d: raise HTTPException(404, 'Authorized camera not found')
             data = json.loads(d['data'])
             support = data.get('support') or capability_summary(data.get('capabilities'))
-            configuration = data.get('configuration') or configuration_summary({})
             if not support.get('live_view'):
                 raise HTTPException(409, 'Live view is unavailable for this Ring device')
             if not d['site'] or not db.execute('SELECT 1 FROM sites WHERE id=? AND owner=?', (d['site'], owner)).fetchone():

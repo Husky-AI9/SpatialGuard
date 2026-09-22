@@ -49,7 +49,6 @@ class FakeProvider:
                         }},
                         {'type':'device-configurations','id':'configurations-a','attributes':{
                             'motion_detection':{'enabled':'on','motion_zones':[],'component_id':'0'},
-                            'image_enhancements':{'privacy_zones':[]},
                         }},
                     ]}
         return {}
@@ -302,7 +301,7 @@ def test_jsonapi_inventory_and_site_mapping_isolation(service):
         'live_view': True, 'snapshots': True,
         'motion_events': True, 'multi_camera': False,
     }
-    assert devices[0]['configuration']['privacy_zones']=='clear'
+    assert devices[0]['configuration']['motion_detection']=='on'
     status=service.status('owner')
     assert status['subscription']['state']=='active_paid'
     assert status['subscription']['eligible'] is True
@@ -326,28 +325,17 @@ def test_legacy_cached_device_refreshes_before_media_use(service):
 
     device = service.devices('owner')[0]
 
-    assert device['configuration']['privacy_zones'] == 'clear'
+    assert device['configuration']['motion_detection'] == 'on'
     assert device['support']['live_view'] is True
     assert any(path.startswith('/v1/devices?') for path, _, _ in service.provider.calls)
     answer = service.stream('owner', 'device-a', 'v=0\r\nm=video 9\r\na=recvonly')
     assert answer['sdp'].startswith('v=0')
 
 
-def test_capability_and_privacy_state_fail_closed_for_media(service):
+def test_unknown_capability_state_fails_closed_for_media(service):
     assert capability_summary({})['live_view'] is False
-    assert configuration_summary({})['privacy_zones']=='unknown'
+    assert configuration_summary({})['motion_detection']=='unknown'
     assert subscription_summary({'data':[]})['eligible'] is True
-    mapped(service)
-    with service.store.connect() as db:
-        row=db.execute("SELECT data FROM ring_devices WHERE device='device-a'").fetchone()
-        data=json.loads(row['data'])
-        data['configuration']['privacy_zones']='active'
-        db.execute("UPDATE ring_devices SET data=? WHERE device='device-a'",(dump(data),))
-    with pytest.raises(HTTPException, match='privacy-zone'):
-        service.snapshot('owner','site_demo','camera_front')
-    stream = service.stream('owner','device-a','v=0\r\nm=video 9\r\na=recvonly')
-    assert stream['sdp'].startswith('v=0')
-    assert service.provider.snapshots==0 and service.provider.streams==1
 
 
 def test_subscription_webhook_reconciles_authoritative_state(service):

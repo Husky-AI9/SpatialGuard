@@ -745,7 +745,7 @@ test("camera workspace starts mapped live view and contains its scrolling", asyn
     liveRequests += 1;
     return route.fulfill({
       status: 409,
-      json: { detail: "Live view is blocked until Ring privacy-zone status is clear" },
+      json: { detail: "Live view is unavailable for this Ring device" },
     });
   });
   const demo = await page.evaluate(async () => {
@@ -790,7 +790,7 @@ test("camera workspace starts mapped live view and contains its scrolling", asyn
   await expect(page.locator(".cctv-thumb img").first()).toBeVisible();
   await expect(page.getByLabel("Live video from Front Door")).toBeVisible();
   await expect(display.getByRole("status")).toHaveText(
-    "Live view is blocked until Ring privacy-zone status is clear",
+    "Live view is unavailable for this Ring device",
     { timeout: 10000 },
   );
   await expect(display.getByRole("button", { name: "Reconnect" })).toBeVisible();

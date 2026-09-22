@@ -123,7 +123,7 @@ test("phone Ring inventory handles mapping and provider errors without fake live
     site_id: null,
     camera_id: null,
     support: { live_view: true, snapshots: true, motion_events: true, multi_camera: false },
-    configuration: { motion_detection: "on", privacy_zones: "clear", guidance: [] },
+    configuration: { motion_detection: "on", guidance: [] },
     guidance: ["Smart Alerts are unavailable. Review this camera in the Ring app."],
   };
   await page.route("**/v1/ring", (r) =>
