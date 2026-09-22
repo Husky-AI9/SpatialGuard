@@ -66,7 +66,7 @@ export default function Onboarding({
       <label className="consent-choice">
         <input type="checkbox" disabled={!draft.ring_data_consent} checked={draft.classification_consent}
           onChange={(event) => setDraft({ ...draft, classification_consent: event.target.checked })} />
-        <span><strong>Analyze event snapshots</strong><small>Send one authorized snapshot to the configured OpenAI model for a cautious, reviewable category. No face identification or gender inference.</small></span>
+        <span><strong>Analyze event snapshots</strong><small>Send up to three authorized event snapshots to the configured OpenAI model for a cautious, reviewable category. No face identification or gender inference.</small></span>
       </label>
       <p className="fine">Both choices are optional and can be changed in Privacy settings.</p>
     </div>,

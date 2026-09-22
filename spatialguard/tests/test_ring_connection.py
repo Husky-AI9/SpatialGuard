@@ -55,9 +55,10 @@ class FakeProvider:
     def stream(self, token, device, sdp):
         self.streams+=1
         return 'v=0\r\na=sendonly\r\n','/v1/devices/device-a/media/streaming/whep/sessions/one'
-    def snapshot(self, token, device, component=None, start_timestamp=None):
+    def snapshot(self, token, device, component=None, start_timestamp=None, end_timestamp=None):
         self.snapshots += 1
-        return b'\xff\xd8snapshot\xff\xd9', 'image/jpeg', {'X-Media-Timestamp': '123'}
+        suffix = str(end_timestamp).encode() if end_timestamp is not None else b''
+        return b'\xff\xd8snapshot' + suffix + b'\xff\xd9', 'image/jpeg', {'X-Media-Timestamp': '123'}
     def close(self, token, path): self.calls.append((path,'DELETE',None))
 
 
@@ -429,6 +430,22 @@ def test_latest_snapshot_is_owner_scoped_and_short_lived_cached(service):
         service.snapshot('owner', 'site_demo', 'missing')
 
 
+def test_event_snapshots_collapse_identical_provider_images(service):
+    mapped(service)
+    original = service.provider.snapshot
+    service.provider.snapshot = lambda *args, **kwargs: (
+        b'\xff\xd8same-event-frame\xff\xd9', 'image/jpeg', {}
+    )
+    try:
+        images, media_type = service.event_snapshots(
+            'owner', 'site_demo', 'camera_front', now()
+        )
+    finally:
+        service.provider.snapshot = original
+    assert images == [b'\xff\xd8same-event-frame\xff\xd9']
+    assert media_type == 'image/jpeg'
+
+
 class Engine:
     def __init__(self):self.observed={}
     def observations(self, values):
@@ -574,10 +591,13 @@ def test_enabled_luna_classifier_labels_event_without_storing_snapshot(service):
         site=json.loads(db.execute('SELECT data FROM sites').fetchone()[0])
         site['monitoring']['classification_enabled']=True
         db.execute('UPDATE sites SET data=?',(dump(site),))
-    service.webhook(*delivery(service,eid='classified-event',rid='classified-request'))
+    service.webhook(*delivery(
+        service, eid='classified-event', rid='classified-request',
+        at_ms=int((time.time() - 6) * 1000),
+    ))
     calls=[]
-    def classify(image, media_type):
-        calls.append((image,media_type))
+    def classify(images, media_type):
+        calls.append((images,media_type))
         return IncidentClassification(
             label='delivery_activity',display_label='Possible delivery',confidence='medium',
             summary='A person appears to place a parcel near the entrance.',
@@ -587,7 +607,9 @@ def test_enabled_luna_classifier_labels_event_without_storing_snapshot(service):
     with service.store.connect() as db:
         raw=db.execute('SELECT data FROM incidents').fetchone()[0]
         incident=json.loads(raw)
-    assert calls==[(b'\xff\xd8snapshot\xff\xd9','image/jpeg')]
+    assert len(calls) == 1 and calls[0][1] == 'image/jpeg'
+    assert len(calls[0][0]) == 3
+    assert all(image.startswith(b'\xff\xd8snapshot') for image in calls[0][0])
     assert incident['title']=='Possible delivery'
     assert incident['classification_status']=='completed'
     assert incident['classification']['label']=='delivery_activity'

@@ -4,7 +4,7 @@ from pydantic import Field
 from typing import Literal
 from .models import ClassifierStatus, Incident, Model, PairCode
 from .ring_service import RingService
-from .classifier import ClassifierUnavailable, classify_image, status as classifier_status
+from .classifier import ClassifierUnavailable, classify_images, status as classifier_status
 from .store import account_preferences, audit, access_log, event
 from .release import capabilities, require_feature
 
@@ -221,14 +221,17 @@ def install(app, store, principal, service=None):
         if incident.evidence_mode != 'live' or not incident.observations:
             raise HTTPException(409, 'Only live Ring incidents can classify a camera snapshot')
         camera = incident.observations[0].source_id
-        image, content_type, _ = ring.snapshot(p['owner'], incident.site_id, camera)
+        images, content_type = ring.event_snapshots(
+            p['owner'], incident.site_id, camera,
+            incident.observations[0].observed_at.isoformat(),
+        )
         try:
-            classification = classify_image(image, content_type)
+            classification = classify_images(images, content_type)
         except ClassifierUnavailable as exc:
             raise HTTPException(503, str(exc)) from None
         updated = incident.model_copy(update={
             'title': classification.display_label,
-            'rule': ('Luna classified one event snapshot; the result is an AI interpretation '
+            'rule': ('Luna classified up to three chronological event snapshots; the result is an AI interpretation '
                      'that requires review. Position and identity remain unknown.'),
             'classification_status': 'completed',
             'classification': classification,

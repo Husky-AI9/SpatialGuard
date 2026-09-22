@@ -1581,7 +1581,7 @@ export default function App() {
                       <input type="checkbox" disabled={!accountPreferences.ring_data_consent}
                         checked={accountPreferences.classification_consent}
                         onChange={(event) => setAccountPreferences({ ...accountPreferences, classification_consent: event.target.checked })} />
-                      <span><strong>Analyze event snapshots</strong><small>Send one event snapshot to the configured OpenAI model for a reviewable category.</small></span>
+                      <span><strong>Analyze event snapshots</strong><small>Send up to three chronological event snapshots to the configured OpenAI model for a reviewable category.</small></span>
                     </label>
                     <div className="retention-grid">
                       <label>Incident retention

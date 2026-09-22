@@ -593,6 +593,71 @@ class RingService:
         self._snapshots[cache_key] = (time.time() + 30, *result)
         return result
 
+    def event_snapshots(self, owner, site, camera, observed_at, limit=3):
+        """Return up to three distinct historical snapshots around one event.
+
+        The images remain in memory only. Ring can expose fewer distinct images for
+        an event, so identical payloads are collapsed and the ordinary latest
+        snapshot remains a bounded fallback.
+        """
+        if limit < 1 or limit > 3:
+            raise ValueError('Event snapshot limit must be between one and three')
+        account = self.account(owner)
+        with self.store.connect() as db:
+            mapped = db.execute(
+                'SELECT * FROM ring_devices WHERE account=? AND site=? AND camera=?',
+                (account['account'], site, camera),
+            ).fetchone()
+            authorized = db.execute(
+                'SELECT 1 FROM sites WHERE id=? AND owner=?', (site, owner)
+            ).fetchone()
+            linked = db.execute(
+                "SELECT at FROM audit WHERE owner=? AND action='ring.linked' "
+                'ORDER BY id DESC LIMIT 1', (owner,)
+            ).fetchone()
+        if not mapped or not authorized:
+            raise HTTPException(404, 'Authorized camera snapshot not found')
+        device = json.loads(mapped['data'])
+        support = device.get('support') or capability_summary(device.get('capabilities'))
+        if not support.get('snapshots'):
+            raise HTTPException(409, 'This Ring device does not support camera snapshots')
+        components = device.get('capabilities', {}).get('components', {}).get('items', [])
+        component = None
+        if isinstance(components, list) and len(components) == 1:
+            candidate = components[0]
+            if isinstance(candidate, dict):
+                component = candidate.get('component_id')
+        consent_floor = None
+        if linked:
+            consent_floor = int(datetime.fromisoformat(linked['at']).timestamp() * 1000) + 1000
+        try:
+            event_ms = int(datetime.fromisoformat(observed_at).timestamp() * 1000)
+        except (TypeError, ValueError):
+            raise HTTPException(422, 'The event timestamp is invalid') from None
+        offsets = (500, 2500, 5000)[:limit]
+        token = self.token(account['account'])
+        images = []
+        media_type = None
+        digests = set()
+        for offset in offsets:
+            try:
+                image, candidate_type, _ = self.provider.snapshot(
+                    token, mapped['device'], component, consent_floor,
+                    event_ms + offset,
+                )
+            except HTTPException:
+                continue
+            fingerprint = hashlib.sha256(image).digest()
+            if fingerprint in digests or (media_type and candidate_type != media_type):
+                continue
+            digests.add(fingerprint)
+            media_type = candidate_type
+            images.append(image)
+        if not images:
+            image, media_type, _ = self.snapshot(owner, site, camera)
+            images.append(image)
+        return images, media_type
+
     def webhook(self, raw, signature):
         started = time.perf_counter()
         expected = 'sha256=' + hmac.new(self.provider.creds['hmac signature key'].encode(), raw, hashlib.sha256).hexdigest()

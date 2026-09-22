@@ -133,16 +133,18 @@ class Provider:
         resource = url.path + (('?' + url.query) if url.query else '')
         return raw.decode(), resource
 
-    def snapshot(self, token, device, component=None, start_timestamp=None):
+    def snapshot(self, token, device, component=None, start_timestamp=None,
+                 end_timestamp=None):
         """Download the latest Ring snapshot without exposing its signed URL."""
         path = '/v1/devices/' + urllib.parse.quote(device, safe='') + '/media/image/download'
-        end = int(time.time() * 1000)
+        now_ms = int(time.time() * 1000)
+        end = min(now_ms, int(end_timestamp)) if end_timestamp is not None else now_ms
+        start = max(end - 24 * 60 * 60 * 1000, int(start_timestamp or 0))
+        if start > end:
+            start = end
         body = {
             'type': 'latest_in_range',
-            'start_timestamp': max(
-                end - 24 * 60 * 60 * 1000,
-                int(start_timestamp or 0),
-            ),
+            'start_timestamp': start,
             'end_timestamp': end,
             'image_options': {'format': 'jpeg'},
         }

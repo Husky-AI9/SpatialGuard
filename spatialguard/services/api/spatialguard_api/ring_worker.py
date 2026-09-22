@@ -5,10 +5,11 @@ from datetime import datetime
 from .models import Association, Incident
 from twinforge.models import Observation
 from .store import account_preferences, digest, event, now
-from .classifier import classify_image
+from .classifier import classify_images
 from .release import capabilities
 
 LIVE_INCIDENT_WINDOW_SECONDS = 5 * 60
+CLASSIFICATION_CAPTURE_WINDOW_SECONDS = 5.5
 
 
 def _at(value):
@@ -79,7 +80,7 @@ def _merge_incident(incident, observation, classification, classification_status
     return incident
 
 
-def process_one(service, engine, classifier=classify_image):
+def process_one(service, engine, classifier=classify_images):
     store = service.store
     with store.connect() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -146,11 +147,24 @@ def process_one(service, engine, classifier=classify_image):
         if (capabilities()['classification'] and site['monitoring'].get('classification_enabled', False)
                 and privacy['ring_data_consent'] and privacy['classification_consent']):
             classification_status = 'unavailable'
+            # Webhook acknowledgement is already complete. Briefly defer the
+            # durable worker row so Ring has time to expose post-trigger images;
+            # do not block this worker or count the deferral as a failed attempt.
+            ready_at = _at(row['at']) + CLASSIFICATION_CAPTURE_WINDOW_SECONDS
+            delay = ready_at - time.time()
+            if 0 < delay <= 10:
+                with store.connect() as db:
+                    db.execute(
+                        "UPDATE ring_inbox SET state='running',lease=?,attempts="
+                        "CASE WHEN attempts>0 THEN attempts-1 ELSE 0 END WHERE id=?",
+                        (ready_at, row['id']),
+                    )
+                return True
             try:
-                image, media_type, _ = service.snapshot(
-                    account_row['owner'], snapshot['site'], snapshot['camera']
+                images, media_type = service.event_snapshots(
+                    account_row['owner'], snapshot['site'], snapshot['camera'], row['at']
                 )
-                classification = classifier(image, media_type)
+                classification = classifier(images, media_type)
                 classification_status = 'completed'
             except Exception:
                 # A classifier or snapshot outage must not discard the signed event.
@@ -163,7 +177,7 @@ def process_one(service, engine, classifier=classify_image):
         engine.observations([obs.model_dump(mode='json')])
         title = (classification.display_label if classification else
                  ('Ring doorbell pressed' if row['kind']=='button_press' else 'Ring motion reported'))
-        rule = ('Luna classified one event snapshot; the result is an AI interpretation that requires review. '
+        rule = ('Luna classified up to three chronological event snapshots; the result is an AI interpretation that requires review. '
                 'Position and identity remain unknown.' if classification else
                 'Ring event from a selected camera while monitoring is enabled. Position and person identity are unknown.')
         incident = Incident(id='incident_ring_'+row['id'][:40], site_id=snapshot['site'], revision_id=snapshot['revision'],
