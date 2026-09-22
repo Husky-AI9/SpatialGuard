@@ -516,23 +516,29 @@ test("phone navigation, pairing and disconnected state", async ({
     path: path.join(output, "web-phone.png"),
     fullPage: true,
   });
+  const map = page.locator(".spatial-map").first();
+  const viewBoxBefore = await map.getAttribute("viewBox");
+  await map.hover();
+  await page.mouse.wheel(0, -260);
+  await expect.poll(() => map.getAttribute("viewBox")).not.toBe(viewBoxBefore);
+  await expect(page.getByRole("button", { name: /Connect Ring cameras/ })).toBeVisible();
+  await page.getByRole("button", { name: /Connect Ring cameras/ }).click();
+  await expect(page.getByRole("heading", { name: "Connect and pair Ring cameras" })).toBeVisible();
+  await expect(page.locator(".ring-setup-page").getByRole("heading", { name: /Ring connection|Allow Ring camera access/ })).toBeVisible();
+  await page.locator(".ring-setup-page .back-button").click();
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Cameras", level: 2 }),
-  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "CCTVs" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Camera feed", exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Incident report" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Incident report" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Add camera", exact: true })).toHaveCount(0);
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),
   ).toBeTruthy();
-  const report = page.locator(".cctv-incident-scroll");
-  expect(await report.evaluate((element) => element.scrollHeight >= element.clientHeight)).toBeTruthy();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Create pairing code" }).click();
   await expect(page.getByLabel("Pairing code")).toHaveText(/^[A-F0-9]{12}$/);
@@ -771,15 +777,14 @@ test("camera workspace starts mapped live view and contains its scrolling", asyn
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
 
   const display = page.getByRole("region", { name: "Camera feed", exact: true });
-  const reports = page.getByRole("region", { name: "Incident report" });
   const rail = page.getByRole("complementary", { name: "Camera feed list" });
-  const [displayBox, reportsBox, railBox] = await Promise.all([
+  const [displayBox, railBox] = await Promise.all([
     display.boundingBox(),
-    reports.boundingBox(),
     rail.boundingBox(),
   ]);
   expect(railBox!.x).toBeGreaterThan(displayBox!.x + displayBox!.width);
-  expect(reportsBox!.y).toBeGreaterThan(displayBox!.y);
+  await expect(page.getByRole("region", { name: "Incident report" })).toHaveCount(0);
+  expect(displayBox!.height).toBeGreaterThan(400);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBeTruthy();
 
   await page.getByRole("button", { name: `View ${front.name}` }).click();
@@ -796,7 +801,7 @@ test("camera workspace starts mapped live view and contains its scrolling", asyn
   await expect(display.getByRole("button", { name: "Reconnect" })).toBeVisible();
   await page.waitForTimeout(1800);
   expect(liveRequests).toBe(1);
-  await expect(page.locator(".cctv-incident-scroll")).toHaveCSS("overflow-y", "auto");
+  await expect(page.locator(".cctv-camera-scroll")).toHaveCSS("overflow-y", "auto");
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.locator(".camera-marker[aria-pressed=true]")).toHaveCount(1);
 });
@@ -822,7 +827,7 @@ test("with no place, only the map card is empty", async ({ page }) => {
   await expect(page.locator(".monitor-bar")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Run replay" })).toBeDisabled();
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Add camera" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Add camera" })).toHaveCount(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByText("no place selected")).toBeVisible();
   await page.getByRole("button", { name: "Home", exact: true }).click();

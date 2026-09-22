@@ -311,26 +311,26 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
         place each camera on your home map.
       </p>
       <div className="button-row">
-        <button
-          disabled={busy || !status?.configured}
-          onClick={() =>
-            void act(async () =>
-              setCode(await request("/v1/ring/sign-in-code", "POST")),
-            )
-          }
-        >
-          Create Ring sign-in code
-        </button>
+        {status?.state !== "connected" && <button
+            disabled={busy || !status?.configured}
+            onClick={() =>
+              void act(async () =>
+                setCode(await request("/v1/ring/sign-in-code", "POST")),
+              )
+            }
+          >
+            Create Ring sign-in code
+          </button>}
         <button disabled={busy} onClick={() => void act(load)}>
           Check connection
         </button>
-        <button
+        {status?.state !== "connected" && <button
           onClick={() =>
             void openExternal("https://ring.com/appstore")
           }
         >
           Open Ring Appstore
-        </button>
+        </button>}
       </div>
       {code && (
         <p className="pair-code">

@@ -26,10 +26,10 @@ import {
   X,
   Map,
   LogOut,
+  ChevronRight,
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import type { EvidenceLink, Marker } from "@twinforge/spatial-view/Map2D";
-import { bounds } from "@twinforge/spatial-view/geometry";
 import type { CameraChange } from "@twinforge/spatial-view/cameraGlyph";
 import CameraControls from "./CameraControls";
 import RenameField from "./RenameField";
@@ -118,11 +118,12 @@ const EMPTY_PLACE = {
 
 export default function App() {
   const returnedFromRing = new URLSearchParams(window.location.search).get("ring") === "connected";
-  const [tab, setTab] = useState<Tab>(returnedFromRing ? "Settings" : "Home"),
+  const [tab, setTab] = useState<Tab>("Home"),
     [site, setSite] = useState<Site | null>(null),
     [incidents, setIncidents] = useState<Incident[]>([]),
     [selected, setSelected] = useState<Incident | null>(null),
     [cameras, setCameras] = useState<CameraStatus[]>([]);
+  const [ringSetupOpen, setRingSetupOpen] = useState(returnedFromRing);
   const [ready, setReady] = useState(false),
     [paired, setPaired] = useState(!native),
     [error, setError] = useState(""),
@@ -666,6 +667,7 @@ export default function App() {
     }));
   }, [selected]);
   const nav = (name: Tab) => {
+    setRingSetupOpen(false);
     setTab(name);
     if (name !== "Home" && view === "Camera wall") setView("2D");
     setSelected(null);
@@ -1254,7 +1256,7 @@ export default function App() {
             ) : (
               <span className="site-name">{place.name}</span>
             )}
-            <h1>{tab}</h1>
+            <h1>{ringSetupOpen ? "Pair Ring cameras" : tab}</h1>
           </div>
           <div className="top-actions">
             <span className="mode">{environmentLabel}</span>
@@ -1279,6 +1281,27 @@ export default function App() {
         </div>}
         {error && <RecoveryNotice message={error} onRetry={() => void refresh()} />}
         <main className="content">
+          {ringSetupOpen && tab === "Home" && (
+            <div className="ring-setup-page">
+              <button className="back-button" onClick={() => setRingSetupOpen(false)}>
+                <ArrowLeft size={17} /> Home
+              </button>
+              <header>
+                <h2>Connect and pair Ring cameras</h2>
+                <p>Authorize Ring, then match each camera to its position on the current floor plan.</p>
+              </header>
+              {accountPreferences?.ring_data_consent ? (
+                <RingConnection sites={sites} refreshOnReturn={returnedFromRing} />
+              ) : (
+                <section className="ring-consent-required">
+                  <h3>Allow Ring camera access</h3>
+                  <p>Turn on authorized Ring data in Settings before connecting cameras.</p>
+                  <button className="primary" onClick={() => nav("Settings")}>Open Settings</button>
+                </section>
+              )}
+            </div>
+          )}
+          {!ringSetupOpen && <>
           {(tab === "Home" || tab === "Incidents") && (
             <>
               {site && (
@@ -1348,6 +1371,12 @@ export default function App() {
                   {detail}
                 </div>
               ) : tab === "Home" ? (
+                <>
+                <button className="mobile-ring-setup" onClick={() => setRingSetupOpen(true)}>
+                  <Link2 size={19} />
+                  <span><strong>Connect Ring cameras</strong><small>Authorize and pair cameras with this floor plan</small></span>
+                  <ArrowUpRight size={17} />
+                </button>
                 <div className="home-dashboard">
                   {map}
                   <aside
@@ -1364,6 +1393,7 @@ export default function App() {
                       }}
                       onClear={() => setRoom("")}
                       onViewAll={() => nav("Cameras")}
+                      onPairCamera={() => setRingSetupOpen(true)}
                       classificationEnabled={place.monitoring.classification_enabled}
                       onTestTrack={updateTestTrack}
                       onTestClassification={updateTestClassification}
@@ -1371,6 +1401,7 @@ export default function App() {
                     {list}
                   </aside>
                 </div>
+                </>
               ) : (
                 <div className="incident-page">{list}</div>
               )}
@@ -1381,16 +1412,8 @@ export default function App() {
               site={site}
               initialCameraId={room}
               cameras={cameras}
-              incidents={incidents}
               busy={busy}
               online={online}
-              onAdd={() => {
-                const [bx, by, bw, bh] = bounds(place.layout as Layout);
-                placeCamera([
-                  Math.round((bx + bw / 2) * 20) / 20,
-                  Math.round((by + bh / 2) * 20) / 20,
-                ]);
-              }}
               onToggle={(cameraId, checked) =>
                 updateMonitoring(
                   place.monitoring.enabled,
@@ -1400,16 +1423,27 @@ export default function App() {
                 )
               }
               onSelectCamera={setRoom}
-              onIncident={(incident) => {
-                choose(incident);
-                setTab("Incidents");
+              onPairCamera={() => {
+                setTab("Home");
+                setRingSetupOpen(true);
               }}
             />
           )}
           {tab === "Operations" && <Operations features={features} />}
           {tab === "Settings" && (
             <div className="settings-page">
-              <section>
+              <nav className="settings-mobile-menu" aria-label="Settings sections">
+                {[
+                  ["settings-account", "Account"], ["settings-places", "Places & floor plans"],
+                  ["settings-privacy", "Privacy & retention"], ["settings-ring", "Ring cameras"],
+                  ["settings-devices", "Connected devices"], ["settings-display", "Display & performance"],
+                ].map(([id, label]) => (
+                  <button key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" })}>
+                    <span>{label}</span><ChevronRight size={17} />
+                  </button>
+                ))}
+              </nav>
+              <section id="settings-account">
                 <h2>Account</h2>
                 <p>{currentSession?.email ?? "Local workspace owner"}</p>
                 {currentSession?.email && (
@@ -1424,12 +1458,12 @@ export default function App() {
                   </button>
                 )}
               </section>
-              <section>
+              <section className="settings-getting-started">
                 <h2>Getting started</h2>
                 <p>Review how Ring access, home maps, and the spatial evidence graph work together.</p>
                 <button onClick={() => setOnboardingOpen(true)}>Open setup guide</button>
               </section>
-              <section>
+              <section id="settings-places">
                 <h2>Places</h2>
                 <p>
                   {sites.length
@@ -1485,7 +1519,7 @@ export default function App() {
                   comes from your home.
                 </p>
               </section>
-              <section>
+              <section id="settings-privacy">
                 <h2>Privacy and retention</h2>
                 <p>Choose which provider data SpatialGuard may process and how long incident and security records remain in this workspace.</p>
                 {accountPreferences ? (
@@ -1528,7 +1562,7 @@ export default function App() {
                   </div>
                 ) : <p>Loading privacy choices…</p>}
               </section>
-              <section>
+              <section className="settings-classification">
                 <h2>Luna incident classification</h2>
                 <p>
                   When enabled, a Ring motion or doorbell event sends one authorized
@@ -1566,9 +1600,9 @@ export default function App() {
                 </p>
               </section>
               {accountPreferences?.ring_data_consent ? (
-                <RingConnection sites={sites} refreshOnReturn={returnedFromRing} />
+                <div id="settings-ring"><RingConnection sites={sites} refreshOnReturn={returnedFromRing} /></div>
               ) : (
-                <section>
+                <section id="settings-ring">
                   <h2>Ring connection</h2>
                   <p>Allow Ring data in Privacy settings before linking a Ring account. Your Ring password is entered only on Ring’s own authorization page.</p>
                 </section>
@@ -1608,7 +1642,7 @@ export default function App() {
                   </>
                 )}
               </section>
-              <section>
+              <section id="settings-devices">
                 <h2>Connected sessions</h2>
                 {sessions.map((s) => (
                   <div className="session-row" key={s.id}>
@@ -1632,7 +1666,7 @@ export default function App() {
                   </div>
                 ))}
               </section>
-              <section>
+              <section className="settings-sessions">
                 <h2>Display and performance</h2>
                 <p>Low-power mode keeps incident review in the accessible 2D view and avoids WebGL and nonessential animation.</p>
                 <button aria-pressed={lowPower} onClick={() => setLowPower(value => !value)}>
@@ -1640,7 +1674,7 @@ export default function App() {
                 </button>
                 <p className="fine" role="status">{lowPower ? "Low-power mode is on. The evidence timeline and 2D map remain available." : "Full graphics are available. Your reduced-motion system setting is still respected."}</p>
               </section>
-              <section>
+              <section id="settings-display">
                 <h2>Data and evidence</h2>
                 <p>
                   Replay evidence is synthetic. Live Ring incidents retain event
@@ -1664,6 +1698,7 @@ export default function App() {
               )}
             </div>
           )}
+          </>}
         </main>
       </div>
       {onboardingOpen && accountPreferences && (

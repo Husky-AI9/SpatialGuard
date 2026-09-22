@@ -113,6 +113,10 @@ export default function Map2D({
   const viewScale = fitBuilding ? 0.7 : 1;
   const w = baseWidth / viewScale, h = baseHeight / viewScale;
   const x = baseX - (w - baseWidth) / 2, y = baseY - (h - baseHeight) / 2;
+  const [zoom, setZoom] = useState(1);
+  const zoomedWidth = w / zoom, zoomedHeight = h / zoom;
+  const zoomedX = x + (w - zoomedWidth) / 2;
+  const zoomedY = y + (h - zoomedHeight) / 2;
   const svg = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
   const [preview, setPreview] = useState<Drag | null>(null);
@@ -173,7 +177,7 @@ export default function Map2D({
     <svg
       ref={svg}
       className={`spatial-map${moveable ? " editable" : ""}${placing ? " placing" : ""}`}
-      viewBox={`${x} ${-y - h} ${w} ${h}`}
+      viewBox={`${zoomedX} ${-zoomedY - zoomedHeight} ${zoomedWidth} ${zoomedHeight}`}
       role="group"
       aria-label={evidenceLinks.length
         ? "Home floor map with camera observations, possible continuations, and unknown gaps"
@@ -183,6 +187,12 @@ export default function Map2D({
           ? (e) => onPlace(eventPoint(e).map(snap) as XY)
           : undefined
       }
+      onWheel={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setZoom((current) => Math.max(0.65, Math.min(3.5,
+          current * (event.deltaY < 0 ? 1.12 : 0.89))));
+      }}
       onPointerMove={(e) => {
         const drag = dragRef.current;
         if (!drag) return;

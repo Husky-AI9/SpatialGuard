@@ -19,6 +19,7 @@ export default function HomeCctv({
   onSelect,
   onClear,
   onViewAll,
+  onPairCamera,
   onTestTrack,
   onTestClassification,
   classificationEnabled,
@@ -29,6 +30,7 @@ export default function HomeCctv({
   onSelect: (cameraId: string) => void;
   onClear: () => void;
   onViewAll: () => void;
+  onPairCamera: () => void;
   onTestTrack: (track: TestTrack | null) => void;
   onTestClassification: (classification: IncidentClassification | null) => void;
   classificationEnabled: boolean;
@@ -148,32 +150,36 @@ export default function HomeCctv({
         {cameras.map((camera) => {
           const ring = mappedDevice(camera.id);
           return (
-            <button
-              className="home-camera-row"
-              key={camera.id}
-              onClick={() => onSelect(camera.id)}
-              aria-label={`Open ${camera.name} feed and select it on map`}
-            >
-              <CameraThumbnail
-                className="home-camera-thumb"
-                siteId={siteId}
-                cameraId={camera.id}
-                name={camera.name}
-                available={!!ring}
-                iconSize={19}
-              />
-              <span>
-                <strong>{camera.name}</strong>
-                <small>{ring ? "Ring camera" : "Floor-plan camera"}</small>
-                <em>
-                  {ring
-                    ? "Live available"
-                    : ringState === "loading"
-                      ? "Checking feed"
-                      : "Replay only"}
-                </em>
-              </span>
-            </button>
+            <div className="home-camera-row" key={camera.id}>
+              <button
+                className="home-camera-select"
+                onClick={() => onSelect(camera.id)}
+                aria-label={`Open ${camera.name} feed and select it on map`}
+              >
+                <CameraThumbnail
+                  className="home-camera-thumb"
+                  siteId={siteId}
+                  cameraId={camera.id}
+                  name={camera.name}
+                  available={!!ring}
+                  iconSize={19}
+                />
+                <span>
+                  <strong>{camera.name}</strong>
+                  <small>{ring ? "Ring camera" : "Floor-plan camera"}</small>
+                  <em>
+                    {ring
+                      ? "Live available"
+                      : ringState === "loading"
+                        ? "Checking feed"
+                        : "Not paired"}
+                  </em>
+                </span>
+              </button>
+              {!ring && ringState !== "loading" && (
+                <button className="pair-camera-button" onClick={onPairCamera}>Pair</button>
+              )}
+            </div>
           );
         })}
         {!cameras.length && (
