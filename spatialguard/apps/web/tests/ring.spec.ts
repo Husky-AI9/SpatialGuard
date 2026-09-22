@@ -61,6 +61,7 @@ test("Ring setup keeps customer flow clear and provides single-use fallback", as
   await page.route("**/v1/ring/devices", (r) => r.fulfill({ json: [] }));
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Ring cameras" }).click();
   await expect(
     page.getByRole("heading", { name: "Ring connection", exact: true }),
   ).toBeVisible();
@@ -149,6 +150,7 @@ test("phone Ring inventory handles mapping and provider errors without fake live
   );
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Ring cameras" }).click();
   await expect(
     page.getByText("Account connected · Live integration"),
   ).toBeVisible();

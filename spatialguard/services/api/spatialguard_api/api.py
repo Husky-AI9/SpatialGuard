@@ -606,14 +606,16 @@ def create_app(db_path=None, engine=None, ring_service=None):
                     body.audit_retention_days, consent_at,
                 ),
             )
-            if not classification_consent:
-                for row in db.execute("SELECT id,data FROM sites WHERE owner=?", (p["owner"],)):
-                    site = json.loads(row["data"])
-                    if site.get("monitoring", {}).get("classification_enabled"):
-                        site["monitoring"]["classification_enabled"] = False
-                        site["monitoring_version"] = site.get("monitoring_version", 0) + 1
-                        db.execute("UPDATE sites SET data=? WHERE id=?", (dump(site), row["id"]))
-                        event(db, row["id"], "monitoring.changed", row["id"])
+            automatic_classification = bool(
+                body.ring_data_consent and classification_consent and capabilities()["classification"]
+            )
+            for row in db.execute("SELECT id,data FROM sites WHERE owner=?", (p["owner"],)):
+                site = json.loads(row["data"])
+                if site.get("monitoring", {}).get("classification_enabled", False) != automatic_classification:
+                    site["monitoring"]["classification_enabled"] = automatic_classification
+                    site["monitoring_version"] = site.get("monitoring_version", 0) + 1
+                    db.execute("UPDATE sites SET data=? WHERE id=?", (dump(site), row["id"]))
+                    event(db, row["id"], "monitoring.changed", row["id"])
             audit(db, p["owner"], "privacy.preferences_changed", p["owner"])
             return read_account_preferences(db, p["owner"], create=False)
 
@@ -789,7 +791,20 @@ def create_app(db_path=None, engine=None, ring_service=None):
     @app.get("/v1/sites", response_model=list[m.Site])
     def sites(p=Depends(principal)):
         with store.connect() as db:
-            return [json.loads(r[0]) for r in db.execute("SELECT data FROM sites WHERE owner=?", (p["owner"],))]
+            preferences = read_account_preferences(db, p["owner"])
+            automatic_classification = bool(
+                preferences["ring_data_consent"] and preferences["classification_consent"]
+                and capabilities()["classification"]
+            )
+            result = []
+            for row in db.execute("SELECT id,data FROM sites WHERE owner=?", (p["owner"],)):
+                site = json.loads(row["data"])
+                if site.get("monitoring", {}).get("classification_enabled", False) != automatic_classification:
+                    site["monitoring"]["classification_enabled"] = automatic_classification
+                    site["monitoring_version"] = site.get("monitoring_version", 0) + 1
+                    db.execute("UPDATE sites SET data=? WHERE id=?", (dump(site), row["id"]))
+                result.append(site)
+            return result
 
     def active_key(p):
         return "active_site:" + p["owner"]
@@ -830,14 +845,14 @@ def create_app(db_path=None, engine=None, ring_service=None):
         with store.connect() as db:
             site = owned(db, site_id, p)
             preferences = read_account_preferences(db, p["owner"])
-            if body.classification_enabled and not (
-                preferences["ring_data_consent"] and preferences["classification_consent"]
-            ):
-                raise HTTPException(409, "Allow Ring data and snapshot classification in Privacy settings first")
             allowed = {c["id"] for c in site["layout"]["cameras"]}
             if len(set(body.camera_ids)) != len(body.camera_ids) or not set(body.camera_ids) <= allowed:
                 raise HTTPException(422, "Select cameras in this site")
             site["monitoring"] = body.model_dump()
+            site["monitoring"]["classification_enabled"] = bool(
+                preferences["ring_data_consent"] and preferences["classification_consent"]
+                and capabilities()["classification"]
+            )
             site["monitoring_version"] = site.get("monitoring_version", 0) + 1
             db.execute("UPDATE sites SET data=? WHERE id=?", (dump(site), site_id))
             event(db, site_id, "monitoring.changed", site_id)

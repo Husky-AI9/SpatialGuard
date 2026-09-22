@@ -70,7 +70,6 @@ type Session = components["schemas"]["Session"];
 type CameraStatus = components["schemas"]["CameraStatus"];
 type EventPage = components["schemas"]["EventPage"];
 type Page = components["schemas"]["IncidentPage"];
-type ClassifierStatus = components["schemas"]["ClassifierStatus"];
 type IncidentClassification = components["schemas"]["IncidentClassification"];
 type ProductCapabilities = components["schemas"]["ProductCapabilities"];
 import { ActivityIcon, actorFromClassification, DEFAULT_ACTOR, type ActorPresentation } from "./activityPresentation";
@@ -82,6 +81,12 @@ const tabs = [
   { name: "Settings", icon: Settings },
 ] as const;
 type Tab = (typeof tabs)[number]["name"];
+type SettingsPage = "menu" | "account" | "places" | "privacy" | "ring" | "devices" | "display" | "security" | "delete";
+const settingsLabels: Record<SettingsPage, string> = {
+  menu: "Settings", account: "Account", places: "Places & floor plans",
+  privacy: "Privacy & retention", ring: "Ring cameras", devices: "Connected devices",
+  display: "Display & performance", security: "Security & data", delete: "Delete account",
+};
 function time(value: string) {
   return new Date(value).toLocaleTimeString([], {
     hour: "2-digit",
@@ -124,6 +129,7 @@ export default function App() {
     [selected, setSelected] = useState<Incident | null>(null),
     [cameras, setCameras] = useState<CameraStatus[]>([]);
   const [ringSetupOpen, setRingSetupOpen] = useState(returnedFromRing);
+  const [settingsPage, setSettingsPage] = useState<SettingsPage>("menu");
   const [ready, setReady] = useState(false),
     [paired, setPaired] = useState(!native),
     [error, setError] = useState(""),
@@ -154,7 +160,6 @@ export default function App() {
     [nextCursor, setNextCursor] = useState<number | null>(null),
     [image, setImage] = useState(""),
     [imageError, setImageError] = useState(""),
-    [classifierStatus, setClassifierStatus] = useState<ClassifierStatus | null>(null),
     [accountPreferences, setAccountPreferences] = useState<AccountPreferences | null>(null),
     [onboardingOpen, setOnboardingOpen] = useState(false),
     [deleteOpen, setDeleteOpen] = useState(false),
@@ -165,11 +170,11 @@ export default function App() {
   const deleteDialog = useDialogFocus(deleteOpen, () => setDeleteOpen(false));
   const cursor = useRef(0),
     activeRef = useRef(""),
-    current = useRef({ tab, selected }),
+    current = useRef({ tab, selected, settingsPage, ringSetupOpen }),
     runRef = useRef(run),
     testActorRef = useRef<ActorPresentation>(DEFAULT_ACTOR),
     refreshRef = useRef<() => Promise<void>>(async () => {});
-  current.current = { tab, selected };
+  current.current = { tab, selected, settingsPage, ringSetupOpen };
   const hostedWeb = !native && !localWeb;
   const environmentLabel = hostedWeb ? "Cloud workspace" : "Local workspace";
   activeRef.current = activeSite;
@@ -299,6 +304,14 @@ export default function App() {
     void lifecycle(
       () => void refreshRef.current(),
       () => {
+        if (current.current.ringSetupOpen) {
+          setRingSetupOpen(false);
+          return true;
+        }
+        if (current.current.tab === "Settings" && current.current.settingsPage !== "menu") {
+          setSettingsPage("menu");
+          return true;
+        }
         if (current.current.selected) {
           setSelected(null);
           return true;
@@ -383,7 +396,6 @@ export default function App() {
     if (tab === "Settings" && paired)
       void Promise.all([
         request<Session[]>("/v1/sessions").then(setSessions),
-        request<ClassifierStatus>("/v1/classifier").then(setClassifierStatus),
         request<AccountPreferences>("/v1/account/preferences").then(setAccountPreferences),
       ]).catch(handleError);
   }, [tab, paired, handleError]);
@@ -668,6 +680,7 @@ export default function App() {
   }, [selected]);
   const nav = (name: Tab) => {
     setRingSetupOpen(false);
+    if (name === "Settings") setSettingsPage("menu");
     setTab(name);
     if (name !== "Home" && view === "Camera wall") setView("2D");
     setSelected(null);
@@ -1004,7 +1017,7 @@ export default function App() {
         <section className="classification-card" aria-label="AI snapshot classification">
           <div>
             <ActivityIcon classification={selected.classification} />
-            <span className="eyebrow">Luna snapshot classification</span>
+            <span className="eyebrow">Snapshot classification</span>
             <strong>{selected.classification.display_label}</strong>
           </div>
           <span className={`confidence confidence-${selected.classification.confidence}`}>
@@ -1026,7 +1039,7 @@ export default function App() {
       ) : selected.evidence_mode === "live" ? (
         <section className="classification-card classification-empty">
           <div>
-            <span className="eyebrow">Luna snapshot classification</span>
+            <span className="eyebrow">Snapshot classification</span>
             <strong>
               {selected.classification_status === "unavailable"
                 ? "Classification unavailable"
@@ -1051,7 +1064,7 @@ export default function App() {
               })
             }
           >
-            Analyze snapshot with Luna
+            Analyze snapshot
           </button>
         </section>
       ) : null}
@@ -1256,7 +1269,7 @@ export default function App() {
             ) : (
               <span className="site-name">{place.name}</span>
             )}
-            <h1>{ringSetupOpen ? "Pair Ring cameras" : tab}</h1>
+            <h1>{ringSetupOpen ? "Pair Ring cameras" : tab === "Settings" ? settingsLabels[settingsPage] : tab}</h1>
           </div>
           <div className="top-actions">
             <span className="mode">{environmentLabel}</span>
@@ -1315,7 +1328,7 @@ export default function App() {
                     <span>
                       {place.monitoring.camera_ids.length} selected cameras ·{" "}
                       {place.monitoring.classification_enabled
-                        ? "Luna snapshot classification enabled"
+                        ? "Snapshot classification enabled"
                         : cameras.some((c) => c.state === "live_connected")
                         ? "Ring events enabled for mapped cameras"
                         : "Ring cameras not mapped"}
@@ -1432,17 +1445,20 @@ export default function App() {
           {tab === "Operations" && <Operations features={features} />}
           {tab === "Settings" && (
             <div className="settings-page">
-              <nav className="settings-mobile-menu" aria-label="Settings sections">
-                {[
-                  ["settings-account", "Account"], ["settings-places", "Places & floor plans"],
-                  ["settings-privacy", "Privacy & retention"], ["settings-ring", "Ring cameras"],
-                  ["settings-devices", "Connected devices"], ["settings-display", "Display & performance"],
-                ].map(([id, label]) => (
-                  <button key={id} onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" })}>
-                    <span>{label}</span><ChevronRight size={17} />
-                  </button>
-                ))}
-              </nav>
+              {settingsPage === "menu" ? (
+                <nav className="settings-mobile-menu" aria-label="Settings sections">
+                  {(["account", "places", "privacy", "ring", "devices", "display", "security", "delete"] as SettingsPage[]).map((page) => (
+                    <button key={page} className={page === "delete" ? "danger-row" : undefined} onClick={() => setSettingsPage(page)}>
+                      <span>{settingsLabels[page]}</span><ChevronRight size={17} />
+                    </button>
+                  ))}
+                </nav>
+              ) : (
+                <button className="settings-back" onClick={() => setSettingsPage("menu")}>
+                  <ArrowLeft size={17} /> Settings
+                </button>
+              )}
+              {settingsPage === "account" && <>
               <section id="settings-account">
                 <h2>Account</h2>
                 <p>{currentSession?.email ?? "Local workspace owner"}</p>
@@ -1463,7 +1479,8 @@ export default function App() {
                 <p>Review how Ring access, home maps, and the spatial evidence graph work together.</p>
                 <button onClick={() => setOnboardingOpen(true)}>Open setup guide</button>
               </section>
-              <section id="settings-places">
+              </>}
+              {settingsPage === "places" && <section id="settings-places">
                 <h2>Places</h2>
                 <p>
                   {sites.length
@@ -1518,8 +1535,8 @@ export default function App() {
                   five spaces, two cameras, and replay activity. Nothing in it
                   comes from your home.
                 </p>
-              </section>
-              <section id="settings-privacy">
+              </section>}
+              {settingsPage === "privacy" && <section id="settings-privacy">
                 <h2>Privacy and retention</h2>
                 <p>Choose which provider data SpatialGuard may process and how long incident and security records remain in this workspace.</p>
                 {accountPreferences ? (
@@ -1561,52 +1578,16 @@ export default function App() {
                     <p className="legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/data-deletion">Data deletion</a></p>
                   </div>
                 ) : <p>Loading privacy choices…</p>}
-              </section>
-              <section className="settings-classification">
-                <h2>Luna incident classification</h2>
-                <p>
-                  When enabled, a Ring motion or doorbell event sends one authorized
-                  camera snapshot to OpenAI GPT-5.6 Luna. SpatialGuard stores the
-                  classification and visible evidence, but not the snapshot. It does
-                  not identify people or infer gender.
-                </p>
-                <p className="fine">
-                  Security-sensitive results use cautious labels such as “Possible
-                  weapon visible” and always require review. API usage is billed to
-                  the configured OpenAI account.
-                </p>
-                <button
-                  disabled={!site || busy || !online || !classifierStatus?.configured || !accountPreferences?.classification_consent}
-                  aria-pressed={site?.monitoring.classification_enabled ?? false}
-                  onClick={() =>
-                    site &&
-                    updateMonitoring(
-                      site.monitoring.enabled,
-                      site.monitoring.camera_ids,
-                      !site.monitoring.classification_enabled,
-                    )
-                  }
-                >
-                  {site?.monitoring.classification_enabled
-                    ? "Disable Luna classification"
-                    : "Enable Luna classification"}
-                </button>
-                <p className="fine" role="status">
-                  {classifierStatus?.configured
-                    ? accountPreferences?.classification_consent
-                      ? `${classifierStatus.model} is configured on this server.`
-                      : "Allow Ring data and snapshot classification in Privacy settings first."
-                    : "Add OPENAI_API_KEY to the root .env and restart SpatialGuard."}
-                </p>
-              </section>
-              {accountPreferences?.ring_data_consent ? (
+              </section>}
+              {settingsPage === "ring" && (accountPreferences?.ring_data_consent ? (
                 <div id="settings-ring"><RingConnection sites={sites} refreshOnReturn={returnedFromRing} /></div>
               ) : (
                 <section id="settings-ring">
                   <h2>Ring connection</h2>
                   <p>Allow Ring data in Privacy settings before linking a Ring account. Your Ring password is entered only on Ring’s own authorization page.</p>
                 </section>
-              )}
+              ))}
+              {settingsPage === "devices" && <>
               <section>
                 <h2>Android pairing</h2>
                 {native ? (
@@ -1666,14 +1647,16 @@ export default function App() {
                   </div>
                 ))}
               </section>
-              <section className="settings-sessions">
+              </>}
+              {settingsPage === "display" && <section className="settings-sessions">
                 <h2>Display and performance</h2>
                 <p>Low-power mode keeps incident review in the accessible 2D view and avoids WebGL and nonessential animation.</p>
                 <button aria-pressed={lowPower} onClick={() => setLowPower(value => !value)}>
                   {lowPower ? "Use full graphics" : "Turn on low-power mode"}
                 </button>
                 <p className="fine" role="status">{lowPower ? "Low-power mode is on. The evidence timeline and 2D map remain available." : "Full graphics are available. Your reduced-motion system setting is still respected."}</p>
-              </section>
+              </section>}
+              {settingsPage === "security" && <>
               <section id="settings-display">
                 <h2>Data and evidence</h2>
                 <p>
@@ -1689,7 +1672,8 @@ export default function App() {
                 <p>Application version 0.1 · TwinForge schema 0.1</p>
               </section>
               {currentSession?.email && <AccountSecurity ringDataConsent={!!accountPreferences?.ring_data_consent} onSessionsChanged={() => void request<Session[]>("/v1/sessions").then(setSessions)} />}
-              {currentSession?.email && (
+              </>}
+              {settingsPage === "delete" && currentSession?.email && (
                 <section className="danger-zone">
                   <h2>Delete account</h2>
                   <p>Permanently remove this account, its maps, uploaded floor plans, incidents, sessions, Ring data, and time-lapse files. This cannot be undone.</p>

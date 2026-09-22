@@ -2446,7 +2446,34 @@ select.site-name:hover {
   background: var(--card);
 }
 .back-button { display: inline-flex; align-items: center; gap: 6px; }
-.settings-mobile-menu { display: none; }
+.settings-mobile-menu {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+}
+.settings-mobile-menu button {
+  min-height: 48px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  font-weight: 600;
+}
+.settings-mobile-menu button:last-child { border-bottom: 0; }
+.settings-mobile-menu .danger-row { color: #a23039; }
+.settings-back {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .spatial-map,
 .spatial-scene { overscroll-behavior: contain; }
 
@@ -3430,6 +3457,12 @@ select.site-name {
   .camera-page { height: calc(100dvh - 180px - env(safe-area-inset-bottom)); }
   .camera-feed-workspace { grid-template-rows: minmax(0, 74%) minmax(0, 26%); }
   .camera-feed-workspace .cctv-display { min-height: 360px; }
+  .cctv-camera-scroll {
+    display: grid;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .cctv-camera-row { width: auto; min-width: 0; }
   .cctv-stage .ring-video.embedded video { object-fit: contain; }
   .settings-page > section,
   .settings-page > div[id="settings-ring"] {

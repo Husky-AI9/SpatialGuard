@@ -286,6 +286,7 @@ test("low-power mode keeps 2D evidence available and disables WebGL", async ({ p
   await page.addInitScript(() => localStorage.setItem("spatialguard-low-power", "false"));
   await openDemo(page);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Display & performance" }).click();
   await page.getByRole("button", { name: "Turn on low-power mode" }).click();
   await expect(page.getByText("Low-power mode is on", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "Home", exact: true }).click();
@@ -529,17 +530,28 @@ test("phone navigation, pairing and disconnected state", async ({
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Account", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Account", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  await expect(page.locator("#settings-account").getByRole("heading", { name: "Account", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
   await expect(page.getByRole("heading", { name: "CCTVs" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Camera feed", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Incident report" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add camera", exact: true })).toHaveCount(0);
+  const cameraRows = page.locator(".cctv-camera-row");
+  if (await cameraRows.count() > 1) {
+    const [firstCamera, secondCamera] = await Promise.all([
+      cameraRows.nth(0).boundingBox(),
+      cameraRows.nth(1).boundingBox(),
+    ]);
+    expect(secondCamera!.y).toBeGreaterThan(firstCamera!.y + firstCamera!.height - 1);
+  }
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight),
   ).toBeTruthy();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Connected devices" }).click();
   await page.getByRole("button", { name: "Create pairing code" }).click();
   await expect(page.getByLabel("Pairing code")).toHaveText(/^[A-F0-9]{12}$/);
   await context.setOffline(true);
@@ -829,6 +841,7 @@ test("with no place, only the map card is empty", async ({ page }) => {
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
   await expect(page.getByRole("button", { name: "Add camera" })).toHaveCount(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Security & data" }).click();
   await expect(page.getByText("no place selected")).toBeVisible();
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.getByRole("button", { name: "Upload floor plan" }).click();
@@ -842,22 +855,21 @@ test("with no place, only the map card is empty", async ({ page }) => {
 test("the demo home can be loaded or switched to from Settings", async ({ page }) => {
   await openDemo(page);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Places" })).toBeVisible();
+  await page.getByRole("button", { name: "Places & floor plans" }).click();
+  await expect(page.getByRole("heading", { name: "Places", exact: true })).toBeVisible();
   // Once it exists the control selects it rather than making another.
   const demo = page.getByRole("button", { name: "Switch to demo home" });
   await expect(demo).toBeVisible();
-  // Session rows load independently from places and Ring inventory. Wait for
-  // that request before recording the baseline count.
-  await expect(page.getByText("Local owner browser").first()).toBeVisible();
-  const before = await page.locator(".settings-page .session-row").count();
   await demo.click();
   await expect(page.locator(".spatial-map")).toBeVisible({ timeout: 30000 });
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.locator(".settings-page .session-row")).toHaveCount(before);
+  await page.getByRole("button", { name: "Places & floor plans" }).click();
+  await expect(page.getByRole("heading", { name: "Places", exact: true })).toBeVisible();
   // It is also reachable with no place at all.
   await page.route("**/v1/sites", (r) => r.fulfill({ json: [] }));
   await page.reload();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Places & floor plans" }).click();
   await expect(page.getByRole("button", { name: "Load demo home" })).toBeVisible();
   await expect(page.getByText("No places yet.")).toBeVisible();
 });
@@ -866,6 +878,7 @@ test("setup guide explains consent, maps, and evidence on a phone", async ({ pag
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/workspace");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Open setup guide" }).click();
   const guide = page.getByRole("dialog", { name: "SpatialGuard setup" });
   await expect(guide.getByRole("heading", { name: "One place to understand camera events" })).toBeVisible();
@@ -884,6 +897,7 @@ test("setup guide explains consent, maps, and evidence on a phone", async ({ pag
 test("dialogs trap keyboard focus and close without stranding focus", async ({ page }) => {
   await page.goto("/workspace");
   await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Open setup guide" }).click();
   const dialog = page.getByRole("dialog", { name: "SpatialGuard setup" });
   await expect(dialog).toBeVisible();
@@ -923,7 +937,7 @@ test("recoverable failures explain the cause, effect, and next action", async ({
   await expect(notice).toHaveCount(0);
 });
 
-test("Luna classification is opt-in and explains snapshot handling", async ({ page }) => {
+test("snapshot classification has no manual feature toggle", async ({ page }) => {
   await allowProviderFeatures(page);
   await page.route("**/v1/classifier", (route) =>
     route.fulfill({
@@ -932,13 +946,11 @@ test("Luna classification is opt-in and explains snapshot handling", async ({ pa
   );
   await openDemo(page);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Luna incident classification" }),
-  ).toBeVisible();
-  await expect(page.getByText("sends one authorized camera snapshot", { exact: false })).toBeVisible();
-  await expect(page.getByText("does not identify people or infer gender", { exact: false })).toBeVisible();
-  await expect(page.getByText("gpt-5.6-luna is configured", { exact: false })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Luna classification/ })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Privacy & retention" })).toBeVisible();
+  await page.getByRole("button", { name: "Privacy & retention" }).click();
+  await expect(page.getByText("Analyze event snapshots", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Luna incident classification" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Luna classification/ })).toHaveCount(0);
 });
 
 test("spaces and cameras can be renamed in place", async ({ page }) => {

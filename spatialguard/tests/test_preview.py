@@ -420,10 +420,11 @@ def test_account_privacy_consent_and_permanent_deletion(tmp_path, monkeypatch):
             'monitoring':{'enabled':True,'camera_ids':['camera_front'],'classification_enabled':False},
             'monitoring_version':0,'evidence_mode':'replay','ring_status':'not_connected'}
         db.execute('INSERT INTO sites VALUES (?,?,?)', ('private_site', owner, dump(site)))
-    blocked = client.patch('/v1/sites/private_site/monitoring', json={
+    automatic = client.patch('/v1/sites/private_site/monitoring', json={
         'enabled': True, 'camera_ids': ['camera_front'], 'classification_enabled': True,
     })
-    assert blocked.status_code == 409
+    assert automatic.status_code == 200
+    assert automatic.json()['monitoring']['classification_enabled'] is False
     saved = client.patch('/v1/account/preferences', json={
         **defaults, 'onboarding_completed': True, 'ring_data_consent': True,
         'classification_consent': True, 'incident_retention_days': 30,
@@ -431,9 +432,11 @@ def test_account_privacy_consent_and_permanent_deletion(tmp_path, monkeypatch):
     })
     assert saved.status_code == 200 and saved.json()['consent_updated_at']
     assert client.post('/v1/ring/sign-in-code').status_code == 200
-    assert client.patch('/v1/sites/private_site/monitoring', json={
-        'enabled': True, 'camera_ids': ['camera_front'], 'classification_enabled': True,
-    }).status_code == 200
+    automatic = client.patch('/v1/sites/private_site/monitoring', json={
+        'enabled': True, 'camera_ids': ['camera_front'], 'classification_enabled': False,
+    })
+    assert automatic.status_code == 200
+    assert automatic.json()['monitoring']['classification_enabled'] is True
     assert client.request('DELETE', '/v1/account', json={
         'password': 'wrong-password', 'confirmation': 'DELETE',
     }).status_code == 401
