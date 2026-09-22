@@ -60,14 +60,14 @@ body.landing-body { padding: 0; background: var(--surface); }
 
 @media (max-width: 820px) {
   .sg-auth-page { display: block; min-height: 100svh; background: #292b44; }
-  .sg-auth-visual { min-height: 255px; height: 31svh; padding: 22px 24px; background: #292b44; }
-  .sg-auth-brand { font-size: 18px; }
-  .sg-auth-art { inset: 7% 0 -25% 12%; }
-  .sg-auth-art img { width: min(520px, 98%); }
-  .sg-auth-signal { top: 25%; right: 5%; }
+  .sg-auth-visual { min-height: 230px; height: 29svh; display: grid; place-items: center; padding: 22px 24px; background: linear-gradient(155deg, #695ff1 0%, #5649e1 48%, #3e36b8 100%); }
+  .sg-auth-brand { flex-direction: column; gap: 12px; font-size: 25px; }
+  .sg-auth-brand > span { width: 82px; height: 82px; border-radius: 25px; color: #fff; background: rgba(255,255,255,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 18px 42px rgba(26,20,105,.25); }
+  .sg-auth-brand > span svg { width: 50px; height: 50px; }
+  .sg-auth-art { display: none; }
   .sg-auth-event { display: none; }
   .sg-auth-visual-copy { display: none; }
-  .sg-auth-panel { position: relative; z-index: 3; min-height: 69svh; margin-top: -14px; padding: 26px 24px 34px; border-radius: 14px 14px 0 0; }
+  .sg-auth-panel { position: relative; z-index: 3; min-height: 71svh; margin-top: -14px; padding: 26px 24px 34px; border-radius: 24px 24px 0 0; }
   .sg-auth-back { margin-bottom: 24px; }
   .sg-auth-form-wrap h2 { font-size: 32px; }
   .sg-auth-intro { margin-bottom: 20px; }
@@ -823,6 +823,29 @@ body.landing-body {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
+
+  .sg-mobile-logo-stage {
+    align-self: stretch;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 14px;
+    color: #fff;
+  }
+  .sg-mobile-logo-mark {
+    width: 142px;
+    height: 142px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255,255,255,.42);
+    border-radius: 42px;
+    color: #fff;
+    background: rgba(255,255,255,.14);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 24px 55px rgba(24,17,102,.27);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .sg-mobile-logo-stage > strong { font-size: 27px; letter-spacing: -.7px; }
 
   .sg-mobile-scene {
     position: relative;

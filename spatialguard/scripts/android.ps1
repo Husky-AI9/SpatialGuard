@@ -25,13 +25,12 @@ try {
         } elseif ($Release) {
             ./gradlew.bat assembleRelease "-PSPATIALGUARD_API_URL=$ApiUrl"
         } else {
-            ./gradlew.bat assembleDebug
+            ./gradlew.bat assembleDebug "-PSPATIALGUARD_DEBUG_API_URL=$ApiUrl"
         }
         if ($LASTEXITCODE -ne 0) { throw 'Android build failed' }
     } finally { Pop-Location }
     if ($Install -and ($Release -or $Bundle)) { throw 'Install is supported for the debug build only.' }
     if ($Install) {
-        adb reverse tcp:8010 tcp:8010
         adb install -r android/app/build/outputs/apk/debug/app-debug.apk
         if ($LASTEXITCODE -ne 0) { throw 'APK installation failed' }
         adb shell am start -n app.spatialguard.mobile/dev.spatialguard.preview.MainActivity

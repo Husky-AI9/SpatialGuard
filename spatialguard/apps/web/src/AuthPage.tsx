@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import type { components } from "./generated";
 import { native, request, storeToken } from "./platform";
 import landingHouse from "./assets/landing-house.png";
 import "./landing.css";
+import SpatialGuardMark from "./SpatialGuardMark";
 
 type Mode = "signin" | "signup" | "forgot" | "reset" | "verify";
 type AuthSession = components["schemas"]["AuthSession"];
@@ -16,7 +17,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
 
   useEffect(() => {
     const title = mode === "verify" ? "Verify email" : mode === "forgot" ? "Reset password" : mode === "reset" ? "Choose password" : signingUp ? "Create account" : "Sign in";
-    document.title = `${title} Â· SpatialGuard`;
+    document.title = `${title} · SpatialGuard`;
   }, [mode, signingUp]);
 
   const submit = async (event: FormEvent) => {
@@ -45,14 +46,14 @@ export default function AuthPage({ mode }: { mode: Mode }) {
   const title = mode === "verify" ? "Verify your email" : mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : signingUp ? "Create your account" : "Sign in";
   return <main className="sg-auth-page">
     <section className="sg-auth-visual" aria-label="SpatialGuard home and camera coverage illustration">
-      <a className="sg-auth-brand" href={native ? "/" : "/landing"}><span><Shield size={20} /></span> SpatialGuard</a>
+      <a className="sg-auth-brand" href={native ? "/" : "/landing"}><span><SpatialGuardMark size={20} /></span> SpatialGuard</a>
       <div className="sg-auth-art"><div className="sg-auth-orbit sg-auth-orbit-one" /><div className="sg-auth-orbit sg-auth-orbit-two" /><img src={landingHouse} alt="Illustrative 3D home protected by SpatialGuard" /><div className="sg-auth-signal"><span /> Cameras connected</div><div className="sg-auth-event"><Check size={15} /><span><strong>Evidence connected</strong><small>Front entry to living room</small></span></div></div>
       <div className="sg-auth-visual-copy"><p>One spatial view</p><h1>Every camera makes more sense when you can see where it happened.</h1></div>
     </section>
     <section className="sg-auth-panel" aria-labelledby="sg-auth-title"><div className="sg-auth-form-wrap">
       <a className="sg-auth-back" href={recovering ? "/signin" : native ? "/" : "/landing"}><ArrowLeft size={16} /> {recovering ? "Back to sign in" : "Back to SpatialGuard"}</a>
       <p className="sg-auth-eyebrow">{recovering ? "Account recovery" : signingUp ? "Start your workspace" : "Welcome back"}</p><h2 id="sg-auth-title">{title}</h2>
-      <p className="sg-auth-intro">{mode === "verify" ? "Confirm that this address belongs to you. The link works once and expires after 24 hours." : mode === "forgot" ? "If an account exists, we will send a single-use link that expires in 30 minutes." : mode === "reset" ? "Completing this step signs out every existing device." : signingUp ? "Create a private workspace for maps, incidents, and your Ring connection." : "Open your SpatialGuard workspace with your email and password."}</p>
+      {mode !== "signin" && <p className="sg-auth-intro">{mode === "verify" ? "Confirm that this address belongs to you. The link works once and expires after 24 hours." : mode === "forgot" ? "If an account exists, we will send a single-use link that expires in 30 minutes." : mode === "reset" ? "Completing this step signs out every existing device." : "Create a private workspace for maps, incidents, and your Ring connection."}</p>}
       <form className="sg-auth-form" onSubmit={submit}>
         {mode !== "reset" && mode !== "verify" && <><label htmlFor="auth-email">Email</label><div className="sg-auth-input"><Mail size={17} /><input id="auth-email" type="email" autoComplete="email" autoFocus required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></div></>}
         {mode !== "forgot" && mode !== "verify" && <><label htmlFor="auth-password">{mode === "reset" ? "New password" : "Password"}</label><div className="sg-auth-input"><LockKeyhole size={17} /><input id="auth-password" type={showPassword ? "text" : "password"} autoComplete={signingUp || mode === "reset" ? "new-password" : "current-password"} required minLength={8} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" /><button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword(v => !v)}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></>}
@@ -62,7 +63,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
       </form>
       {mode === "signin" && <p className="sg-auth-switch"><a href="/forgot-password">Forgot your password?</a></p>}
       {!recovering && <p className="sg-auth-switch">{signingUp ? "Already have an account?" : "New to SpatialGuard?"} <a href={otherHref}>{signingUp ? "Sign in" : "Create an account"}</a></p>}
-      <p className="sg-auth-privacy">Passwords are stored as salted verifiers. Ring credentials stay on the server. <a href="/privacy">Privacy</a> Â· <a href="/terms">Terms</a></p>
+      <p className="sg-auth-privacy">Ring credentials stay on the server. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p>
     </div></section>
   </main>;
 }

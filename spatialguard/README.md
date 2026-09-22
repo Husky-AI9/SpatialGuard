@@ -140,7 +140,7 @@ Use one connected, authorized USB device or emulator. The script builds, install
 
 For the hosted build, sign in on Android with the same verified email and password as the web app. Local development also supports **Settings → Android pairing**: create a code in the web workspace and enter it in Android. The code lasts three minutes and can be redeemed once. Re-establish ADB reverse after reconnecting USB. The PC and both backends must remain running for the local debug connection.
 
-The Android credential is encrypted with an AES-GCM key in Android Keystore. It is never placed in browser storage or the APK. Device sessions can be revoked from Settings. Native logs are disabled to prevent bridge arguments from exposing credentials. HTTP is allowed only for the debug build's `127.0.0.1` destination. Release builds forbid cleartext and take the hosted HTTPS API origin from the `SPATIALGUARD_API_URL` Gradle property or environment variable, for example `SPATIALGUARD_API_URL=https://your-service.up.railway.app`.
+The Android credential is encrypted with an AES-GCM key in Android Keystore. It is never placed in browser storage or the APK. Device sessions can be revoked from Settings. Native logs are disabled to prevent bridge arguments from exposing credentials. Debug and release builds use the hosted Railway HTTPS API by default. Local device testing is opt-in with `-PSPATIALGUARD_DEBUG_API_URL=http://127.0.0.1:8010` plus `adb reverse tcp:8010 tcp:8010`; cleartext remains restricted to that debug loopback destination. Release builds forbid cleartext and take the hosted HTTPS API origin from the `SPATIALGUARD_API_URL` Gradle property or environment variable.
 
 ## Boundaries and contracts
 
