@@ -1,14 +1,43 @@
-"""Small SMTP adapter suitable for Railway-hosted transactional email."""
+"""Transactional email through SES HTTPS or an SMTP fallback."""
 import os
 import smtplib
 import ssl
 from email.message import EmailMessage
 
+import boto3
+
+
+def _ses_send(subject: str, recipient: str, text: str, sender: str) -> bool:
+    region = os.environ.get("SPATIALGUARD_SES_REGION")
+    access_key = os.environ.get("SPATIALGUARD_SES_ACCESS_KEY_ID")
+    secret_key = os.environ.get("SPATIALGUARD_SES_SECRET_ACCESS_KEY")
+    if not region or not access_key or not secret_key:
+        return False
+    client = boto3.client(
+        "sesv2",
+        region_name=region,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+    )
+    client.send_email(
+        FromEmailAddress=sender,
+        Destination={"ToAddresses": [recipient]},
+        Content={"Simple": {
+            "Subject": {"Data": subject, "Charset": "UTF-8"},
+            "Body": {"Text": {"Data": text, "Charset": "UTF-8"}},
+        }},
+    )
+    return True
+
 
 def send(subject: str, recipient: str, text: str) -> bool:
-    host = os.environ.get("SPATIALGUARD_SMTP_HOST")
     sender = os.environ.get("SPATIALGUARD_SMTP_FROM")
-    if not host or not sender:
+    if not sender:
+        return False
+    if os.environ.get("SPATIALGUARD_SES_REGION"):
+        return _ses_send(subject, recipient, text, sender)
+    host = os.environ.get("SPATIALGUARD_SMTP_HOST")
+    if not host:
         return False
     message = EmailMessage()
     message["From"] = sender

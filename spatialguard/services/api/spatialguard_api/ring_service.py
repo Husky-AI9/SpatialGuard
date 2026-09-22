@@ -6,9 +6,7 @@ import json
 import os
 import secrets
 import shutil
-import smtplib
 import time
-from email.message import EmailMessage
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from io import BytesIO
@@ -17,6 +15,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from urllib.parse import quote, urlparse
 from fastapi import HTTPException
 from .store import Store, DATA, account_preferences, digest, dump, uid, now, event, audit
+from .mail import send as send_mail
 from .ring_provider import Provider, ServerVault, WindowsVault, credentials
 
 
@@ -846,9 +845,6 @@ class RingService:
                            (time.time() + row['cadence_minutes'] * 60, row['id']))
 
     def deliver_email_alerts(self):
-        host = os.environ.get('SPATIALGUARD_SMTP_HOST')
-        sender = os.environ.get('SPATIALGUARD_SMTP_FROM')
-        if not host or not sender: return
         with self.store.connect() as db:
             rows = db.execute("SELECT a.*,p.email FROM ring_alerts a JOIN ring_ops_preferences p ON p.owner=a.owner "
                 "WHERE a.notify_at<=? AND a.emailed=0 AND p.email_enabled=1 AND p.email<>'' LIMIT 8",
@@ -858,14 +854,15 @@ class RingService:
                 if not account_preferences(db, row['owner'])['ring_data_consent']:
                     continue
             try:
-                message = EmailMessage(); message['From']=sender; message['To']=row['email']
-                message['Subject'] = 'Ring camera offline' if row['kind']=='offline' else 'Ring camera recovered'
-                message.set_content('SpatialGuard observed a Ring device status change. Open the Operations page for details.\n\nThis is a convenience alert, not a security or life-safety notification.')
-                with smtplib.SMTP(host, int(os.environ.get('SPATIALGUARD_SMTP_PORT','587')), timeout=15) as smtp:
-                    smtp.starttls(); user=os.environ.get('SPATIALGUARD_SMTP_USER'); password=os.environ.get('SPATIALGUARD_SMTP_PASSWORD')
-                    if user and password: smtp.login(user,password)
-                    smtp.send_message(message)
-                with self.store.connect() as db: db.execute('UPDATE ring_alerts SET emailed=1 WHERE id=?',(row['id'],))
+                delivered = send_mail(
+                    'Ring camera offline' if row['kind']=='offline' else 'Ring camera recovered',
+                    row['email'],
+                    'SpatialGuard observed a Ring device status change. Open the Operations page for details.\n\n'
+                    'This is a convenience alert, not a security or life-safety notification.',
+                )
+                if delivered:
+                    with self.store.connect() as db:
+                        db.execute('UPDATE ring_alerts SET emailed=1 WHERE id=?',(row['id'],))
             except Exception:
                 pass
 

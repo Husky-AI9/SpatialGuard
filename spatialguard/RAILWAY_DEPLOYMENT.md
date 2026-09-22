@@ -47,9 +47,12 @@ normal **Settings → Ring connection** flow while signed into the intended Ring
 account. Map only the dedicated camera used for review. Ring authorization is an
 interactive owner action; never copy encrypted Ring tokens between accounts.
 
-Transactional verification and password-reset messages use any SMTP provider
-reachable from Railway. Configure `SPATIALGUARD_SMTP_HOST`,
-`SPATIALGUARD_SMTP_PORT`, `SPATIALGUARD_SMTP_FROM`, and, when required,
+Transactional verification, password-reset, and uptime messages prefer the
+Amazon SES HTTPS API on Railway Hobby, where outbound SMTP is unavailable.
+Configure `SPATIALGUARD_SMTP_FROM`, `SPATIALGUARD_SES_REGION`,
+`SPATIALGUARD_SES_ACCESS_KEY_ID`, and `SPATIALGUARD_SES_SECRET_ACCESS_KEY`.
+On a host that permits SMTP, omit `SPATIALGUARD_SES_REGION` and instead set
+`SPATIALGUARD_SMTP_HOST`, `SPATIALGUARD_SMTP_PORT`, and, when required,
 `SPATIALGUARD_SMTP_USER` / `SPATIALGUARD_SMTP_PASSWORD`. Tokens are random,
 stored only as SHA-256 digests, single-use, and expire after 24 hours for email
 verification or 30 minutes for password reset.
