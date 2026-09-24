@@ -85,8 +85,9 @@ def process_one(store, engine):
 def main():
     store, engine = Store(), client()
     from .ring_service import RingService
-    from .ring_worker import process_one as ring_process
+    from .ring_worker import process_one as ring_process, recover_bundled_events
     ring = RingService(store)
+    recover_bundled_events(store)
     cleanup_at = 0
     retention_at = 0
     while True:

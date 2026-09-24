@@ -16,7 +16,7 @@ from spatialguard_api.ring_service import (
 )
 from spatialguard_api.ring_provider import Provider, WindowsVault
 from spatialguard_api.ring_gateway import create_gateway
-from spatialguard_api.ring_worker import _candidate_incident, process_one
+from spatialguard_api.ring_worker import _candidate_incident, process_one, recover_bundled_events
 from twinforge.models import Observation
 from spatialguard_api.api import create_app
 from spatialguard_api.models import IncidentClassification
@@ -668,6 +668,104 @@ def test_worker_failure_has_bounded_retries_and_dead_letter_metric(service):
     assert row['state']=='failed' and row['attempts']==3
     assert row['error']=='Processing failed; retry is bounded'
     assert metric['count']==1
+
+
+def bundled_mapping(service):
+    mapped(service)
+    with service.store.connect() as db:
+        site = json.loads(db.execute('SELECT data FROM sites').fetchone()[0])
+        site['revision_id'] = 'rev_demo_bundle_v1_test'
+        db.execute('UPDATE sites SET data=?', (dump(site),))
+        db.execute('INSERT INTO settings VALUES (?,?)', ('demo_bundle:site_demo', '1'))
+
+
+class UnregisteredBundleEngine:
+    def observations(self, values):
+        raise AssertionError('Exported demo revisions are not registered in TwinForge')
+
+
+def test_live_event_on_exported_layout_creates_incident_without_engine(service):
+    bundled_mapping(service)
+    service.webhook(*delivery(service))
+    assert process_one(service, UnregisteredBundleEngine())
+    service.webhook(*delivery(service, rid='redelivery'))
+    assert not process_one(service, UnregisteredBundleEngine())
+    with service.store.connect() as db:
+        incident = json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
+        assert db.execute('SELECT count(*) FROM incidents').fetchone()[0] == 1
+        assert db.execute('SELECT state FROM ring_inbox').fetchone()[0] == 'succeeded'
+    assert incident['revision_id'] == 'rev_demo_bundle_v1_test'
+    assert incident['evidence_mode'] == 'live'
+    assert incident['observations'][0]['location']['kind'] == 'unknown'
+    assert incident['observations'][0]['provenance']['kind'] == 'measured'
+
+
+def test_export_prefix_alone_cannot_bypass_engine_validation(service):
+    bundled_mapping(service)
+    with service.store.connect() as db:
+        db.execute("DELETE FROM settings WHERE key='demo_bundle:site_demo'")
+    service.webhook(*delivery(service))
+    process_one(service, UnregisteredBundleEngine())
+    with service.store.connect() as db:
+        assert db.execute('SELECT count(*) FROM incidents').fetchone()[0] == 0
+        assert db.execute('SELECT state FROM ring_inbox').fetchone()[0] == 'running'
+
+
+def test_exported_layout_repair_is_once_only_and_preserves_event(service):
+    bundled_mapping(service)
+    service.webhook(*delivery(service))
+    with service.store.connect() as db:
+        original = dict(db.execute('SELECT * FROM ring_inbox').fetchone())
+        db.execute("UPDATE ring_inbox SET state='failed',attempts=3,error='Processing failed; retry is bounded'")
+    assert recover_bundled_events(service.store) == 1
+    assert recover_bundled_events(service.store) == 0
+    assert process_one(service, UnregisteredBundleEngine())
+    with service.store.connect() as db:
+        recovered = dict(db.execute('SELECT * FROM ring_inbox').fetchone())
+        incident = json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
+        for key in ('id', 'at', 'received', 'snapshot', 'account', 'device'):
+            assert recovered[key] == original[key]
+        assert recovered['state'] == 'succeeded'
+        assert incident['started_at'] == original['at']
+        db.execute("UPDATE ring_inbox SET state='failed'")
+    assert recover_bundled_events(service.store) == 0
+
+
+@pytest.mark.parametrize('change', ['revoked', 'paused', 'remapped', 'expired', 'owner', 'generation', 'consent'])
+def test_exported_layout_repair_does_not_restore_ineligible_events(service, change):
+    bundled_mapping(service)
+    service.webhook(*delivery(service))
+    with service.store.connect() as db:
+        db.execute("UPDATE ring_inbox SET state='failed',attempts=3")
+        if change == 'revoked':
+            db.execute("UPDATE ring_accounts SET state='revoked'")
+        elif change == 'paused':
+            site = json.loads(db.execute('SELECT data FROM sites').fetchone()[0])
+            site['monitoring_version'] = 2
+            db.execute('UPDATE sites SET data=?', (dump(site),))
+        elif change == 'remapped':
+            db.execute("UPDATE ring_devices SET camera='camera_hall'")
+        elif change == 'expired':
+            db.execute("UPDATE ring_inbox SET at='2000-01-01T00:00:00+00:00'")
+        elif change == 'owner':
+            db.execute("UPDATE sites SET owner='other'")
+        elif change == 'generation':
+            db.execute('UPDATE ring_accounts SET generation=generation+1')
+        else:
+            db.execute("INSERT INTO accounts VALUES ('owner','owner@example.com','unused',?,1)", (now(),))
+            db.execute("INSERT INTO account_preferences(owner,ring_data_consent) VALUES ('owner',0)")
+    assert recover_bundled_events(service.store) == 0
+
+
+def test_worker_ignores_revoked_generation_without_retry(service):
+    mapped(service)
+    service.webhook(*delivery(service))
+    with service.store.connect() as db:
+        db.execute('UPDATE ring_accounts SET generation=generation+1')
+    assert process_one(service, Engine())
+    with service.store.connect() as db:
+        assert db.execute('SELECT state FROM ring_inbox').fetchone()[0] == 'ignored'
+        assert db.execute('SELECT count(*) FROM incidents').fetchone()[0] == 0
 
 
 def test_stream_authorization_concurrency_and_expiry_cleanup(service):

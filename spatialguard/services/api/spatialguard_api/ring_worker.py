@@ -1,5 +1,6 @@
 """Create honest event-level incidents. A webhook never establishes a floor coordinate."""
 import json
+import logging
 import time
 from datetime import datetime
 from .models import Association, Incident
@@ -10,6 +11,73 @@ from .release import capabilities
 
 LIVE_INCIDENT_WINDOW_SECONDS = 5 * 60
 CLASSIFICATION_CAPTURE_WINDOW_SECONDS = 5.5
+log = logging.getLogger(__name__)
+
+
+def _current_site(db, row, snapshot):
+    """Recheck the original delivery's authorization without rebinding its evidence."""
+    if not snapshot or row['kind'] not in ('motion_detected', 'button_press'):
+        return None
+    account = db.execute(
+        "SELECT owner FROM ring_accounts WHERE account=? AND state='connected' AND generation=?",
+        (row['account'], snapshot['generation']),
+    ).fetchone()
+    if not account:
+        return None
+    saved = db.execute('SELECT data FROM sites WHERE id=? AND owner=?',
+                       (snapshot['site'], account['owner'])).fetchone()
+    device = db.execute(
+        'SELECT 1 FROM ring_devices WHERE account=? AND device=? AND site=? AND camera=?',
+        (row['account'], row['device'], snapshot['site'], snapshot['camera']),
+    ).fetchone()
+    if not saved or not device or not account_preferences(db, account['owner'])['ring_data_consent']:
+        return None
+    site = json.loads(saved['data'])
+    if (not site['monitoring']['enabled']
+            or site.get('monitoring_version', 0) != snapshot['monitoring_version']
+            or snapshot['camera'] not in site['monitoring']['camera_ids']):
+        return None
+    return site
+
+
+def _bundled_event(db, snapshot, site):
+    """An exported demo layout has no corresponding revision in the engine service."""
+    return (snapshot['revision'].startswith('rev_demo_bundle_v1_')
+            and snapshot['revision'] == site['revision_id']
+            and snapshot['camera'] in {camera['id'] for camera in site['layout']['cameras']}
+            and db.execute('SELECT 1 FROM settings WHERE key=? AND value=?',
+                           ('demo_bundle:' + snapshot['site'], '1')).fetchone() is not None)
+
+
+def recover_bundled_events(store):
+    """One-time repair of retained deliveries affected by the exported-layout bug.
+
+    Keep the original event IDs, timestamps, revision and monitoring generation.
+    Paused, revoked, remapped and expired deliveries must never be resurrected.
+    """
+    key = 'migration:ring_bundled_events_v1'
+    recovered = 0
+    with store.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        if db.execute('SELECT 1 FROM settings WHERE key=?', (key,)).fetchone():
+            return 0
+        rows = db.execute("SELECT i.*,a.owner FROM ring_inbox i JOIN ring_accounts a "
+                          "ON a.account=i.account WHERE i.state='failed'").fetchall()
+        for row in rows:
+            try:
+                snapshot = json.loads(row['snapshot']) if row['snapshot'] else None
+                site = _current_site(db, row, snapshot)
+                retention = account_preferences(db, row['owner'])['incident_retention_days']
+                if (not site or not _bundled_event(db, snapshot, site)
+                        or _at(row['at']) < time.time() - retention * 86400):
+                    continue
+            except (KeyError, TypeError, ValueError):
+                continue
+            db.execute("UPDATE ring_inbox SET state='queued',attempts=0,lease=0,processed=NULL,error=NULL WHERE id=?",
+                       (row['id'],))
+            recovered += 1
+        db.execute('INSERT INTO settings VALUES (?,?)', (key, str(recovered)))
+    return recovered
 
 
 def _at(value):
@@ -118,15 +186,7 @@ def process_one(service, engine, classifier=classify_images):
                            (now(), row['id']))
             return True
         def current(db):
-            if not snapshot or row['kind'] not in ('motion_detected','button_press'): return False
-            a = db.execute("SELECT owner FROM ring_accounts WHERE account=? AND state='connected' AND generation=?", (row['account'], snapshot['generation'])).fetchone()
-            s = db.execute('SELECT data FROM sites WHERE id=? AND owner=?', (snapshot['site'], a['owner'])).fetchone()
-            d = db.execute('SELECT 1 FROM ring_devices WHERE account=? AND device=? AND site=? AND camera=?', (row['account'], row['device'], snapshot['site'], snapshot['camera'])).fetchone()
-            if not a or not s or not d: return False
-            if not account_preferences(db, a['owner'])['ring_data_consent']:
-                return False
-            site = json.loads(s[0])
-            return site['monitoring']['enabled'] and site.get('monitoring_version',0) == snapshot['monitoring_version'] and snapshot['camera'] in site['monitoring']['camera_ids']
+            return _current_site(db, row, snapshot) is not None
         with store.connect() as db:
             active = current(db)
         if not active:
@@ -174,7 +234,13 @@ def process_one(service, engine, classifier=classify_images):
             location={'kind':'unknown','reason':'Ring event metadata supplies no calibrated person location. Camera placement does not locate the activity.'},
             evidence={'mode':'live'}, provenance={'kind':'measured','confirmed':False,
                 'explanation':'Signed official Ring webhook: '+row['kind']+'. Provider subtype: '+(row['subtype'] or 'unspecified')+'. No video analysis or identity inference.'})
-        engine.observations([obs.model_dump(mode='json')])
+        with store.connect() as db:
+            bundled = _bundled_event(db, snapshot, site)
+        if not bundled:
+            engine.observations([obs.model_dump(mode='json')])
+        # Bundled plans are immutable TwinForge export artifacts, not registered
+        # engine revisions. Persist their signed, unknown-location observation
+        # with the incident; do not invent an engine revision or spatial result.
         title = (classification.display_label if classification else
                  ('Ring doorbell pressed' if row['kind']=='button_press' else 'Ring motion reported'))
         rule = ('Luna classified up to three chronological event snapshots; the result is an AI interpretation that requires review. '
@@ -208,7 +274,11 @@ def process_one(service, engine, classifier=classify_images):
             service._metric(db, row['account'], 'incident_ready_ms', max(
                 0, (datetime.now().astimezone() - datetime.fromisoformat(row['received'])).total_seconds() * 1000
             ))
-    except Exception:
+    except Exception as error:
+        # Diagnose the failing stage without logging provider bodies or secrets.
+        status = getattr(error, 'code', None)
+        log.warning('Ring event processing failed: type=%s http_status=%s',
+                    type(error).__name__, status if isinstance(status, int) else None)
         with store.connect() as db:
             final = row['attempts'] >= 2
             db.execute('UPDATE ring_inbox SET state=?,lease=?,processed=?,error=? WHERE id=?',
