@@ -2,6 +2,8 @@
 from collections import deque
 from pathlib import Path
 
+import time
+
 import cv2
 import numpy as np
 
@@ -10,6 +12,8 @@ from .store import DATA
 
 
 MODEL = DATA / "models" / "yolo11n.onnx"
+if not MODEL.is_file():
+    MODEL = Path(__file__).resolve().parents[3] / "models" / "yolo11n.onnx"
 SIZE = 640
 
 
@@ -97,18 +101,21 @@ def _smooth(raw):
     return result
 
 
-def track_video(video_id: str, path: Path) -> TestVideoTrack:
+def track_video(video_id: str, path: Path, *, max_seconds: float = 60, timeout_seconds: float = 90) -> TestVideoTrack:
     if not MODEL.is_file():
-        raise PersonDetectorUnavailable("The local person-detection model is unavailable.")
+        raise PersonDetectorUnavailable("The person-detection model is unavailable on this server.")
     capture = cv2.VideoCapture(str(path))
     if not capture.isOpened():
-        raise PersonDetectorUnavailable("The private test video could not be opened.")
+        raise PersonDetectorUnavailable("The recording could not be opened.")
     try:
+        deadline = time.monotonic() + timeout_seconds
         fps = capture.get(cv2.CAP_PROP_FPS) or 20
         stride = max(1, round(fps / 5))
         net = cv2.dnn.readNetFromONNX(str(MODEL))
         raw, frame_index, previous_box = [], 0, None
-        while True:
+        while frame_index / fps <= max_seconds:
+            if time.monotonic() > deadline:
+                raise PersonDetectorUnavailable("Movement analysis took too long. Try again later.")
             ok, frame = capture.read()
             if not ok:
                 break
@@ -131,6 +138,8 @@ def track_video(video_id: str, path: Path) -> TestVideoTrack:
                     chosen[4],
                 ))
             frame_index += 1
+    except cv2.error:
+        raise PersonDetectorUnavailable("The recording could not be analyzed. Retry movement later.") from None
     finally:
         capture.release()
     return TestVideoTrack(video_id=video_id, detector="OpenCV 5 · YOLO11 person · ground point", points=_smooth(raw))

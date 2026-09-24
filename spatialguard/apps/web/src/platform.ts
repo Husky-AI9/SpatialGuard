@@ -169,6 +169,7 @@ export async function incidentRecording(incidentId: string, observationId: strin
   const path = `/v1/incidents/${encodeURIComponent(incidentId)}/observations/${encodeURIComponent(observationId)}/clip`;
   const fallback = "Recording unavailable. Please try again.";
   let blob: Blob;
+  let digest = "";
   if (native) {
     await initializePlatform();
     const response = await CapacitorHttp.get({
@@ -184,6 +185,7 @@ export async function incidentRecording(incidentId: string, observationId: strin
       } catch { /* Keep a readable error when native transport returns no JSON. */ }
       throw new ApiError(response.status, detail);
     }
+    digest = Object.entries(response.headers).find(([key]) => key.toLowerCase() === "x-spatialguard-clip-digest")?.[1] ?? "";
     blob = new Blob([Uint8Array.from(atob(response.data), c => c.charCodeAt(0))], { type: "video/mp4" });
   } else {
     const response = await fetch(path, {
@@ -194,9 +196,10 @@ export async function incidentRecording(incidentId: string, observationId: strin
       const data = await response.json().catch(() => null);
       throw new ApiError(response.status, data?.detail || fallback);
     }
+    digest = response.headers.get("X-SpatialGuard-Clip-Digest") ?? "";
     blob = await response.blob();
   }
-  return URL.createObjectURL(blob);
+  return { url: URL.createObjectURL(blob), digest };
 }
 export async function openExternal(url: string) {
   if (native) await Browser.open({ url });

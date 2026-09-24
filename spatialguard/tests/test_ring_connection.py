@@ -857,11 +857,12 @@ def test_incident_recording_uses_original_event_and_owner_authorization(service)
     def revoke(*args):
         with service.store.connect() as db:db.execute('UPDATE ring_accounts SET generation=generation+1')
         return media,headers
+    service._recordings.clear()  # Force a provider fetch for the mid-download revocation case.
     service.provider.clip=revoke
     with pytest.raises(HTTPException):service.incident_clip('owner',data['id'],observation)
 
 
-def test_recording_route_requires_session_and_does_not_cache(service):
+def test_recording_route_requires_session_and_does_not_cache(service, monkeypatch):
     mapped(service)
     service.webhook(*delivery(service))
     process_one(service, Engine())
@@ -876,3 +877,17 @@ def test_recording_route_requires_session_and_does_not_cache(service):
     assert result.status_code==200
     assert result.headers['content-type']=='video/mp4'
     assert 'no-store' in result.headers['cache-control']
+    clip_digest = result.headers['x-spatialguard-clip-digest']
+    assert clip_digest == hashlib.sha256(result.content).hexdigest()
+    from spatialguard_api.models import TestVideoTrack
+    from spatialguard_api import incident_tracking
+    monkeypatch.setattr(incident_tracking, 'track_video', lambda identity, path:
+                        TestVideoTrack(video_id=identity, detector='test', points=[]))
+    track_path = path.removesuffix('/clip') + '/track?clip_digest=' + clip_digest
+    assert client.get(track_path).status_code == 401
+    tracked = client.get(track_path, headers={'Authorization':'Bearer clip-token'})
+    assert tracked.status_code == 200 and tracked.json()['points'] == []
+    assert 'no-store' in tracked.headers['cache-control']
+    with service.store.connect() as db:
+        db.execute('UPDATE ring_accounts SET generation=generation+1')
+    assert client.get(track_path, headers={'Authorization':'Bearer clip-token'}).status_code == 404

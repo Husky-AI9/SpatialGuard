@@ -1,8 +1,9 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import Field
 from typing import Literal
-from .models import ClassifierStatus, Incident, Model, PairCode
+from .models import ClassifierStatus, Incident, Model, PairCode, TestVideoTrack
+from .incident_tracking import IncidentTracker
 from .ring_service import RingService
 from .classifier import ClassifierUnavailable, classify_images, status as classifier_status
 from .store import account_preferences, audit, access_log, event
@@ -82,6 +83,7 @@ class TimelapseInput(Model):
 
 
 def install(app, store, principal, service=None):
+    tracker = IncidentTracker()
     ring = service or RingService(store)
     app.state.ring = ring
 
@@ -216,6 +218,14 @@ def install(app, store, principal, service=None):
         return Response(content=media, media_type='video/mp4', headers={
             'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', **metadata,
         })
+
+    @app.get('/v1/incidents/{incident_id}/observations/{observation_id}/track', response_model=TestVideoTrack)
+    def incident_track(incident_id: str, observation_id: str, response: Response,
+                       clip_digest: str = Query(pattern=r'^[0-9a-f]{64}$'), p=Depends(principal)):
+        require_feature('classification')
+        require_ring_consent(p['owner'])
+        response.headers['Cache-Control'] = 'private, no-store'
+        return tracker.analyze(ring, p['owner'], incident_id, observation_id, clip_digest)
 
     @app.post('/v1/incidents/{incident_id}/classify', response_model=Incident)
     def classify_incident(incident_id: str, p=Depends(principal)):

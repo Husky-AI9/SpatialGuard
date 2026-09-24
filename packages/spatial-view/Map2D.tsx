@@ -445,8 +445,9 @@ export default function Map2D({
           </g>
         );
       })}
-      {!evidenceLinks.length && markers.slice(1).map((to, i) => {
+      {markers.slice(1).map((to, i) => {
         const from = markers[i];
+        if (from.evidenceNode || to.evidenceNode || (evidenceLinks.length && !to.approximate)) return null;
         if (to.approximate && to.gapBefore) return null;
         const mid = [(from.xy[0] + to.xy[0]) / 2, (from.xy[1] + to.xy[1]) / 2];
         return (

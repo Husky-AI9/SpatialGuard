@@ -154,6 +154,7 @@ export default function App() {
     [planImage, setPlanImage] = useState(""),
     [step, setStep] = useState(0),
     [testTrail, setTestTrail] = useState<Marker[]>([]),
+    [incidentTrail, setIncidentTrail] = useState<Marker[]>([]),
     [testPackage, setTestPackage] = useState<Marker | null>(null);
   const [pairCode, setPairCode] = useState(""),
     [pairExpiry, setPairExpiry] = useState(0),
@@ -694,8 +695,8 @@ export default function App() {
         return [marker];
       }) ?? []
     );
-    return selected ? incidentMarkers : testPackage ? [...testTrail, testPackage] : testTrail;
-  }, [selected, selected?.observations, site?.layout.cameras, step, testTrail, testPackage]);
+    return selected ? [...incidentMarkers, ...incidentTrail] : testPackage ? [...testTrail, testPackage] : testTrail;
+  }, [selected, selected?.observations, site?.layout.cameras, step, testTrail, testPackage, incidentTrail]);
   const evidenceLinks = useMemo<EvidenceLink[]>(() => {
     if (!selected || selected.evidence_mode !== "live") return [];
     return selected.associations.map((association, index) => ({
@@ -1098,7 +1099,9 @@ export default function App() {
       ) : null}
       <div className="evidence-view">
         {selected.evidence_mode === "live" && observation ? (
-          <IncidentRecording key={observation.observation_id} incidentId={selected.id} observationId={observation.observation_id} />
+          <IncidentRecording key={observation.observation_id} incidentId={selected.id} observationId={observation.observation_id}
+            camera={site?.layout.cameras.find(camera => camera.id === observation.source_id)}
+            classification={selected.classification} onMovement={setIncidentTrail} />
         ) : image ? (
           <img
             src={image}
