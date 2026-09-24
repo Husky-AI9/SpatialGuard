@@ -105,6 +105,60 @@ class Provider:
         raw, _ = self.send(BASE + path, method, body, token)
         return json.loads(raw) if raw else {}
 
+    def clip(self, token, device, timestamp, component=None):
+        """Fetch a bounded event recording, keeping credentials and redirects server-side."""
+        url = BASE + '/v1/devices/' + urllib.parse.quote(device, safe='') + '/media/video/download'
+        payload = {'timestamp': timestamp, 'duration': 60000,
+                   'video_options': {'codec': 'avc'},
+                   'audio_options': {'audio_enabled': False}}
+        if component is not None:
+            payload['components'] = [{'component_id': component}]
+        body, method = json.dumps(payload).encode(), 'POST'
+        for _ in range(4):
+            headers = {'Accept': 'video/mp4', 'Content-Type': 'application/json',
+                       'User-Agent': 'SpatialGuard-Ring-Partner/1.0'}
+            if urllib.parse.urlsplit(url).netloc == 'api.amazonvision.com':
+                headers['Authorization'] = 'Bearer ' + token
+            try:
+                req = urllib.request.Request(url, data=body, headers=headers, method=method)
+                with urllib.request.build_opener(NoRedirect).open(req, timeout=45) as response:
+                    media = response.read(32_000_001)
+                    if (len(media) > 32_000_000 or len(media) < 12
+                            or response.headers.get('Content-Type', '').split(';')[0] != 'video/mp4'
+                            or media[4:8] != b'ftyp'):
+                        raise HTTPException(502, 'Ring returned an unsupported or oversized recording')
+                    metadata = {key: response.headers[key] for key in ('X-Media-Timestamp', 'X-Media-Length')
+                                if response.headers.get(key)}
+                    return media, metadata
+            except urllib.error.HTTPError as error:
+                if error.code in (301, 302, 303, 307, 308):
+                    location = urllib.parse.urljoin(url, error.headers.get('Location', ''))
+                    target = urllib.parse.urlsplit(location)
+                    host = (target.hostname or '').lower()
+                    if (not error.headers.get('Location') or target.scheme != 'https'
+                            or target.username or target.password or target.fragment
+                            or target.port not in (None, 443)
+                            or not (host == 'api.amazonvision.com' or host.endswith('.amazonvision.com')
+                                    or host.endswith('.devices.amazon.dev'))):
+                        raise HTTPException(502, 'Ring returned an invalid recording location') from None
+                    url = location
+                    if error.code in (301, 302, 303):
+                        body, method = None, 'GET'
+                    continue
+                messages = {
+                    401: 'Ring access expired. Reconnect your Ring account.',
+                    403: 'Ring has not granted this app access to this recording. Check Video Download permission in the Ring developer portal.',
+                    416: 'Ring has no recording available at this event time.',
+                    422: 'Ring could not read this recording.',
+                    425: 'Ring is still preparing this recording. Try again shortly.',
+                    429: 'Ring is busy. Wait a moment before retrying.',
+                }
+                raise HTTPException(error.code if error.code in messages else 503,
+                                    messages.get(error.code, 'Ring could not retrieve the recording. Try again shortly.')) from None
+            except OSError:
+                raise HTTPException(503, 'Ring recording download timed out. Try again shortly.') from None
+        raise HTTPException(502, 'Ring returned too many recording redirects')
+
     def stream(self, token, device, sdp):
         path = '/v1/devices/' + urllib.parse.quote(device, safe='') + '/media/streaming/whep/sessions'
         raw, headers = self.send(BASE + path, 'POST', sdp.encode(), token, 'application/sdp')

@@ -40,7 +40,7 @@ test("camera wall is available from Home and Cameras while Operations stays task
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
   await page.getByRole("button", { name: "Camera wall", exact: true }).click();
   await expect(page.locator(".camera-page > .camera-wall-view")).toBeVisible();
-  await expect(page.getByText("Recorded playback remains disabled", { exact: false })).toBeVisible();
+  await expect(page.getByText("Open an incident to view its camera events", { exact: false })).toBeVisible();
 });
 
 test("Ring setup keeps customer flow clear and provides single-use fallback", async ({

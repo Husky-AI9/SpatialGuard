@@ -546,6 +546,44 @@ class RingService:
                 raise HTTPException(404, 'Authorized Ring device not found')
             event(db, site, 'ring.camera_mapped', camera)
 
+    def incident_clip(self, owner, incident_id, observation_id):
+        """Bind playback to the original signed event, never a client-supplied device/time."""
+        def authorized():
+            with self.store.connect() as db:
+                incident = db.execute('SELECT i.data FROM incidents i JOIN sites s ON s.id=i.site_id '
+                                      'WHERE i.id=? AND s.owner=?', (incident_id, owner)).fetchone()
+                if not incident or not account_preferences(db, owner)['ring_data_consent']:
+                    raise HTTPException(404, 'Authorized recording not found')
+                data = json.loads(incident['data'])
+                observation = next((o for o in data['observations'] if o['observation_id'] == observation_id), None)
+                if data['evidence_mode'] != 'live' or not observation:
+                    raise HTTPException(404, 'Ring observation not found')
+                row = db.execute(
+                    "SELECT i.*,a.generation,d.data AS device_data FROM ring_inbox i "
+                    "JOIN ring_accounts a ON a.account=i.account JOIN ring_devices d "
+                    "ON d.account=i.account AND d.device=i.device "
+                    "WHERE 'ring_' || substr(i.id,1,40)=? AND a.owner=? AND a.state='connected' "
+                    "AND d.site=? AND d.camera=?",
+                    (observation_id, owner, data['site_id'], observation['source_id']),
+                ).fetchone()
+                snapshot = json.loads(row['snapshot']) if row and row['snapshot'] else {}
+                if (not row or snapshot.get('generation') != row['generation']
+                        or snapshot.get('site') != data['site_id']
+                        or snapshot.get('revision') != data['revision_id']
+                        or snapshot.get('camera') != observation['source_id']):
+                    raise HTTPException(404, 'The original Ring camera is no longer authorized for this event')
+                return dict(row)
+        row = authorized()
+        device = json.loads(row['device_data'])
+        components = device.get('capabilities', {}).get('components', {}).get('items', [])
+        if len(components) > 1:
+            raise HTTPException(409, 'The camera module for this older event is unknown; playback cannot select it safely.')
+        component = components[0].get('component_id') if components else None
+        timestamp = int(datetime.fromisoformat(row['at']).timestamp() * 1000)
+        media, metadata = self.provider.clip(self.token(row['account']), row['device'], timestamp, component)
+        authorized()  # Revocation during the download must block delivery too.
+        return media, metadata
+
     def snapshot(self, owner, site, camera):
         """Return a short-lived cached snapshot for an owner-authorized mapping."""
         account = self.account(owner)

@@ -165,6 +165,39 @@ export async function testVideoMedia(videoId: string) {
   }
   throw new Error("Unsupported platform");
 }
+export async function incidentRecording(incidentId: string, observationId: string) {
+  const path = `/v1/incidents/${encodeURIComponent(incidentId)}/observations/${encodeURIComponent(observationId)}/clip`;
+  const fallback = "Recording unavailable. Please try again.";
+  let blob: Blob;
+  if (native) {
+    await initializePlatform();
+    const response = await CapacitorHttp.get({
+      url: apiUrl + path, headers: { Authorization: `Bearer ${credential}` },
+      responseType: "blob", connectTimeout: 10000, readTimeout: 60000,
+    });
+    if (response.status !== 200) {
+      let detail = fallback;
+      try {
+        const data = typeof response.data === "object" ? response.data
+          : JSON.parse(response.data.startsWith("{") ? response.data : atob(response.data));
+        detail = data.detail || fallback;
+      } catch { /* Keep a readable error when native transport returns no JSON. */ }
+      throw new ApiError(response.status, detail);
+    }
+    blob = new Blob([Uint8Array.from(atob(response.data), c => c.charCodeAt(0))], { type: "video/mp4" });
+  } else {
+    const response = await fetch(path, {
+      credentials: "same-origin", headers: localWeb ? { "X-SpatialGuard-Local": "1" } : {},
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      throw new ApiError(response.status, data?.detail || fallback);
+    }
+    blob = await response.blob();
+  }
+  return URL.createObjectURL(blob);
+}
 export async function openExternal(url: string) {
   if (native) await Browser.open({ url });
   else window.open(url, "_blank", "noopener,noreferrer");

@@ -2297,6 +2297,50 @@
         }
       }
     },
+    "/v1/incidents/{incident_id}/observations/{observation_id}/clip": {
+      "get": {
+        "summary": "Incident Clip",
+        "operationId": "incident_clip_v1_incidents__incident_id__observations__observation_id__clip_get",
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Incident Id"
+            }
+          },
+          {
+            "name": "observation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Observation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "video/mp4": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/incidents/{incident_id}/classify": {
       "post": {
         "summary": "Classify Incident",

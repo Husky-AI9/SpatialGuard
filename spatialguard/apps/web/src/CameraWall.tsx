@@ -129,7 +129,7 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
       </article>)}
     </div>
     {!wall.length && <div className="operations-empty"><Video size={25} /><h3>Your camera wall is empty</h3><p>Select up to 16 authorized Ring cameras.</p></div>}
-    {!compact && <div className="motion-history"><h3>Motion history</h3><p>Recent Ring events stay linked to their source cameras. Recorded playback remains disabled until the official API supplies an authorized recording-history route.</p>
+    {!compact && <div className="motion-history"><h3>Motion history</h3><p>Open an incident to view its camera events and request their recordings from Ring.</p>
       <div className="motion-event-list">{data.motion_events.length ? data.motion_events.map(event => <article key={event.id}><span><strong>{event.title}</strong><small>{new Date(event.started_at).toLocaleString()} · {event.cameras.length} camera{event.cameras.length === 1 ? "" : "s"}</small></span><button disabled={!event.clip_available}>Clip unavailable</button></article>) : <small>No live Ring motion events recorded yet.</small>}</div>
     </div>}
   </section>;

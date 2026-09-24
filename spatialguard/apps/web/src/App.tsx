@@ -38,6 +38,7 @@ import RingConnection from "./RingConnection";
 import CameraWorkspace from "./CameraWorkspace";
 import CameraWall from "./CameraWall";
 import HomeCctv from "./HomeCctv";
+import IncidentRecording from "./IncidentRecording";
 import Operations from "./Operations";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
 import AccountSecurity from "./AccountSecurity";
@@ -1096,7 +1097,9 @@ export default function App() {
         </section>
       ) : null}
       <div className="evidence-view">
-        {image ? (
+        {selected.evidence_mode === "live" && observation ? (
+          <IncidentRecording key={observation.observation_id} incidentId={selected.id} observationId={observation.observation_id} />
+        ) : image ? (
           <img
             src={image}
             alt="Synthetic replay illustration of a person, not camera footage"
@@ -1106,7 +1109,7 @@ export default function App() {
             {selected.evidence_mode === "live"
               ? selected.classification
                 ? "The Ring snapshot was analyzed for this classification and was not stored. Activity position remains unknown."
-                : "Ring event metadata. Recorded footage is unavailable; activity position is unknown."
+                : "Select a camera event to load its recording. Activity position remains unknown."
               : observation?.location.kind === "unknown"
                 ? "Unknown location — no footage or coordinate evidence for this gap."
                 : imageError || "Loading evidence…"}
@@ -1133,7 +1136,7 @@ export default function App() {
           <div><dt>Timestamp</dt><dd>{observation ? time(observation.observed_at) : "Unavailable"}</dd></div>
           <div><dt>Camera</dt><dd>{place.layout.cameras.find((c) => c.id === observation?.source_id)?.name ?? "Unknown camera"}</dd></div>
           <div><dt>Evidence mode</dt><dd>{selected.evidence_mode === "live" ? "Live Ring event" : selected.evidence_mode === "simulator" ? "Official simulator" : "Synthetic replay"}</dd></div>
-          <div><dt>Associated media</dt><dd>{image ? "Available for this replay observation" : selected.evidence_mode === "live" ? "Event metadata only; snapshot is not retained" : "Unavailable"}</dd></div>
+          <div><dt>Associated media</dt><dd>{image ? "Available for this replay observation" : selected.evidence_mode === "live" ? "Recording requested from Ring for the selected event; availability shown in the player" : "Unavailable"}</dd></div>
           <div><dt>Triggering rule</dt><dd>{selected.rule}</dd></div>
           <div><dt>Certainty</dt><dd>{observation?.location.kind === "unknown" ? "Observed camera event; position and identity unknown" : "Observed at an illustrative replay position"}</dd></div>
           <div><dt>Layout revision</dt><dd>{selected.revision_id}</dd></div>

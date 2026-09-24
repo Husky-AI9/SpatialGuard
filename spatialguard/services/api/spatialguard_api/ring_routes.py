@@ -205,6 +205,18 @@ def install(app, store, principal, service=None):
         headers.update(metadata)
         return Response(content=image, media_type=content_type, headers=headers)
 
+    @app.get('/v1/incidents/{incident_id}/observations/{observation_id}/clip',
+             response_class=Response, responses={200: {'content': {'video/mp4': {}}}})
+    def incident_clip(incident_id: str, observation_id: str, p=Depends(principal)):
+        require_ring_consent(p['owner'])
+        media, metadata = ring.incident_clip(p['owner'], incident_id, observation_id)
+        with store.connect() as db:
+            access_log(db, p['owner'], p.get('name', 'Signed-in session'), 'recording.viewed',
+                       'Authorized Ring camera', 'Owner requested incident recording')
+        return Response(content=media, media_type='video/mp4', headers={
+            'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff', **metadata,
+        })
+
     @app.post('/v1/incidents/{incident_id}/classify', response_model=Incident)
     def classify_incident(incident_id: str, p=Depends(principal)):
         require_feature('classification')

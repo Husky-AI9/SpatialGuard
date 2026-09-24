@@ -833,3 +833,46 @@ def test_refresh_rotation_is_persisted_and_deduplicated(service):
     assert service.token('account-a')=='access-secret-2'
     assert RingService(service.store,service.provider).token('account-a')=='access-secret-2'
     assert service.provider.grants==2
+
+
+def test_incident_recording_uses_original_event_and_owner_authorization(service):
+    mapped(service)
+    service.webhook(*delivery(service))
+    process_one(service, Engine())
+    with service.store.connect() as db:
+        data=json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
+    observation=data['observations'][0]['observation_id']
+    calls=[]
+    def clip(token,device,stamp,component):
+        calls.append((device,stamp,component))
+        return b'\x00\x00\x00\x18ftypisomvideo', {'X-Media-Timestamp':str(stamp)}
+    service.provider.clip=clip
+    media,headers=service.incident_clip('owner',data['id'],observation)
+    assert media[4:8]==b'ftyp'
+    assert calls[0][0]=='device-a'
+    assert calls[0][1]==int(__import__('datetime').datetime.fromisoformat(data['observations'][0]['observed_at']).timestamp()*1000)
+    with pytest.raises(HTTPException):service.incident_clip('other',data['id'],observation)
+    with pytest.raises(HTTPException):service.incident_clip('owner',data['id'],'wrong-observation')
+    assert len(calls)==1
+    def revoke(*args):
+        with service.store.connect() as db:db.execute('UPDATE ring_accounts SET generation=generation+1')
+        return media,headers
+    service.provider.clip=revoke
+    with pytest.raises(HTTPException):service.incident_clip('owner',data['id'],observation)
+
+
+def test_recording_route_requires_session_and_does_not_cache(service):
+    mapped(service)
+    service.webhook(*delivery(service))
+    process_one(service, Engine())
+    with service.store.connect() as db:
+        data=json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',('clip-test','owner',digest('clip-token'),'test','android',time.time()+600))
+    path=f"/v1/incidents/{data['id']}/observations/{data['observations'][0]['observation_id']}/clip"
+    client=TestClient(create_app(service.store.path,ring_service=service))
+    assert client.get(path).status_code==401
+    service.provider.clip=lambda *args:(b'\x00\x00\x00\x18ftypisomvideo',{})
+    result=client.get(path,headers={'Authorization':'Bearer clip-token'})
+    assert result.status_code==200
+    assert result.headers['content-type']=='video/mp4'
+    assert 'no-store' in result.headers['cache-control']
