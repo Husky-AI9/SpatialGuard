@@ -36,3 +36,9 @@ Validation on 2026-09-24:
   lost detections, retained paths, and changing the selected incident.
 - Backend tests cover exact clip matching, cached authorization, revocation during
   analysis, temporary-file cleanup, and concurrency limits.
+- 58 backend tests and five browser tests passed. Web build and Android debug
+  build passed. The emulator was disconnected, so this Android build was not
+  installed or tested natively during this verification.
+- Railway returned 77 samples for the real recording in 7.8 seconds. Chrome
+  showed the actor and growing path in 2D, the actor and path in 3D, and 76
+  retained 2D segments with no current person after the 41.77-second clip ended.

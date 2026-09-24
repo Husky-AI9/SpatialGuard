@@ -937,7 +937,7 @@ export default function App() {
             {view === "Camera wall"
               ? "Live Ring views ? saved camera order"
               : selected?.evidence_mode === "live"
-                ? "Camera observations · person position unknown"
+                ? (incidentTrail.length ? "Recorded movement · estimated map positions" : "Camera observations · person position unknown")
               : view === "3D"
                 ? "Illustrative walls · drag to orbit"
               : editable
