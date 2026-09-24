@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Camera, Layout } from "../sdk-typescript";
 import { bounds } from "./geometry";
+import { placeMapLabels, type MapLabel, type LabelBox } from "./mapLabels";
 import TopDownPerson, { activityColor, type ActivityKind } from "./TopDownPerson";
 import CameraGlyph, {
   aimPoint,
@@ -37,9 +38,7 @@ export type EvidenceLink = {
 const actorColor = (marker: Marker) => activityColor(marker.actorKind ?? "person");
 
 function ActorGlyph({ marker }: { marker: Marker }) {
-  const color = actorColor(marker);
   const label = marker.actorLabel ?? "Person detected";
-  const width = Math.max(1.35, label.length * 0.17 + 0.3);
   return (
     <g
       className={`map-actor map-actor-${marker.actorKind ?? "person"}${marker.approximate ? " approximate-marker" : ""}`}
@@ -51,19 +50,6 @@ function ActorGlyph({ marker }: { marker: Marker }) {
           <TopDownPerson kind={marker.actorKind} />
         </g>
       </g>
-      <rect
-        x={-width / 2}
-        y="-.77"
-        width={width}
-        height=".32"
-        rx=".07"
-        fill={color}
-        stroke="#fff"
-        strokeWidth=".035"
-      />
-      <text x="0" y="-.55" textAnchor="middle" fontSize=".22" fontWeight="700" fill="#fff">
-        {label}
-      </text>
       <title>{label} · {marker.reviewLevel === "urgent" ? "urgent review" : marker.reviewLevel === "routine" ? "routine review" : "review required"}</title>
     </g>
   );
@@ -120,12 +106,63 @@ export default function Map2D({
   const zoomedX = x + (w - zoomedWidth) / 2;
   const zoomedY = y + (h - zoomedHeight) / 2;
   const svg = useRef<SVGSVGElement>(null);
+  const [viewport, setViewport] = useState({width: 800, height: 600});
+  useEffect(() => {
+    const element = svg.current;
+    if (!element) return;
+    const resize = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width && entry.contentRect.height)
+        setViewport({width: entry.contentRect.width, height: entry.contentRect.height});
+    });
+    resize.observe(element);
+    return () => resize.disconnect();
+  }, []);
   const dragRef = useRef<Drag | null>(null);
   const [preview, setPreview] = useState<Drag | null>(null);
   const moveable = editable && !placing && !!onCameraChange;
   useEffect(() => {
     if (moveable) setPreview(null);
   }, [moveable, layout]);
+  // Keep labels at readable screen size while zooming; positions stay in meters.
+  const unit = Math.max(zoomedWidth / viewport.width, zoomedHeight / viewport.height);
+  const labelView = {x: zoomedX, y: -zoomedY - zoomedHeight, width: zoomedWidth, height: zoomedHeight};
+  const cameras = layout.cameras.map(original => preview?.id === original.id ? {...original, ...preview.change} : original);
+  const visibleActors = markers.filter(p => !p.evidenceNode && p.actorKind &&
+    (!p.approximate || p.selected || p.persistent));
+  const labels: MapLabel[] = [
+    ...cameras.map(c => ({id: "camera-" + c.id, name: c.name, kind: "camera" as const,
+      x: c.position_m[0], y: -c.position_m[1], selected: selected === c.id,
+      preferred: [-Math.cos(c.heading_degrees * Math.PI / 180), Math.sin(c.heading_degrees * Math.PI / 180)] as XY})),
+    ...visibleActors.map(p => ({id: "actor-" + p.id, name: p.actorLabel ?? "Person detected",
+      kind: "actor" as const, x: p.xy[0], y: -p.xy[1], selected: !!p.selected})),
+  ];
+  const protectedAreas: LabelBox[] = [
+    ...labels.map(label => ({x: label.x - .38 - 4 * unit, y: label.y - .38 - 4 * unit,
+      width: .76 + 8 * unit, height: .76 + 8 * unit})),
+    ...layout.rooms.map(room => {
+      const pts = room.polygon_xy_m;
+      const cx = pts.reduce((sum, p) => sum + p[0], 0) / pts.length;
+      const cy = -pts.reduce((sum, p) => sum + p[1], 0) / pts.length;
+      const span = Math.max(...pts.map(p => p[0])) - Math.min(...pts.map(p => p[0]));
+      const lines = fits(room.name, span) ? [room.name] : room.name.split(" ");
+      const width = Math.max(...lines.map(line => line.length)) * LABEL * .56;
+      return {x: cx - width / 2, y: cy - lines.length * LABEL / 2, width, height: lines.length * LABEL};
+    }),
+    ...layout.portals.map(p => ({x: Math.min(...p.segment_xy_m.map(v => v[0])) - .15,
+      y: -Math.max(...p.segment_xy_m.map(v => v[1])) - .15,
+      width: Math.abs(p.segment_xy_m[1][0] - p.segment_xy_m[0][0]) + .3,
+      height: Math.abs(p.segment_xy_m[1][1] - p.segment_xy_m[0][1]) + .3})),
+    ...markers.flatMap((point, index) => {
+      const previous = markers[index - 1];
+      if (!previous || point.gapBefore) return [];
+      const samples = Math.min(40, Math.max(1, Math.ceil(Math.hypot(point.xy[0] - previous.xy[0], point.xy[1] - previous.xy[1]) / (8 * unit))));
+      return Array.from({length: samples + 1}, (_, i) => ({
+        x: previous.xy[0] + (point.xy[0] - previous.xy[0]) * i / samples - 2 * unit,
+        y: -previous.xy[1] - (point.xy[1] - previous.xy[1]) * i / samples - 2 * unit,
+        width: 4 * unit, height: 4 * unit}));
+    }),
+  ];
+  const placedLabels = placeMapLabels(labels, labelView, unit, protectedAreas);
   // Explicit Y inversion at the SVG boundary; canonical values stay untouched.
   const eventPoint = (event: { clientX: number; clientY: number }): XY => {
     const el = svg.current!;
@@ -226,16 +263,6 @@ export default function Map2D({
         if (e.key === "Escape") cancelDrag();
       }}
     >
-      <defs>
-        <radialGradient id="spatial-coverage">
-          <stop offset="0%" stopColor="#5b4fe8" stopOpacity=".26" />
-          <stop offset="100%" stopColor="#5b4fe8" stopOpacity=".04" />
-        </radialGradient>
-        <radialGradient id="spatial-coverage-active">
-          <stop offset="0%" stopColor="#5b4fe8" stopOpacity=".42" />
-          <stop offset="100%" stopColor="#5b4fe8" stopOpacity=".08" />
-        </radialGradient>
-      </defs>
       <rect
         className="map-ground"
         pointerEvents="none"
@@ -324,6 +351,10 @@ export default function Map2D({
         <path d="M0 -.12V0H2V-.12" fill="none" stroke="#34383a" strokeWidth=".04" />
         <text x="1" y="-.2" textAnchor="middle" fontSize=".23" fill="#34383a">2 m · map scale</text>
       </g>}
+      <g className="map-coverage" pointerEvents="none">
+        {cameras.map(c => <path key={c.id} className="camera-coverage" d={coveragePath(c)}
+          fill="#5B4FE8" fillOpacity={selected === c.id ? .24 : .05} />)}
+      </g>
       {layout.cameras.map((original) => {
         const c: Camera =
           preview?.id === original.id ? { ...original, ...preview.change } : original;
@@ -331,14 +362,6 @@ export default function Map2D({
         const [ax, ay] = aimPoint(c);
         return (
           <g key={c.id} className="camera-group">
-            <path
-              d={coveragePath(c)}
-              fill={`url(#spatial-coverage${active ? "-active" : ""})`}
-              stroke={active ? "#5b4fe8" : "#9aa4d2"}
-              strokeWidth={active ? ".04" : ".025"}
-              strokeDasharray=".09 .07"
-              pointerEvents="none"
-            />
             <g
               className="camera-marker"
               role="button"
@@ -358,21 +381,6 @@ export default function Map2D({
                 field of view, {c.range_m} m range
               </title>
             </g>
-            <text
-              className="camera-label"
-              x={c.position_m[0]}
-              y={-c.position_m[1] + 0.46}
-              textAnchor="middle"
-              fontSize=".3"
-              fill={active ? "#8f2727" : "#3f3a3a"}
-              stroke="#f2efec"
-              strokeWidth=".1"
-              paintOrder="stroke"
-              strokeLinejoin="round"
-              pointerEvents="none"
-            >
-              {c.name}
-            </text>
             {active && moveable && (
               <g
                 className="camera-aim"
@@ -527,36 +535,27 @@ export default function Map2D({
           )}
         </g>
       ))}
-      {layout.cameras.map((original) => {
-        const c: Camera =
-          preview?.id === original.id ? { ...original, ...preview.change } : original;
-        const active = selected === c.id;
-        const width = c.name.length * 0.3 * 0.56 + 0.18;
-        return (
-          <g key={"label-" + c.id} pointerEvents="none">
-            <rect
-              x={c.position_m[0] - width / 2}
-              y={-c.position_m[1] + 0.24}
-              width={width}
-              height=".4"
-              rx=".08"
-              fill={active ? "#5b4fe8" : "#ffffff"}
-              stroke={active ? "#5b4fe8" : "#cbd0e8"}
-              strokeWidth=".02"
-            />
-            <text
-              x={c.position_m[0]}
-              y={-c.position_m[1] + 0.52}
-              textAnchor="middle"
-              fontSize=".26"
-              fontWeight="600"
-              fill={active ? "#fff" : "#3a3f63"}
-            >
-              {c.name}
-            </text>
-          </g>
-        );
-      })}
+      <g className="map-name-tags" pointerEvents="none" fontFamily='"Source Sans 3", "Source Sans Pro", sans-serif'>
+        {placedLabels.map(label => {
+          const {box} = label;
+          const actor = label.kind === "actor";
+          const endX = Math.max(box.x, Math.min(box.x + box.width, label.x));
+          const endY = Math.max(box.y, Math.min(box.y + box.height, label.y));
+          const distant = Math.hypot(endX - label.x, endY - label.y) > 30 * unit;
+          return <g key={label.id} className={actor ? "actor-label" : "camera-label"} data-label-id={label.id}>
+            {distant && <line x1={label.x} y1={label.y} x2={endX} y2={endY}
+              stroke="#8E91B8" strokeWidth={unit} opacity=".6" />}
+            {actor && <rect x={box.x} y={box.y} width={box.width} height={box.height}
+              rx={11 * unit} fill="#23253F" />}
+            <text x={box.x + box.width / 2} y={box.y + box.height / 2}
+              dominantBaseline="central" textAnchor="middle" fontSize={12 * unit} fontWeight="600"
+              fill={actor ? "#FFFFFF" : label.selected ? "#4C42C8" : "#23253F"}
+              stroke={actor ? "none" : "#F7F7FC"} strokeWidth={actor ? 0 : 3 * unit}
+              strokeLinejoin="round" paintOrder="stroke">{label.text}</text>
+            <title>{label.name}</title>
+          </g>;
+        })}
+      </g>
     </svg>
   );
 }
