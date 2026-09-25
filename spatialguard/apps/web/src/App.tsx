@@ -1503,11 +1503,7 @@ export default function App() {
                   snapshot used for classification. Live video is viewed through
                   a bounded provider session and is not recorded by SpatialGuard.
                 </p>
-                <p>
-                  Geometry revision:{" "}
-                  <code>{place.revision_id || "no place selected"}</code>
-                </p>
-                <p>Application version 0.1 · TwinForge schema 0.1</p>
+                <p>Application version 0.1</p>
               </section>
               {currentSession?.email && <AccountSecurity ringDataConsent={!!accountPreferences?.ring_data_consent} onSessionsChanged={() => void request<Session[]>("/v1/sessions").then(setSessions)} />}
               </>}

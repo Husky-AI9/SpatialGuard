@@ -46,7 +46,6 @@
 .incident-review .evidence-inspector dl > div:last-child { border-bottom: 0; }
 .incident-review .evidence-inspector dt { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 14px; color: #5b5e78; }
 .incident-review .evidence-inspector dd { margin: 0; color: #23253f; }
-.incident-revision-note { margin: 16px 0 0; font-size: 12px; line-height: 1.5; color: #5b5e78; overflow-wrap: anywhere; }
 .incident-review-notice { margin: 0 0 14px; border-left: 3px solid #aa4d14; background: #fff4e8; color: #7a430e; padding: 10px; font-size: 13px; }
 .incident-event-timeline { min-width: 0; padding: 16px 18px; border: 1px solid #e3e4ef; border-radius: 12px; background: #fff; max-height: 260px; overflow: auto; }
 .incident-timeline-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }

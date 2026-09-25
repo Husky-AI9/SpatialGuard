@@ -91,12 +91,11 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
               <div><dt>Certainty</dt><dd>{incident.evidence_mode === "live" ? "Observed camera event. Any movement shown is estimated from recording; identity is unknown." : observation?.location.kind === "unknown" ? "Unknown location — coverage gap" : "Illustrative replay position"}</dd></div>
             </dl>
           </section>
-          <p className="incident-revision-note">Layout revision {incident.revision_id}. {incident.evidence_mode === "live" ? "Camera calibration is unavailable." : "Synthetic replay positions."}</p>
         </div>
         {compact && <div id="incident-pane-Timeline" role="tabpanel" aria-labelledby="incident-tab-Timeline" hidden={pane !== "Timeline"}>{timeline}</div>}
         {compact && <div id="incident-pane-Map" role="tabpanel" aria-labelledby="incident-tab-Map" hidden={pane !== "Map"}>{pane === "Map" && map}</div>}
       </div>
-      {compact && <footer className="review-footer"><span>Pinned revision {incident.revision_id.slice(-6)}<br />{incident.evidence_mode === "live" ? "Map positions are estimates" : "Synthetic replay"}</span>{reviewButton}</footer>}
+      {compact && <footer className="review-footer"><span>{incident.evidence_mode === "live" ? "Map positions are estimates" : "Synthetic replay"}</span>{reviewButton}</footer>}
     </section>
   </div>;
 }
