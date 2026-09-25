@@ -13,6 +13,7 @@ import {
 import { WebView, type WebViewErrorEvent, type WebViewNavigation } from "react-native-webview";
 
 const HOSTED_ORIGIN = "https://spatialguard-production.up.railway.app";
+const HOSTED_HOST = "spatialguard-production.up.railway.app";
 const START_URL = `${HOSTED_ORIGIN}/landing`;
 
 export default function App() {
@@ -27,8 +28,26 @@ export default function App() {
   }, []);
 
   const allowNavigation = useCallback((request: WebViewNavigation) => {
-    if (request.url.startsWith(HOSTED_ORIGIN)) return true;
-    void Linking.openURL(request.url);
+    const url = request.url;
+
+    // iOS emits an about:blank navigation while the WebView initializes.
+    // Keep it inside the WebView instead of handing it to Safari.
+    if (url === "about:blank" || url.startsWith("data:")) return true;
+
+    try {
+      const parsed = new URL(url);
+      if (
+        (parsed.protocol === "https:" || parsed.protocol === "http:") &&
+        parsed.hostname === HOSTED_HOST
+      ) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+
+    // Only explicit external destinations leave the app.
+    if (/^(https?:|mailto:|tel:)/i.test(url)) void Linking.openURL(url);
     return false;
   }, []);
 
