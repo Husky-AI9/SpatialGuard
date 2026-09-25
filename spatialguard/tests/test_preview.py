@@ -161,6 +161,31 @@ def test_replay_persistence_review_and_evidence(setup):
     assert restarted.get('/v1/sites/site_demo/incidents').json()['incidents'][0]['id']==i['id']
 
 
+def test_owner_can_delete_incident_and_scoped_evidence(setup):
+    app, client, store, _ = setup
+    result = run(setup, 'delete-incident')
+    incident = client.get('/v1/incidents/' + result['incident_id']).json()
+    evidence_id = incident['evidence_ids'][0]
+
+    response = client.delete('/v1/incidents/' + incident['id'])
+    assert response.status_code == 204 and response.content == b''
+    assert client.get('/v1/incidents/' + incident['id']).status_code == 404
+    assert client.get('/v1/evidence/' + evidence_id).status_code == 404
+    assert client.get('/v1/sites/site_demo/incidents').json()['incidents'] == []
+    with store.connect() as db:
+        assert db.execute('SELECT 1 FROM incidents WHERE id=?', (incident['id'],)).fetchone() is None
+        assert db.execute('SELECT 1 FROM runs WHERE id=?', (incident['run_id'],)).fetchone() is None
+        assert db.execute('SELECT 1 FROM evidence WHERE id=?', (evidence_id,)).fetchone() is None
+        assert db.execute(
+            "SELECT 1 FROM events WHERE kind='incident.deleted' AND resource=?",
+            (incident['id'],),
+        ).fetchone() is not None
+        assert db.execute(
+            "SELECT 1 FROM audit WHERE action='incident.deleted' AND resource=?",
+            (incident['id'],),
+        ).fetchone() is not None
+
+
 def test_duplicate_delivery_and_worker_recovery(setup):
     app,c,store,engine=setup;result=run(setup)
     assert c.post('/v1/sites/site_demo/replay',json={'request_id':'test-request-1234'}).json()['id']==result['id']

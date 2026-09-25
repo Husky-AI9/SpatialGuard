@@ -1638,6 +1638,37 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Delete Incident",
+        "description": "Delete one owner-owned incident and its incident-scoped evidence.",
+        "operationId": "delete_incident_v1_incidents__incident_id__delete",
+        "parameters": [
+          {
+            "name": "incident_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Incident Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/incidents/{incident_id}/review": {
@@ -4790,10 +4821,12 @@
             "title": "Name"
           },
           "status": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Status"
           },
           "capabilities": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Capabilities"
           },
@@ -4846,6 +4879,7 @@
             "title": "Support"
           },
           "configuration": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Configuration"
           },

@@ -26,6 +26,7 @@ import {
   Map,
   LogOut,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import type { EvidenceLink, Marker } from "@twinforge/spatial-view/Map2D";
@@ -531,6 +532,21 @@ export default function App() {
     setStep(0);
     setRoom("");
   };
+  const deleteIncident = (incident: Incident, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const label = incident.title || "this incident";
+    if (!window.confirm(`Delete ${label}? This removes the incident and its evidence.`)) return;
+    void act(async () => {
+      await request<void>(`/v1/incidents/${encodeURIComponent(incident.id)}`, "DELETE");
+      setIncidents((all) => all.filter((item) => item.id !== incident.id));
+      if (selected?.id === incident.id) {
+        setSelected(null);
+        setIncidentTrail([]);
+        setTestTrail([]);
+        setTestPackage(null);
+      }
+    });
+  };
   const updateMonitoring = (
     enabled: boolean,
     camera_ids = site?.monitoring.camera_ids ?? [],
@@ -974,36 +990,44 @@ export default function App() {
           </div>
         ) : (
           incidents.map((incident) => (
-            <button
-              className="incident-row"
-              key={incident.id}
-              onClick={() => choose(incident)}
-            >
-              <span className="incident-symbol">
-                {incident.classification ? <ActivityIcon classification={incident.classification} /> : <MapPin size={20} />}
-              </span>
-              <span>
-                <strong>{incident.title}</strong>
-                <small>
-                  {stamp(incident.created_at)} ?{" "}
-                  {incident.evidence_mode === "live"
-                    ? "Live integration"
-                    : incident.evidence_mode === "simulator"
-                      ? "Official simulator"
-                      : "Replay"}
-                </small>
-                <small>
-                  {incident.status === "reviewed" ? "Reviewed" : "Needs review"} ?{" "}
-                  {incident.evidence_mode === "live"
-                    ? incident.observations.length
-                    : incident.observations.filter(
-                        (observation) => observation.location.kind !== "unknown",
-                      ).length}{" "}
-                  {incident.evidence_mode === "live" ? "camera events" : "observations"}
-                </small>
-              </span>
-              <ArrowUpRight size={18} />
-            </button>
+            <div className="incident-row" key={incident.id}>
+              <button className="incident-row-main" onClick={() => choose(incident)}>
+                <span className="incident-symbol">
+                  {incident.classification ? <ActivityIcon classification={incident.classification} /> : <MapPin size={20} />}
+                </span>
+                <span>
+                  <strong>{incident.title}</strong>
+                  <small>
+                    {stamp(incident.created_at)} ?{" "}
+                    {incident.evidence_mode === "live"
+                      ? "Live integration"
+                      : incident.evidence_mode === "simulator"
+                        ? "Official simulator"
+                        : "Replay"}
+                  </small>
+                  <small>
+                    {incident.status === "reviewed" ? "Reviewed" : "Needs review"} ?{" "}
+                    {incident.evidence_mode === "live"
+                      ? incident.observations.length
+                      : incident.observations.filter(
+                          (observation) => observation.location.kind !== "unknown",
+                        ).length}{" "}
+                    {incident.evidence_mode === "live" ? "camera events" : "observations"}
+                  </small>
+                </span>
+                <ArrowUpRight size={18} />
+              </button>
+              <button
+                className="incident-delete"
+                type="button"
+                aria-label={`Delete ${incident.title}`}
+                title="Delete incident"
+                onClick={(event) => deleteIncident(incident, event)}
+                disabled={busy}
+              >
+                <Trash2 size={17} />
+              </button>
+            </div>
           ))
         )}
         {nextCursor && (

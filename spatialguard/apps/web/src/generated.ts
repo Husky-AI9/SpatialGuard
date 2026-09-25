@@ -798,7 +798,11 @@ export interface paths {
         get: operations["incident_v1_incidents__incident_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Incident
+         * @description Delete one owner-owned incident and its incident-scoped evidence.
+         */
+        delete: operations["delete_incident_v1_incidents__incident_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2145,9 +2149,13 @@ export interface components {
             /** Name */
             name: string;
             /** Status */
-            status: Record<string, never>;
+            status: {
+                [key: string]: unknown;
+            };
             /** Capabilities */
-            capabilities: Record<string, never>;
+            capabilities: {
+                [key: string]: unknown;
+            };
             /** Checked At */
             checked_at: string;
             /** Site Id */
@@ -2161,7 +2169,9 @@ export interface components {
                 [key: string]: boolean;
             };
             /** Configuration */
-            configuration?: Record<string, never>;
+            configuration?: {
+                [key: string]: unknown;
+            };
             /** Guidance */
             guidance?: string[];
         };
@@ -3848,6 +3858,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Incident"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_incident_v1_incidents__incident_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -1212,6 +1212,39 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 audit(db, p["owner"], "incident.reviewed", incident_id)
             return data
 
+    @app.delete("/v1/incidents/{incident_id}", status_code=204)
+    def delete_incident(incident_id: str, p=Depends(principal)):
+        """Delete one owner-owned incident and its incident-scoped evidence."""
+        with store.connect() as db:
+            row = db.execute("SELECT * FROM incidents WHERE id=?", (incident_id,)).fetchone()
+            if not row:
+                raise HTTPException(404, "Incident not found")
+            owned(db, row["site_id"], p)  # Enforce the same site-owner boundary as reads.
+
+            # Evidence is stored as JSON because it is shared by replay and
+            # Ring incidents. Remove only assets that explicitly belong to
+            # this incident and leave other incidents on the same site intact.
+            for evidence_row in db.execute(
+                "SELECT id,data FROM evidence WHERE site_id=?", (row["site_id"],)
+            ).fetchall():
+                try:
+                    belongs = json.loads(evidence_row["data"]).get("incident_id") == incident_id
+                except (TypeError, json.JSONDecodeError):
+                    belongs = False
+                if belongs:
+                    db.execute("DELETE FROM evidence WHERE id=?", (evidence_row["id"],))
+
+            # Remove the incident's event history and live-account association,
+            # then its run. The deletion audit/event remain as the durable
+            # record that the owner took this action.
+            db.execute("DELETE FROM events WHERE site_id=? AND resource=?", (row["site_id"], incident_id))
+            db.execute("DELETE FROM live_incident_accounts WHERE incident_id=?", (incident_id,))
+            db.execute("DELETE FROM incidents WHERE id=?", (incident_id,))
+            db.execute("DELETE FROM runs WHERE id=? AND site_id=?", (row["run_id"], row["site_id"]))
+            event(db, row["site_id"], "incident.deleted", incident_id)
+            audit(db, p["owner"], "incident.deleted", incident_id)
+        return Response(status_code=204)
+
     @app.get("/v1/evidence/{evidence_id}", response_model=m.EvidenceAsset)
     def evidence(evidence_id: str, p=Depends(principal)):
         with store.connect() as db:
