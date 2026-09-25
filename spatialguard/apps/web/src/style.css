@@ -995,18 +995,20 @@ small {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid transparent;
+  min-height: 36px;
+  padding: 8px 12px;
   border-radius: 8px;
-  color: var(--muted);
-  background: transparent;
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  font-size: 12px;
+  gap: 6px;
 }
 .incident-delete:hover,
 .incident-delete:focus-visible {
-  color: #c45858;
-  border-color: rgba(196, 88, 88, 0.35);
-  background: rgba(196, 88, 88, 0.08);
+  color: #fff;
+  border-color: #4f43df;
+  background: #4f43df;
 }
 .incident-delete:disabled {
   opacity: 0.55;

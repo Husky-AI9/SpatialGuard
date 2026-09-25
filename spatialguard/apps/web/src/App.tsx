@@ -1018,7 +1018,7 @@ export default function App() {
                 <ArrowUpRight size={18} />
               </button>
               <button
-                className="incident-delete"
+                className="incident-delete primary"
                 type="button"
                 aria-label={`Delete ${incident.title}`}
                 title="Delete incident"
@@ -1026,6 +1026,7 @@ export default function App() {
                 disabled={busy}
               >
                 <Trash2 size={17} />
+                <span>Delete</span>
               </button>
             </div>
           ))
