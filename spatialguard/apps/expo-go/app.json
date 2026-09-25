@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "SpatialGuard",
+    "slug": "spatialguard",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "spatialguard",
+    "ios": {
+      "bundleIdentifier": "app.spatialguard.mobile",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "app.spatialguard.mobile"
+    }
+  }
+}
