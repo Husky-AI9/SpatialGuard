@@ -12,6 +12,9 @@
     },
     "android": {
       "package": "app.spatialguard.mobile"
-    }
+    },
+    "plugins": [
+      "expo-status-bar"
+    ]
   }
 }
