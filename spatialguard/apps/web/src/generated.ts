@@ -2268,7 +2268,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "browser" | "android";
+            kind: "browser" | "android" | "ios";
             /** Expires At */
             expires_at: number;
             /** Email */

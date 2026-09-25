@@ -37,7 +37,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
         setMessage((await request<{ message: string }>("/v1/auth/email/verify", "POST", { token })).message); return;
       }
       const result = await request<AuthSession>(signingUp ? "/v1/auth/signup" : "/v1/auth/signin", "POST", { email, password });
-      if (native) { if (!result.token) throw new Error("The Android session was not returned"); await storeToken(result.token); }
+      if (native) { if (!result.token) throw new Error("The mobile session was not returned"); await storeToken(result.token); }
       window.location.assign(workspaceHref);
     } catch (problem) { setError(problem instanceof Error ? problem.message : "Could not continue"); }
     finally { setBusy(false); }

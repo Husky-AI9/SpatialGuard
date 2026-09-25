@@ -8,6 +8,7 @@ import Landing from "./Landing";
 import AuthPage from "./AuthPage";
 import LegalPage from "./LegalPage";
 import "./style.css";
+import "./incident-review.css";
 import { installAppLinkNavigation, native } from "./platform";
 if (native) void installAppLinkNavigation();
 const path = window.location.pathname.replace(/\/$/, "");

@@ -8,13 +8,16 @@
     "build": "tsc --noEmit && vite build",
     "contracts": "openapi-typescript ../../packages/contracts/openapi.json -o src/generated.ts",
     "test": "playwright test",
-    "android:sync": "cap sync android"
+    "android:sync": "cap sync android",
+    "ios:sync": "cap sync ios",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "8.5.2",
     "@capacitor/app": "8.0.1",
     "@capacitor/browser": "8.0.1",
     "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
     "@fontsource/ibm-plex-sans": "5.3.0",
     "@fontsource/source-sans-pro": "5.3.0",
     "@twinforge/spatial-view": "0.1.0",

@@ -70,6 +70,7 @@ test("replay to incident, evidence, review, map and monitoring", async ({
   await expect(
     page.getByRole("heading", { name: "Activity observed near the entry" }),
   ).toBeVisible({ timeout: 45000 });
+  await page.getByText("About possible continuations", {exact: true}).click();
   await expect(
     page.getByText("Possible continuation · 6s unobserved"),
   ).toBeVisible();

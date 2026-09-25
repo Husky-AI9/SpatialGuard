@@ -202,7 +202,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
     def issue(db, owner, kind, name):
         token, sid = secrets.token_urlsafe(32), uid("session")
-        expires = time.time() + (86400 * 30 if kind == "android" else 28800)
+        expires = time.time() + (86400 * 30 if kind in {"android", "ios"} else 28800)
         db.execute("INSERT INTO sessions VALUES (?,?,?,?,?,?)", (sid, owner, digest(token), name, kind, expires))
         account = db.execute("SELECT email FROM accounts WHERE id=?", (owner,)).fetchone()
         return m.SessionToken(token=token, session=m.Session(
@@ -218,10 +218,14 @@ def create_app(db_path=None, engine=None, ring_service=None):
         )
 
     def auth_kind(request):
-        if request.headers.get("x-spatialguard-client") == "android":
-            return "android"
+        client = request.headers.get("x-spatialguard-client", "").lower()
+        if client in {"android", "ios"}:
+            return client
         cookie_browser(request)
         return "browser"
+
+    def session_name(kind):
+        return {"android": "Android app", "ios": "iOS app"}.get(kind, "Web browser")
 
     def throttle(db, key, limit):
         row = db.execute("SELECT * FROM attempts WHERE peer=?", (key,)).fetchone()
@@ -334,7 +338,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             db.execute("INSERT OR IGNORE INTO account_preferences(owner) VALUES (?)", (owner,))
             if old_owner:
                 claim_legacy_workspace(db, old_owner, owner)
-            result = issue(db, owner, kind, "Android app" if kind == "android" else "Web browser")
+            result = issue(db, owner, kind, session_name(kind))
             verification_token = create_auth_token(db, owner, "email_verification", 86400)
             audit(db, owner, "account.created", owner)
         try:
@@ -369,7 +373,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             previous_token = request.cookies.get(COOKIE, "")
             if previous_token:
                 db.execute("DELETE FROM sessions WHERE digest=?", (digest(previous_token),))
-            result = issue(db, account["id"], kind, "Android app" if kind == "android" else "Web browser")
+            result = issue(db, account["id"], kind, session_name(kind))
             audit(db, account["id"], "account.signed_in", result.session.id)
         return auth_result(result, kind, response)
 
@@ -653,6 +657,9 @@ def create_app(db_path=None, engine=None, ring_service=None):
 
     @app.post("/v1/pairing/redeem", response_model=m.SessionToken)
     def redeem(body: m.PairInput, request: Request):
+        kind = request.headers.get("x-spatialguard-client", "").lower()
+        if kind not in {"android", "ios"}:
+            raise HTTPException(400, "Open this link in the SpatialGuard mobile app")
         peer = request.client.host
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -668,14 +675,14 @@ def create_app(db_path=None, engine=None, ring_service=None):
             if not row:
                 raise HTTPException(401, "Pairing code is invalid or expired")
             db.execute("DELETE FROM pairing WHERE digest=?", (row["digest"],))
-            result = issue(db, row["owner"], "android", body.name)
+            result = issue(db, row["owner"], kind, body.name)
             audit(db, row["owner"], "device.paired", result.session.id)
             return result
 
     @app.post("/v1/sessions/renew", response_model=m.SessionToken)
     def renew(p=Depends(principal)):
-        if p["kind"] != "android":
-            raise HTTPException(403, "Android renewal only")
+        if p["kind"] not in {"android", "ios"}:
+            raise HTTPException(403, "Mobile session renewal only")
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             if not db.execute("DELETE FROM sessions WHERE id=?", (p["id"],)).rowcount:

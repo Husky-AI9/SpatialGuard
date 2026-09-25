@@ -13,10 +13,12 @@ test.beforeAll(async () => {
       const camera = {id:'camera-front',name:'Front',position_m:[0,0,2],heading_degrees:0,fov_degrees:110,range_m:8};
       function Harness() {
         const [markers,setMarkers]=useState([]); const [observation,setObservation]=useState('event-test');
+        const [playback,setPlayback]=useState({seconds:0,duration:0});
         return <><button onClick={()=>setObservation('other-event')}>Other incident</button>
           <output aria-label="Path points">{markers.length}</output>
           <output aria-label="Person position">{JSON.stringify(markers.find(point=>point.selected)?.xy ?? null)}</output>
-          <IncidentRecording key={observation} incidentId="incident-test" observationId={observation} camera={camera} onMovement={setMarkers}/></>;
+          <output aria-label="Timeline playback">{playback.seconds}</output>
+          <IncidentRecording key={observation} incidentId="incident-test" observationId={observation} camera={camera} onMovement={setMarkers} onPlayback={setPlayback}/></>;
       }
       createRoot(document.getElementById('root')).render(<Harness/>);
     `}});
@@ -56,6 +58,7 @@ for (const width of [1440,390]) test(`recording failure and retry playback at ${
   await expect(position).not.toHaveText('null');
   await video.evaluate((el:HTMLVideoElement)=>{el.pause();el.currentTime=5;});
   await expect(page.getByLabel('Path points')).toHaveText('12');
+  await expect(page.getByLabel('Timeline playback')).toHaveText('5');
   const forward = JSON.parse(await position.textContent() ?? 'null');
   await video.evaluate((el:HTMLVideoElement)=>{el.currentTime=10;});
   await expect(page.getByLabel('Path points')).toHaveText('22');

@@ -5180,7 +5180,8 @@
             "type": "string",
             "enum": [
               "browser",
-              "android"
+              "android",
+              "ios"
             ],
             "title": "Kind"
           },

@@ -58,7 +58,7 @@ export async function request<T>(
     "Content-Type": "application/json",
     ...(native
       ? {
-          "X-SpatialGuard-Client": "android",
+          "X-SpatialGuard-Client": Capacitor.getPlatform(),
           ...(credential ? { Authorization: `Bearer ${credential}` } : {}),
         }
       : localWeb ? { "X-SpatialGuard-Local": "1" } : {}),

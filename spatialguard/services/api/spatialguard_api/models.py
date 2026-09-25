@@ -312,7 +312,7 @@ class PairCode(Model):
 class Session(Model):
     id: str
     name: str
-    kind: Literal["browser", "android"]
+    kind: Literal["browser", "android", "ios"]
     expires_at: float
     email: str | None = None
 

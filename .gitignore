@@ -38,6 +38,13 @@ test-ring-video/
 **/android/.gradle/
 **/android/build/
 **/android/app/build/
+**/ios/build/
+**/ios/Pods/
+**/ios/DerivedData/
+**/ios/App/App.xcodeproj/xcuserdata/
+**/ios/App/App.xcworkspace/xcuserdata/
+*.xcuserstate
+DerivedData/
 *.apk
 *.aab
 *.ipa

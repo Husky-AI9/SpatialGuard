@@ -5,12 +5,14 @@ import type { components } from './generated';
 import { incidentRecording, request } from './platform';
 import { incidentMovement } from './incidentMovement';
 import { samplePersonTrack } from './motionTracking';
+import type { PlaybackPosition } from './IncidentTimeline';
 
 type Track = components['schemas']['TestVideoTrack'];
 type Classification = components['schemas']['IncidentClassification'];
-export default function IncidentRecording({ incidentId, observationId, camera, classification = null, onMovement }: {
+export default function IncidentRecording({ incidentId, observationId, camera, classification = null, onMovement, onPlayback }: {
   incidentId: string; observationId: string; camera?: Camera;
   classification?: Classification | null; onMovement?: (markers: Marker[]) => void;
+  onPlayback?: (position: PlaybackPosition) => void;
 }) {
   const [asset, setAsset] = useState({url: '', digest: ''});
   const [error, setError] = useState('');
@@ -19,6 +21,7 @@ export default function IncidentRecording({ incidentId, observationId, camera, c
   const [track, setTrack] = useState<Track | null>(null);
   const [trackError, setTrackError] = useState('');
   const [at, setAt] = useState(0);
+  const [duration, setDuration] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
   const frame = useRef<number>(0);
   const movementCallback = useRef(onMovement);
@@ -26,7 +29,7 @@ export default function IncidentRecording({ incidentId, observationId, camera, c
   useEffect(() => {
     let disposed = false;
     let media = '';
-    setAsset({url: '', digest: ''}); setError(''); setAt(0);
+    setAsset({url: '', digest: ''}); setError(''); setAt(0); setDuration(0);
     movementCallback.current?.([]);
     void incidentRecording(incidentId, observationId).then(value => {
       media = value.url;
@@ -50,6 +53,7 @@ export default function IncidentRecording({ incidentId, observationId, camera, c
   useEffect(() => {
     movementCallback.current?.(track && camera ? incidentMovement(track, camera, at, classification) : []);
   }, [track, camera, at, classification]);
+  useEffect(() => { onPlayback?.({seconds: at, duration}); }, [at, duration, onPlayback]);
   const stop = () => cancelAnimationFrame(frame.current);
   useEffect(() => stop, []);
   const tick = () => {
@@ -67,14 +71,18 @@ export default function IncidentRecording({ incidentId, observationId, camera, c
       : 'Person not visible · last observed path retained');
   return <section className="incident-recording" aria-label="Event recording" style={{width: '100%', minWidth: 0}}>
     {asset.url && <video ref={video} src={asset.url} controls playsInline preload="metadata"
-      aria-label="Recorded Ring event video" style={{width: '100%', maxHeight: '45vh', objectFit: 'contain'}}
+      aria-label="Recorded Ring event video" style={{width: '100%', maxWidth: '100%', objectFit: 'contain'}}
+      onLoadedMetadata={() => setDuration(Number.isFinite(video.current?.duration) ? video.current!.duration : 0)}
+      onDurationChange={() => setDuration(Number.isFinite(video.current?.duration) ? video.current!.duration : 0)}
       onPlay={() => { stop(); tick(); }} onPause={() => { stop(); setAt(video.current?.currentTime ?? 0); }}
       onTimeUpdate={() => setAt(video.current?.currentTime ?? 0)} onSeeked={() => setAt(video.current?.currentTime ?? 0)}
       onEnded={() => { stop(); setAt(video.current?.currentTime ?? 0); }}
       onError={() => setError('This recording could not play on this device. Try loading it again.')} />}
+    <div className="incident-recording-status">
     <p role="status" style={{color: '#eeeeee'}}>{error || (asset.url ? 'Recorded Ring event · video only' : 'Loading event recording from Ring…')}</p>
     {asset.url && <p role="status" aria-label="Movement playback status" style={{color: '#eeeeee'}}>{movementStatus}</p>}
     {error && <button onClick={() => setAttempt(value => value + 1)}>Retry recording</button>}
     {trackError && <button onClick={() => { if (trackError.includes('recording changed')) setAttempt(value => value + 1); else setTrackAttempt(value => value + 1); }}>Retry movement</button>}
+    </div>
   </section>;
 }

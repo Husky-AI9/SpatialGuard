@@ -17,7 +17,6 @@ import {
   Play,
   ArrowLeft,
   ArrowUpRight,
-  Check,
   Pause,
   RefreshCw,
   MapPin,
@@ -38,7 +37,7 @@ import RingConnection from "./RingConnection";
 import CameraWorkspace from "./CameraWorkspace";
 import CameraWall from "./CameraWall";
 import HomeCctv from "./HomeCctv";
-import IncidentRecording from "./IncidentRecording";
+import IncidentReview from "./IncidentReview";
 import Operations from "./Operations";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
 import AccountSecurity from "./AccountSecurity";
@@ -1026,210 +1025,19 @@ export default function App() {
     </section>
   );
   const detail = selected && (
-    <section className="detail">
-      <div className="panel-heading">
-        <button className="text-button" onClick={() => setSelected(null)}>
-          <ArrowLeft size={18} />
-          All incidents
-        </button>
-        <span className="mode">
-          {selected.evidence_mode === "live"
-            ? "Live integration"
-            : selected.evidence_mode === "simulator"
-              ? "Official simulator"
-              : "Replay"}
-        </span>
-      </div>
-      <h2>{selected.title}</h2>
-      <p className="muted">{selected.rule}</p>
-      {selected.classification ? (
-        <section className="classification-card" aria-label="AI snapshot classification">
-          <div>
-            <ActivityIcon classification={selected.classification} />
-            <span className="eyebrow">Snapshot classification</span>
-            <strong>{selected.classification.display_label}</strong>
-          </div>
-          <span className={`confidence confidence-${selected.classification.confidence}`}>
-            {selected.classification.confidence} confidence
-          </span>
-          <p>{selected.classification.summary}</p>
-          {selected.classification.visible_evidence.length > 0 && (
-            <ul>
-              {selected.classification.visible_evidence.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          )}
-          <small>
-            Uncertainty: {selected.classification.uncertainty} · AI interpretation,
-            review required. No identity or gender inference.
-          </small>
-        </section>
-      ) : selected.evidence_mode === "live" ? (
-        <section className="classification-card classification-empty">
-          <div>
-            <span className="eyebrow">Snapshot classification</span>
-            <strong>
-              {selected.classification_status === "unavailable"
-                ? "Classification unavailable"
-                : "Not analyzed"}
-            </strong>
-          </div>
-          <p>
-            {accountPreferences?.classification_consent
-              ? "Analyze the latest authorized camera snapshot. The image is sent to OpenAI for this request and is not stored by SpatialGuard."
-              : "Allow Ring data and snapshot classification in Privacy settings before sending an image to OpenAI."}
-          </p>
-          <button
-            disabled={busy || !online || !accountPreferences?.classification_consent}
-            onClick={() =>
-              void act(async () => {
-                const result = await request<Incident>(
-                  `/v1/incidents/${selected.id}/classify`,
-                  "POST",
-                );
-                setSelected(result);
-                await refresh();
-              })
-            }
-          >
-            Analyze snapshot
-          </button>
-        </section>
-      ) : null}
-      <div className="evidence-view">
-        {selected.evidence_mode === "live" && observation ? (
-          <IncidentRecording key={observation.observation_id} incidentId={selected.id} observationId={observation.observation_id}
-            camera={site?.layout.cameras.find(camera => camera.id === observation.source_id)}
-            classification={selected.classification} onMovement={setIncidentTrail} />
-        ) : image ? (
-          <img
-            src={image}
-            alt="Synthetic replay illustration of a person, not camera footage"
-          />
-        ) : (
-          <p>
-            {selected.evidence_mode === "live"
-              ? selected.classification
-                ? "The Ring snapshot was analyzed for this classification and was not stored. Activity position remains unknown."
-                : "Select a camera event to load its recording. Activity position remains unknown."
-              : observation?.location.kind === "unknown"
-                ? "Unknown location — no footage or coordinate evidence for this gap."
-                : imageError || "Loading evidence…"}
-          </p>
-        )}
-      </div>
-      <div className="evidence-caption">
-        <strong>
-          {observation?.location.kind === "unknown"
-            ? "Unknown"
-            : place.layout.cameras.find((c) => c.id === observation?.source_id)
-                ?.name}
-        </strong>
-        <span>
-          {observation && time(observation.observed_at)} ·{" "}
-          {selected.evidence_mode === "live"
-            ? "Ring event time"
-            : "synthetic fixture time"}
-        </span>
-      </div>
-      <section className="evidence-inspector" aria-label="Selected evidence details" aria-live="polite">
-        <h3>Evidence details</h3>
-        <dl>
-          <div><dt>Timestamp</dt><dd>{observation ? time(observation.observed_at) : "Unavailable"}</dd></div>
-          <div><dt>Camera</dt><dd>{place.layout.cameras.find((c) => c.id === observation?.source_id)?.name ?? "Unknown camera"}</dd></div>
-          <div><dt>Evidence mode</dt><dd>{selected.evidence_mode === "live" ? "Live Ring event" : selected.evidence_mode === "simulator" ? "Official simulator" : "Synthetic replay"}</dd></div>
-          <div><dt>Associated media</dt><dd>{image ? "Available for this replay observation" : selected.evidence_mode === "live" ? "Recording requested from Ring for the selected event; availability shown in the player" : "Unavailable"}</dd></div>
-          <div><dt>Triggering rule</dt><dd>{selected.rule}</dd></div>
-          <div><dt>Certainty</dt><dd>{observation?.location.kind === "unknown" ? "Observed camera event; position and identity unknown" : "Observed at an illustrative replay position"}</dd></div>
-          <div><dt>Layout revision</dt><dd>{selected.revision_id}</dd></div>
-        </dl>
-      </section>
-      <ol className="timeline">
-        {selected.observations.map((o, i) => {
-          const association = selected.associations.find(
-            (a) => a.to_observation_id === o.observation_id,
-          );
-          return (
-            <li key={o.observation_id}>
-              {association && (
-                <div className="handoff">
-                  <Link2 size={14} />
-                  <span>
-                    Possible continuation · {association.unobserved_gap_seconds}
-                    s unobserved
-                    <br />
-                    <small>{association.reason}</small>
-                    <details className="uncertainty-inspector">
-                      <summary>Why is this only a possible continuation?</summary>
-                      <p><strong>Supporting facts:</strong> two mapped cameras reported activity {association.unobserved_gap_seconds} seconds apart inside the fixed five-minute incident window.</p>
-                      <p><strong>Missing evidence:</strong> no camera observation establishes the route, location during the gap, or that both events involve the same person.</p>
-                    </details>
-                  </span>
-                </div>
-              )}
-              <button aria-pressed={step === i} onClick={() => setStep(i)}>
-                <time>{time(o.observed_at)}</time>
-                <span>
-                  {o.location.kind === "unknown"
-                    ? selected.evidence_mode === "live"
-                      ? `Observed ${o.category} · position unknown`
-                      : "Unknown · coverage gap"
-                    : `Observed · ${place.layout.cameras.find((c) => c.id === o.source_id)?.name ?? o.source_id}`}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      <section className="evidence-comparison" aria-labelledby="evidence-comparison-title">
-        <div className="comparison-heading">
-          <span className="eyebrow">Why SpatialGuard helps</span>
-          <h3 id="evidence-comparison-title">The same event, two review methods</h3>
-        </div>
-        <div className="comparison-grid">
-          <article>
-            <h4>Camera-by-camera</h4>
-            <p>Separate event times with no relationship or explanation of what happened between views.</p>
-            <ol>{selected.observations.map((item) => <li key={item.observation_id}>{time(item.observed_at)} · {place.layout.cameras.find(camera => camera.id === item.source_id)?.name ?? "Unknown camera"}</li>)}</ol>
-          </article>
-          <article className="comparison-spatial">
-            <h4>Spatial evidence graph</h4>
-            <p>Ordered observations, {selected.associations.length} possible continuation{selected.associations.length === 1 ? "" : "s"}, and every unobserved gap kept explicit.</p>
-            <ol>{selected.observations.map((item, index) => <li key={item.observation_id}><strong>Observed</strong> {time(item.observed_at)} · {place.layout.cameras.find(camera => camera.id === item.source_id)?.name ?? "Unknown camera"}{index > 0 && selected.associations[index - 1] ? <small>Unknown for {selected.associations[index - 1].unobserved_gap_seconds}s before this observation</small> : null}</li>)}</ol>
-          </article>
-        </div>
-      </section>
-      <div className="review-footer">
-        <span>
-          Pinned revision {selected.revision_id.slice(-6)}
-          <br />
-          Calibration:{" "}
-          {selected.evidence_mode === "live"
-            ? "not available; position unknown"
-            : "synthetic positions"}
-        </span>
-        <button
-          className="primary"
-          disabled={selected.status === "reviewed" || busy || !online}
-          onClick={() =>
-            void act(async () => {
-              setSelected(
-                await request<Incident>(
-                  `/v1/incidents/${selected.id}/review`,
-                  "POST",
-                  { status: "reviewed" },
-                ),
-              );
-              await refresh();
-            })
-          }
-        >
-          <Check size={16} />
-          {selected.status === "reviewed" ? "Reviewed" : "Mark reviewed"}
-        </button>
-      </div>
-    </section>
+    <IncidentReview key={selected.id} incident={selected} cameras={place.layout.cameras}
+      step={step} onSelect={setStep} onClose={() => setSelected(null)}
+      map={map} image={image} imageError={imageError} onMovement={setIncidentTrail}
+      consent={Boolean(accountPreferences?.classification_consent)} busy={busy} online={online} error={error}
+      onReview={() => void act(async () => {
+        setSelected(await request<Incident>(`/v1/incidents/${selected.id}/review`, "POST", {status: "reviewed"}));
+        await refresh();
+      })}
+      onAnalyze={() => void act(async () => {
+        setSelected(await request<Incident>(`/v1/incidents/${selected.id}/classify`, "POST"));
+        await refresh();
+      })}
+    />
   );
 
   return (
@@ -1412,10 +1220,7 @@ export default function App() {
                 </p>
               )}
               {selected ? (
-                <div className="review-layout">
-                  {map}
-                  {detail}
-                </div>
+                detail
               ) : tab === "Home" ? (
                 <>
                 <button className="mobile-ring-setup" onClick={() => setRingSetupOpen(true)}>
