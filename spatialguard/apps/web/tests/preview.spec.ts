@@ -61,8 +61,8 @@ test("replay to incident, evidence, review, map and monitoring", async ({
   await expect(
     page.getByRole("heading", { name: "Home", exact: true }),
   ).toBeVisible();
-  if (await page.getByRole("button", { name: "Enable", exact: true }).count())
-    await page.getByRole("button", { name: "Enable", exact: true }).click();
+  if (await page.getByRole("button", { name: "Resume monitoring", exact: true }).count())
+    await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
   await page
     .getByRole("button", { name: "Run replay", exact: true })
     .first()
@@ -104,10 +104,9 @@ test("replay to incident, evidence, review, map and monitoring", async ({
     fullPage: true,
   });
   await page.getByRole("button", { name: "Pause", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Run replay", exact: true }).first(),
-  ).toBeDisabled();
-  await page.getByRole("button", { name: "Enable", exact: true }).click();
+  // Paused: replay is not offered at all, only a way to resume.
+  await expect(page.locator(".monitor-bar").getByRole("button", { name: "Run replay" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
   await page.reload();
   await page
     .getByRole("button", { name: /Activity observed near the entry/ })
@@ -847,7 +846,7 @@ test("with no place, only the map card is empty", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.locator(".spatial-map")).toHaveCount(0);
   await expect(page.locator(".monitor-bar")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Run replay" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Run replay" })).toHaveCount(0);
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
   await expect(page.getByRole("button", { name: "Add camera" })).toHaveCount(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();

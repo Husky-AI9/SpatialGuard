@@ -3784,3 +3784,132 @@ select.site-name {
 .delete-account-dialog > p { color: var(--muted); }
 .delete-account-dialog label { color: var(--ink); }
 .form-error { color: #b4232c !important; }
+
+/* Monitoring status card ---------------------------------------------------- */
+.monitor-bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 16px 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.monitor-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #a3a8c0; box-shadow: 0 0 0 4px #eef0f6;
+}
+.monitor-bar.on .monitor-dot { background: #22a05b; box-shadow: 0 0 0 4px #e3f5ea; }
+.monitor-text { min-width: 0; }
+.monitor-bar .monitor-text strong { display: block; font-size: 16px; font-weight: 700; color: var(--ink); }
+.monitor-bar .monitor-text span { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+.monitor-bar .button-row { flex-wrap: wrap; justify-content: flex-end; }
+.incident-page { max-width: 1040px; }
+@media (max-width: 760px) {
+  .monitor-bar { grid-template-columns: auto minmax(0, 1fr); padding: 14px; }
+  .monitor-bar .button-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+}
+.camera-remove {
+  flex: none; width: 36px; min-height: 36px; padding: 0; margin-right: 6px;
+  border-radius: 10px; border-color: transparent; background: transparent; color: var(--muted);
+}
+.camera-remove:active:not(:disabled), .camera-remove:focus-visible { color: #b4232c; background: #fdecee; }
+@media (hover: hover) { .camera-remove:hover:not(:disabled) { color: #b4232c; background: #fdecee; border-color: transparent; } }
+.cctv-camera-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+.cctv-camera-row > .pair-camera-button { grid-column: 2; }
+.cctv-camera-row > .camera-remove { grid-column: 3; }
+.home-camera-row { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+.home-camera-row > .pair-camera-button { grid-column: 2; }
+.home-camera-row > .camera-remove { grid-column: 3; margin-right: 0; }
+
+/* Settings cards (security & data, Ring connection) ------------------------- */
+.security-page { display: grid; gap: 14px; max-width: 760px; }
+.settings-page .settings-card,
+.settings-card {
+  display: grid; gap: 14px; padding: 20px; margin: 0;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: var(--shadow);
+}
+.settings-card h2 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 18px; color: var(--ink); }
+.settings-card h2 svg { color: var(--accent); }
+.settings-card .button-row { flex-wrap: wrap; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.settings-row span, .toggle-row span, .activity-list span { display: grid; gap: 2px; min-width: 0; }
+.settings-row small, .toggle-row small, .activity-list small { color: var(--muted); font-size: 13px; }
+.settings-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.settings-fields label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.settings-fields input {
+  min-height: 44px; padding: 9px 12px; border: 1px solid #cfd2e8; border-radius: 10px;
+  background: #fff; color: var(--ink); font: inherit; font-weight: 400;
+}
+.settings-fields input:focus-visible { outline: 3px solid #a99ff5; outline-offset: 1px; border-color: var(--accent); }
+.status-pill {
+  flex: none; padding: 3px 10px; border-radius: 999px; font-style: normal; font-size: 12px; font-weight: 700;
+  background: #eef0f6; color: var(--muted);
+}
+.status-pill.ok { background: #e3f5ea; color: #1f7a45; }
+.status-pill.bad { background: #fdecee; color: #b4232c; }
+.toggle-list { display: grid; border-top: 1px solid var(--line); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.toggle-row input[role="switch"] {
+  appearance: none; flex: none; position: relative; width: 42px; height: 24px; margin: 0;
+  border-radius: 999px; background: #bfc2d1; cursor: pointer; transition: background .15s;
+}
+.toggle-row input[role="switch"]::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .15s;
+}
+.toggle-row input[role="switch"]:checked { background: var(--accent); }
+.toggle-row input[role="switch"]:checked::after { transform: translateX(18px); }
+.toggle-row input[role="switch"]:focus-visible { outline: 3px solid #a99ff5; outline-offset: 2px; }
+.activity-tabs { justify-self: start; flex-wrap: wrap; }
+.activity-list { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.activity-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.activity-list strong { font-weight: 600; }
+.activity-empty { margin: 0; padding: 18px 0; text-align: center; color: var(--muted); }
+.data-facts { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.data-facts li { position: relative; padding-left: 22px; color: var(--ink); }
+.data-facts li::before { content: ""; position: absolute; left: 4px; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.app-version { margin: 16px 0 0; color: var(--muted); font-size: 12px; }
+@media (max-width: 760px) {
+  .settings-fields { grid-template-columns: 1fr; }
+  .settings-card { padding: 16px; }
+}
+
+/* Ring connection settings -------------------------------------------------- */
+.ring-connection .settings-row h2 { margin: 0; }
+.ring-status-line { margin: -6px 0 0; color: var(--muted); }
+.ring-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink); }
+.ring-plan { padding: 12px 14px; border-radius: 12px; background: var(--surface); }
+.ring-plan span { display: grid; gap: 2px; }
+.ring-plan small { color: var(--muted); font-size: 13px; }
+.ring-count { color: var(--muted); font-size: 13px; }
+button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
+.ring-device-list { display: grid; gap: 10px; }
+.ring-connection .ring-device {
+  display: grid; gap: 12px; margin: 0; padding: 14px;
+  border: 1px solid var(--line); border-radius: 14px; background: #fbfbfe;
+}
+.ring-device-head { display: flex; align-items: center; gap: 12px; }
+.ring-device-icon {
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent-soft);
+}
+.ring-device-icon span {
+  width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--accent); box-sizing: border-box;
+  background: radial-gradient(circle, var(--accent) 0 3px, transparent 3.5px);
+}
+.ring-device-text { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.ring-device-text h3 { margin: 0; font-size: 16px; }
+.ring-device-text small { color: var(--muted); font-size: 13px; }
+.ring-device-actions { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.ring-device-actions label { flex: 1 1 220px; display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.ring-connection select {
+  width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid #cfd2e8; border-radius: 10px;
+  background: #fff; color: var(--ink); font: inherit; font-weight: 400;
+}
+.ring-connection select:disabled { background: #f3f4f9; color: var(--muted); }
+.ring-guidance { padding: 10px 12px; border: 1px solid #efd9a6; border-radius: 12px; background: #fdf6e7; color: #6b4f16; }
+.ring-guidance ul { margin: 6px 0 0; padding-left: 18px; }

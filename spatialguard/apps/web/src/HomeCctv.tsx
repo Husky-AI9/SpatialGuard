@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Radio, VideoOff } from "lucide-react";
+import { Radio, Trash2, VideoOff } from "lucide-react";
 import type { Camera as PlacedCamera } from "../../../../packages/sdk-typescript";
 import CameraThumbnail from "./CameraThumbnail";
 import { LiveVideo } from "./RingConnection";
@@ -21,6 +21,7 @@ export default function HomeCctv({
   onClear,
   onViewAll,
   onPairCamera,
+  onRemoveCamera,
   ringVersion = 0,
   onTestTrack,
   onTestClassification,
@@ -34,6 +35,7 @@ export default function HomeCctv({
   onViewAll: () => void;
   onPairCamera: (camera: { id: string; name: string }) => void;
   ringVersion?: number;
+  onRemoveCamera?: (camera: { id: string; name: string }) => void;
   onTestTrack: (track: TestTrack | null) => void;
   onTestClassification: (classification: IncidentClassification | null) => void;
   classificationEnabled: boolean;
@@ -181,6 +183,11 @@ export default function HomeCctv({
               </button>
               {!ring && ringState !== "loading" && (
                 <button className="pair-camera-button" onClick={() => onPairCamera(camera)}>Pair</button>
+              )}
+              {onRemoveCamera && (
+                <button className="camera-remove" aria-label={`Remove ${camera.name}`} title="Remove camera" onClick={() => onRemoveCamera(camera)}>
+                  <Trash2 size={16} />
+                </button>
               )}
             </div>
           );

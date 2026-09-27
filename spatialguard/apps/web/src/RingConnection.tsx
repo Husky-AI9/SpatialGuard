@@ -287,169 +287,147 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
       }
     });
   }, []);
+  const connected = status?.state === "connected";
+  const pairedName = (d: Device) => {
+    const site = sites.find((x) => x.id === d.site_id);
+    return site?.layout.cameras.find((c) => c.id === d.camera_id)?.name;
+  };
   return (
-    <section className="ring-connection">
-      <h2>Ring connection</h2>
-      <p>
-        {status?.state === "connected"
-          ? "Account connected · Live integration"
-          : status?.configured
-            ? "Link your Ring account to add cameras."
-            : "Ring isn’t available right now."}
-      </p>
-      {status?.state &&
-        !["connected", "not_connected"].includes(status.state) && (
-          <p>
-            Connection state: {status.state.replaceAll("_", " ")}. Start linking
-            again in Ring if needed.
-          </p>
-        )}
-      {error && <RecoveryNotice message={error} onRetry={() => void act(() => load(true))} retryLabel="Retry Ring" />}
-      <p>
-        In the Ring app, find SpatialGuard and choose the cameras to share. Then come back here.
-      </p>
-      <div className="button-row">
-        {status?.state !== "connected" && <button
-            disabled={busy || !status?.configured}
-            onClick={() =>
-              void act(async () =>
-                setCode(await request("/v1/ring/sign-in-code", "POST")),
-              )
-            }
-          >
-            Create Ring sign-in code
-          </button>}
-        <button disabled={busy} onClick={() => void act(load)}>
-          Check connection
-        </button>
-        {status?.state !== "connected" && <button
-          onClick={() =>
-            void openExternal("https://ring.com/appstore")
-          }
-        >
-          Open Ring Appstore
-        </button>}
-      </div>
-      {code && (
-        <p className="pair-code">
-          {code.code}
-          <small>
-            Single use · expires{" "}
-            {new Date(code.expires_at * 1000).toLocaleTimeString()}
-          </small>
+    <div className="ring-connection security-page">
+      <section className="settings-card">
+        <div className="settings-row">
+          <h2>Ring connection</h2>
+          <em className={connected ? "status-pill ok" : "status-pill"}>
+            {connected ? "Connected" : status?.configured === false ? "Unavailable" : "Not linked"}
+          </em>
+        </div>
+        <p className="ring-status-line">
+          {connected
+            ? "Account connected · Live integration"
+            : status?.configured
+              ? "Link your Ring account to add cameras."
+              : "Ring isn’t available right now."}
         </p>
-      )}
-      {status?.state === "connected" && (
-        <>
-          {status.subscription && (
-            <div className="ring-readiness" aria-label="Ring plan status">
+        {error && <RecoveryNotice message={error} onRetry={() => void act(() => load(true))} retryLabel="Retry Ring" />}
+        {!connected && (
+          <ol className="ring-steps">
+            <li>Open the Ring app store and choose SpatialGuard.</li>
+            <li>Pick the cameras to share, then come back here.</li>
+          </ol>
+        )}
+        {connected && status?.subscription && (
+          <div className="settings-row ring-plan" aria-label="Ring plan status">
+            <span>
               <strong>
                 {status.subscription.state === "active_paid" ? "Ring plan active" :
                   status.subscription.state === "active_trial" ? "Ring trial active" :
                     status.subscription.required ? "Ring plan required" : "No SpatialGuard plan required"}
               </strong>
-              <p>
-                {status.subscription.eligible
-                  ? "All features are available."
-                  : "Your Ring plan ended. Renew it to use cameras here."}
-              </p>
-              <button onClick={() => void openExternal(status.subscription!.manage_url)}>
-                Manage in Ring My Apps
-              </button>
-            </div>
+              <small>
+                {status.subscription.eligible ? "All features are available." : "Your Ring plan ended. Renew it to use cameras here."}
+              </small>
+            </span>
+            <button onClick={() => void openExternal(status.subscription!.manage_url)}>Manage plan</button>
+          </div>
+        )}
+        <div className="button-row">
+          {!connected && (
+            <button className="primary" disabled={busy || !status?.configured}
+              onClick={() => void act(async () => setCode(await request("/v1/ring/sign-in-code", "POST")))}>
+              Create Ring sign-in code
+            </button>
           )}
-          <div className="button-row">
-            <button
-              disabled={busy}
-              onClick={() =>
-                void act(async () =>
-                  setDevices(await request("/v1/ring/devices/refresh", "POST")),
-                )
-              }
-            >
+          {!connected && <button onClick={() => void openExternal("https://ring.com/appstore")}>Open Ring Appstore</button>}
+          {connected ? (
+            <button disabled={busy} onClick={() => void act(async () => setDevices(await request("/v1/ring/devices/refresh", "POST")))}>
               Refresh Ring cameras
             </button>
-            <button
-              disabled={busy}
-              onClick={() =>
-                void act(async () => {
-                  setView(null);
-                  await request("/v1/ring", "DELETE");
-                  await load();
-                })
-              }
-            >
+          ) : (
+            <button disabled={busy} onClick={() => void act(load)}>Check connection</button>
+          )}
+          {connected && (
+            <button className="quiet-danger" disabled={busy}
+              onClick={() => void act(async () => { setView(null); await request("/v1/ring", "DELETE"); await load(); })}>
               Disconnect Ring
             </button>
-          </div>
-        </>
-      )}
-      {devices.map((d) => (
-        <div className="ring-device" key={d.id}>
-          <h3>{d.name}</h3>
-          <p>
-            Authorized by Ring · inventory checked{" "}
-            {new Date(d.checked_at).toLocaleString()}
-          </p>
-          <p className="fine">
-            {d.support?.live_view && d.support?.motion_events
-              ? "Live view and motion events"
-              : "Not compatible"}
-          </p>
-          {d.guidance?.length ? (
-            <div className="ring-guidance" role="status" aria-label={`${d.name} setup guidance`}>
-              <strong>Check this camera in the Ring app</strong>
-              <ul>{d.guidance.map(item => <li key={item}>{item}</li>)}</ul>
-            </div>
-          ) : null}
-          <label>
-            Floor-plan camera
-            <select
-              aria-label={`Floor-plan camera for ${d.name}`}
-              disabled={busy || !d.support?.motion_events}
-              value={
-                d.site_id && d.camera_id ? `${d.site_id}/${d.camera_id}` : ""
-              }
-              onChange={(e) => {
-                const [site_id, camera_id] = e.target.value.split("/");
-                if (site_id)
-                  void act(async () => {
-                    await request(
-                      `/v1/ring/devices/${encodeURIComponent(d.id)}/mapping`,
-                      "PUT",
-                      { site_id, camera_id },
-                    );
-                    await load();
-                  });
-              }}
-            >
-              <option value="" disabled>
-                Choose a placed camera
-              </option>
-              {sites.flatMap((s) =>
-                s.layout.cameras.map((c) => (
-                  <option key={`${s.id}/${c.id}`} value={`${s.id}/${c.id}`}>
-                    {s.name} · {c.name}
-                  </option>
-                )),
-              )}
-            </select>
-          </label>
-          <button
-            disabled={!d.camera_id || busy || !d.support?.live_view ||
-              status?.subscription?.eligible === false}
-            onClick={() => setView(d)}
-          >
-            Open live view
-          </button>
+          )}
         </div>
-      ))}
-      {view && (
-        <LiveVideo key={view.id} device={view} close={() => setView(null)} />
+        {code && (
+          <p className="pair-code">
+            {code.code}
+            <small>Single use · expires {new Date(code.expires_at * 1000).toLocaleTimeString()}</small>
+          </p>
+        )}
+      </section>
+
+      {connected && (
+        <section className="settings-card">
+          <div className="settings-row">
+            <h2>Ring cameras</h2>
+            <small className="ring-count">{devices.length} shared</small>
+          </div>
+          {!devices.length && <p className="activity-empty">No cameras shared yet. Choose cameras in the Ring app, then refresh.</p>}
+          <div className="ring-device-list">
+            {devices.map((d) => {
+              const usable = !!d.support?.live_view && !!d.support?.motion_events;
+              const paired = pairedName(d);
+              return (
+                <div className="ring-device" key={d.id}>
+                  <div className="ring-device-head">
+                    <span className="ring-device-icon" aria-hidden="true"><span /></span>
+                    <span className="ring-device-text">
+                      <h3>{d.name}</h3>
+                      <small>{usable ? "Live view and motion events" : "Not compatible"}</small>
+                    </span>
+                    <em className={paired ? "status-pill ok" : "status-pill"}>{paired ? `Paired · ${paired}` : "Not paired"}</em>
+                  </div>
+                  {d.guidance?.length ? (
+                    <div className="ring-guidance" role="status" aria-label={`${d.name} setup guidance`}>
+                      <strong>Check this camera in the Ring app</strong>
+                      <ul>{d.guidance.map((item) => <li key={item}>{item}</li>)}</ul>
+                    </div>
+                  ) : null}
+                  <div className="ring-device-actions">
+                    <label>
+                      Paired with
+                      <select
+                        aria-label={`Floor-plan camera for ${d.name}`}
+                        disabled={busy || !d.support?.motion_events}
+                        value={d.site_id && d.camera_id ? `${d.site_id}/${d.camera_id}` : ""}
+                        onChange={(e) => {
+                          const [site_id, camera_id] = e.target.value.split("/");
+                          if (site_id)
+                            void act(async () => {
+                              await request(`/v1/ring/devices/${encodeURIComponent(d.id)}/mapping`, "PUT", { site_id, camera_id });
+                              await load();
+                            });
+                        }}
+                      >
+                        <option value="" disabled>Choose a camera on your map</option>
+                        {sites.flatMap((s) =>
+                          s.layout.cameras.map((c) => (
+                            <option key={`${s.id}/${c.id}`} value={`${s.id}/${c.id}`}>
+                              {sites.length > 1 ? `${s.name} · ` : ""}{c.name}
+                            </option>
+                          )),
+                        )}
+                      </select>
+                    </label>
+                    <button
+                      disabled={!d.camera_id || busy || !d.support?.live_view || status?.subscription?.eligible === false}
+                      onClick={() => setView(d)}
+                    >
+                      Open live view
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="fine">Live views last up to 25 seconds and aren’t recorded.</p>
+        </section>
       )}
-      <p className="fine">
-        Live views last up to 25 seconds and aren’t recorded.
-      </p>
-    </section>
+      {view && <LiveVideo key={view.id} device={view} close={() => setView(null)} />}
+    </div>
   );
 }

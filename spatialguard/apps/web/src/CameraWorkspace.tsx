@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Radio, VideoOff } from "lucide-react";
+import { Radio, Trash2, VideoOff } from "lucide-react";
 import type { Camera as PlacedCamera } from "../../../../packages/sdk-typescript";
 import CameraThumbnail from "./CameraThumbnail";
 import CameraWall from "./CameraWall";
@@ -19,7 +19,7 @@ type CameraSite = {
 };
 
 export default function CameraWorkspace({
-  site, initialCameraId, cameras, busy, online, onToggle, onSelectCamera, onPairCamera, ringVersion = 0,
+  site, initialCameraId, cameras, busy, online, onToggle, onSelectCamera, onPairCamera, onRemoveCamera, ringVersion = 0,
 }: {
   site: CameraSite | null;
   initialCameraId?: string;
@@ -30,6 +30,7 @@ export default function CameraWorkspace({
   onSelectCamera: (cameraId: string) => void;
   onPairCamera: (camera: { id: string; name: string }) => void;
   ringVersion?: number;
+  onRemoveCamera?: (camera: { id: string; name: string }) => void;
 }) {
   const [ringState, setRingState] = useState("loading");
   const [mode, setMode] = useState<"Single camera" | "Camera wall">("Single camera");
@@ -122,6 +123,7 @@ export default function CameraWorkspace({
                       <span><strong>{camera.name}</strong><small>{ring ? "Ring camera" : "Floor-plan camera"}</small><em>{ring ? "● Live available" : "Not paired"}</em></span>
                     </button>
                     {!ring && ringState !== "loading" && <button className="pair-camera-button" onClick={() => onPairCamera(camera)}>Pair</button>}
+                    {onRemoveCamera && <button className="camera-remove" aria-label={`Remove ${camera.name}`} title="Remove camera" disabled={busy} onClick={() => onRemoveCamera(camera)}><Trash2 size={16} /></button>}
                     <label className="monitor-switch" title="Include in monitoring">
                       <em>Monitor</em>
                       <input type="checkbox" aria-label={`Monitor ${camera.name}`} checked={included} disabled={busy || !online} onChange={(event) => onToggle(camera.id, event.target.checked)} />

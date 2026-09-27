@@ -619,6 +619,10 @@ export default function App() {
       request<Site>(`/v1/sites/${site.id}/cameras/${id}`, "DELETE"),
     );
   };
+  const confirmRemoveCamera = (camera: { id: string; name: string }) => {
+    if (!window.confirm(`Remove ${camera.name}? It will be taken off your map and unpaired from Ring.`)) return;
+    removeCamera(camera.id);
+  };
   const mapSelect = useCallback((id: string) => setRoom(id), []);
   const updateTestClassification = useCallback(
     (classification: IncidentClassification | null) => {
@@ -976,14 +980,11 @@ export default function App() {
             <p>
               {site ? "Activity your cameras record shows up here." : "Add a floor plan to get started."}
             </p>
-            <button
-              onClick={replay}
-              disabled={
-                !site || busy || running || !online || !place.monitoring.enabled
-              }
-            >
-              Run replay
-            </button>
+            {site && place.monitoring.enabled && place.monitoring.camera_ids.length > 0 && (
+              <button onClick={replay} disabled={busy || running || !online}>
+                <Play size={16} /> Run a test replay
+              </button>
+            )}
           </div>
         ) : (
           incidents.map((incident) => (
@@ -1148,7 +1149,6 @@ export default function App() {
             <h1>{ringSetupOpen ? "Pair Ring cameras" : tab === "Settings" ? settingsLabels[settingsPage] : tab}</h1>
           </div>
           <div className="top-actions">
-            <span className="mode">{environmentLabel}</span>
             <button
               title="Map from a floor plan"
               onClick={() => setImporting(true)}
@@ -1192,54 +1192,42 @@ export default function App() {
           )}
           {!ringSetupOpen && <>
           {(tab === "Home" || tab === "Incidents") && (
-            <>
+            <div className={tab === "Incidents" && !selected ? "incident-page" : "home-page"}>
               {site && (
-                <div className="monitor-bar">
-                  <div>
+                <div className={`monitor-bar${place.monitoring.enabled ? " on" : ""}`}>
+                  <span className="monitor-dot" aria-hidden="true" />
+                  <div className="monitor-text">
                     <strong>
-                      {place.monitoring.enabled
-                        ? "Monitoring enabled"
-                        : "Monitoring paused"}
+                      {place.monitoring.enabled ? "Monitoring on" : "Monitoring paused"}
                     </strong>
                     <span>
-                      {place.monitoring.camera_ids.length} selected cameras ·{" "}
-                      {place.monitoring.classification_enabled
-                        ? "Snapshot classification enabled"
-                        : cameras.some((c) => c.state === "live_connected")
-                        ? "Ring events enabled for mapped cameras"
-                        : "Ring cameras not mapped"}
+                      {!place.monitoring.enabled
+                        ? "No new incidents are recorded while paused."
+                        : place.monitoring.camera_ids.length
+                          ? `${place.monitoring.camera_ids.length} ${place.monitoring.camera_ids.length === 1 ? "camera" : "cameras"} monitored${place.monitoring.classification_enabled ? " · Activity labels on" : ""}`
+                          : "No cameras selected. Turn cameras on in Cameras."}
                     </span>
                   </div>
                   <div className="button-row">
-                    <button
-                      onClick={() =>
-                        updateMonitoring(!place.monitoring.enabled)
-                      }
-                      disabled={busy || !online}
-                    >
-                      {place.monitoring.enabled ? (
-                        <Pause size={16} />
-                      ) : (
+                    {place.monitoring.enabled ? (
+                      <>
+                        <button onClick={() => updateMonitoring(false)} disabled={busy || !online}>
+                          <Pause size={16} />
+                          <span>Pause</span>
+                        </button>
+                        {place.monitoring.camera_ids.length > 0 && (
+                          <button className="primary" onClick={replay} disabled={busy || running || !online}>
+                            <Play size={16} />
+                            {running ? "Processing…" : "Run replay"}
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button className="primary" onClick={() => updateMonitoring(true)} disabled={busy || !online}>
                         <Play size={16} />
-                      )}
-                      <span>
-                        {place.monitoring.enabled ? "Pause" : "Enable"}
-                      </span>
-                    </button>
-                    <button
-                      className="primary"
-                      onClick={replay}
-                      disabled={
-                        busy ||
-                        running ||
-                        !online ||
-                        !place.monitoring.enabled ||
-                        !place.monitoring.camera_ids.length
-                      }
-                    >
-                      <Play size={16} />
-                      {running ? "Processing…" : "Run replay"}
-                    </button>
+                        <span>Resume monitoring</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1280,6 +1268,7 @@ export default function App() {
                       onClear={() => setRoom("")}
                       onViewAll={() => nav("Cameras")}
                       onPairCamera={setPairTarget}
+                      onRemoveCamera={online ? confirmRemoveCamera : undefined}
                       ringVersion={ringVersion}
                       classificationEnabled={place.monitoring.classification_enabled}
                       onTestTrack={updateTestTrack}
@@ -1290,9 +1279,9 @@ export default function App() {
                 </div>
                 </>
               ) : (
-                <div className="incident-page">{list}</div>
+                list
               )}
-            </>
+            </div>
           )}
           {tab === "Cameras" && (
             <CameraWorkspace
@@ -1311,6 +1300,7 @@ export default function App() {
               }
               onSelectCamera={setRoom}
               onPairCamera={setPairTarget}
+              onRemoveCamera={online ? confirmRemoveCamera : undefined}
               ringVersion={ringVersion}
             />
           )}
@@ -1526,12 +1516,20 @@ export default function App() {
                 
               </section>}
               {settingsPage === "security" && <>
-              <section id="settings-display">
-                <h2>Data and evidence</h2>
-                <p>Live video is never recorded by SpatialGuard.</p>
-                <p>Application version 0.1</p>
-              </section>
-              {currentSession?.email && <AccountSecurity ringDataConsent={!!accountPreferences?.ring_data_consent} onSessionsChanged={() => void request<Session[]>("/v1/sessions").then(setSessions)} />}
+              {currentSession?.email ? (
+                <AccountSecurity ringDataConsent={!!accountPreferences?.ring_data_consent} onSessionsChanged={() => void request<Session[]>("/v1/sessions").then(setSessions)} />
+              ) : (
+                <div className="security-page">
+                  <section className="settings-card" id="settings-display">
+                    <h2>Your data</h2>
+                    <ul className="data-facts">
+                      <li>Live video is never recorded by SpatialGuard.</li>
+                      <li>Replay incidents use sample data, not your cameras.</li>
+                    </ul>
+                  </section>
+                </div>
+              )}
+              <p className="app-version">SpatialGuard version 0.1</p>
               </>}
               {settingsPage === "delete" && currentSession?.email && (
                 <section className="danger-zone">
