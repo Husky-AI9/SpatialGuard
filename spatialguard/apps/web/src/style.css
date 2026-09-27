@@ -1846,9 +1846,11 @@ select.site-name:hover {
   .legal-page article { padding-top: 45px; }
 }
 .modal {
-  background: var(--ink);
+  background: var(--card);
+  color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
+  box-shadow: 0 24px 60px rgba(35, 37, 63, 0.28);
   width: min(780px, 100%);
   max-height: 92vh;
   overflow: auto;
@@ -1857,6 +1859,7 @@ select.site-name:hover {
 .modal .panel-heading h3 {
   margin: 0;
   font-size: 18px;
+  color: var(--ink);
 }
 .modal .panel-heading h3 {
   font-size: 15px;
@@ -1865,30 +1868,70 @@ select.site-name:hover {
 .modal .panel-heading > button {
   min-height: 36px;
   padding: 6px 10px;
+  color: var(--muted);
 }
 .plan-form,
 .plan-progress,
 .plan-review {
-  padding: 18px 20px 20px;
+  padding: 20px 22px 22px;
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 .plan-form p,
-.plan-review p {
+.plan-review p,
+.plan-progress p {
   margin: 0;
+  line-height: 1.5;
+}
+.plan-form > p.muted {
+  color: var(--muted);
+  font-size: 15px;
 }
 .plan-drop {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 18px;
-  border: 1px dashed var(--line);
-  border-radius: 6px;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1.5px dashed #b7b0f4;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--ink);
   cursor: pointer;
-  font-size: 14px;
+  transition: background 0.15s, border-color 0.15s;
 }
 .plan-drop:hover {
-  background: #ffffff;
+  background: #e3e0fc;
+  border-color: var(--accent);
+}
+.plan-drop.has-file {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--card);
+}
+.plan-drop-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+}
+.plan-drop-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.plan-drop-text strong {
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.plan-drop-text small {
+  font-size: 13px;
+  color: var(--muted);
 }
 .plan-drop input {
   position: absolute;
@@ -1904,8 +1947,10 @@ select.site-name:hover {
   max-height: 220px;
   width: 100%;
   object-fit: contain;
-  background: var(--card);
-  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px;
 }
 .plan-fields {
   display: grid;
@@ -1915,20 +1960,31 @@ select.site-name:hover {
 .plan-fields label,
 .plan-form label:not(.plan-drop) {
   display: grid;
-  gap: 5px;
+  gap: 6px;
   font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
 }
 .plan-fields input {
-  background: #ffffff;
-  color: inherit;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 9px 10px;
-  min-height: 42px;
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid #cfd2e8;
+  border-radius: 10px;
+  padding: 9px 12px;
+  min-height: 44px;
+  font-weight: 400;
+}
+.plan-fields input:focus-visible {
+  outline: 3px solid #a99ff5;
+  outline-offset: 1px;
+  border-color: var(--accent);
 }
 .fine {
   font-size: 12px;
   color: var(--muted);
+}
+.modal .fine {
+  font-size: 13px;
 }
 .modal [role="alert"] {
   color: var(--alert);
@@ -1944,22 +2000,14 @@ select.site-name:hover {
 }
 .plan-review .map-area {
   height: 340px;
-  background: var(--card);
-  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
   overflow: hidden;
-}
-.plan-review .view-toggle button {
-  border-color: var(--line);
-  padding: 6px 10px;
-  min-height: 36px;
-}
-.plan-review .view-toggle button[aria-pressed="true"] {
-  background: var(--accent);
-  color: #161212;
-  border-color: var(--accent);
 }
 .modal .button-row {
   justify-content: flex-end;
+  padding-top: 4px;
 }
 @media (max-width: 760px) {
   .modal-backdrop {
@@ -1972,6 +2020,10 @@ select.site-name:hover {
   }
   .plan-fields {
     grid-template-columns: 1fr;
+  }
+  .modal .button-row {
+    flex-direction: column-reverse;
+    align-items: stretch;
   }
   .plan-review .map-area {
     height: 240px;
@@ -1986,42 +2038,51 @@ select.site-name:hover {
 .plan-scale {
   display: grid;
   gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #ffffff;
-  font-size: 13px;
+  padding: 16px;
+  border: 1px solid #d8d4fb;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  font-size: 14px;
 }
 .plan-scale strong {
-  color: var(--alert);
+  color: var(--accent);
 }
 .plan-form label.plan-vision {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
 }
 .plan-vision input {
   width: 20px;
   height: 20px;
+  margin: 1px 0 0;
   accent-color: var(--accent);
   flex: none;
 }
 .plan-disclosure {
   display: flex;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid #e3cf9f;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #efd9a6;
+  border-radius: 12px;
   background: #fdf6e7;
-  color: #8a6a2f;
+  color: #6b4f16;
 }
 .plan-disclosure svg {
   flex: none;
   margin-top: 2px;
+  color: #b7791f;
 }
 .plan-source {
-  color: var(--alert);
+  color: var(--accent);
+  font-weight: 600;
 }
 .empty-workspace h2 {
   margin: 4px 0 0;

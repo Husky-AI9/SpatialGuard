@@ -166,9 +166,14 @@ export default function PlanImporter({
               Upload a drawing of one floor. TwinForge traces it into an editable 2D
               and 3D map that you can place cameras on.
             </p>
-            <label className="plan-drop">
-              <Upload size={20} />
-              <span>{file ? file.name : "Choose a PNG or JPEG plan · up to 6 MB"}</span>
+            <label className={file ? "plan-drop has-file" : "plan-drop"}>
+              <span className="plan-drop-icon" aria-hidden="true">
+                <Upload size={20} />
+              </span>
+              <span className="plan-drop-text">
+                <strong>{file ? file.name : "Choose a floor-plan image"}</strong>
+                <small>{file ? "Click to choose a different file" : "PNG or JPEG · up to 6 MB"}</small>
+              </span>
               <input
                 type="file"
                 accept="image/png,image/jpeg"
