@@ -14,7 +14,10 @@
       "package": "app.spatialguard.mobile"
     },
     "plugins": [
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-font",
+      "expo-video"
     ]
   }
 }

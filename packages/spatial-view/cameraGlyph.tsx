@@ -34,7 +34,13 @@ export function aimPoint(camera: Camera): [number, number] {
   return [camera.position_m[0] + Math.cos(angle) * d, camera.position_m[1] + Math.sin(angle) * d];
 }
 
-/** Body-and-lens security camera drawn pointing along +X, then rotated to heading. */
+/**
+ * The same outlined camera glyph used by the SpatialGuard landing page.
+ *
+ * Keep this as SVG rather than a product-specific hardware drawing: the map
+ * marker communicates "camera" at a glance and stays consistent with the
+ * landing page, camera cards, and native client.
+ */
 export default function CameraGlyph({
   camera,
   fill,
@@ -50,11 +56,24 @@ export default function CameraGlyph({
       transform={`translate(${cx} ${-cy}) rotate(${-heading(camera.heading_degrees)}) scale(${scale})`}
       pointerEvents="none"
     >
-      <rect x="-0.3" y="-0.045" width="0.13" height="0.09" rx="0.035" fill={fill} />
-      <rect x="-0.25" y="-0.115" width="0.33" height="0.23" rx="0.075" fill={fill} />
-      <path d="M .07 -.105 L .21 -.15 L .21 .15 L .07 .105 Z" fill={fill} />
-      <circle cx="0.18" cy="0" r="0.072" fill="#f7f5f2" />
-      <circle cx="0.18" cy="0" r="0.03" fill={fill} />
+      <g transform="translate(-.3 -.31) scale(.025)">
+        <path
+          d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+          fill="none"
+          stroke={fill}
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle
+          cx="12"
+          cy="13"
+          r="3"
+          fill="none"
+          stroke={fill}
+          strokeWidth="2.1"
+        />
+      </g>
     </g>
   );
 }

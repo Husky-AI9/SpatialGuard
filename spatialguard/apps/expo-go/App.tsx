@@ -1,144 +1,251 @@
-import { StatusBar } from "expo-status-bar";
-import { useCallback, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
+  ScrollView,
+  TextInput,
   View,
 } from "react-native";
-import { WebView, type WebViewErrorEvent, type WebViewNavigation } from "react-native-webview";
-
-const HOSTED_ORIGIN = "https://spatialguard-production.up.railway.app";
-const HOSTED_HOST = "spatialguard-production.up.railway.app";
-const START_URL = `${HOSTED_ORIGIN}/landing`;
-
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
+import { request, restore, save, ORIGIN } from "./src/api";
+import { Button, Label, Mark, colors, styles as s } from "./src/ui";
+import Workspace from "./src/Workspace";
+import WelcomeArt from "./src/WelcomeArt";
 export default function App() {
-  const [key, setKey] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const reload = useCallback(() => {
-    setError("");
-    setLoading(true);
-    setKey((current) => current + 1);
+  const [fonts, fontError] = useFonts({
+    SourceSans: require("./assets/fonts/source-sans-3-400.ttf"),
+    SourceSansBold: require("./assets/fonts/source-sans-3-700.ttf"),
+  });
+  const [ready, setReady] = useState(false),
+    [signed, setSigned] = useState(false),
+    [page, setPage] = useState<
+      "landing" | "signin" | "signup" | "forgot" | "workspace"
+    >("landing");
+  useEffect(() => {
+    restore()
+      .then(setSigned)
+      .catch(() => {})
+      .finally(() => setReady(true));
   }, []);
-
-  const allowNavigation = useCallback((request: WebViewNavigation) => {
-    const url = request.url;
-
-    // iOS emits an about:blank navigation while the WebView initializes.
-    // Keep it inside the WebView instead of handing it to Safari.
-    if (url === "about:blank" || url.startsWith("data:")) return true;
-
-    try {
-      const parsed = new URL(url);
-      if (
-        (parsed.protocol === "https:" || parsed.protocol === "http:") &&
-        parsed.hostname === HOSTED_HOST
-      ) {
-        return true;
-      }
-    } catch {
-      return false;
-    }
-
-    // Only explicit external destinations leave the app.
-    if (/^(https?:|mailto:|tel:)/i.test(url)) void Linking.openURL(url);
-    return false;
-  }, []);
-
-  const handleError = useCallback((event: WebViewErrorEvent) => {
-    setLoading(false);
-    setError(event.nativeEvent.description || "The hosted workspace could not be reached.");
-  }, []);
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      {error ? (
-        <View style={styles.errorState}>
-          <Text style={styles.mark}>SG</Text>
-          <Text style={styles.title}>SpatialGuard is offline</Text>
-          <Text style={styles.message}>{error}</Text>
-          <Pressable accessibilityRole="button" onPress={reload} style={styles.retry}>
-            <Text style={styles.retryText}>Try again</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.webViewFrame}>
-          <WebView
-            key={key}
-            source={{ uri: START_URL }}
-            originWhitelist={[`${HOSTED_ORIGIN}/*`]}
-            onShouldStartLoadWithRequest={allowNavigation}
-            onLoadStart={() => setLoading(true)}
-            onLoadEnd={() => setLoading(false)}
-            onError={handleError}
-            sharedCookiesEnabled
-            thirdPartyCookiesEnabled={false}
-            javaScriptEnabled
-            domStorageEnabled
-            allowsInlineMediaPlayback
-            mediaPlaybackRequiresUserAction={false}
-            pullToRefreshEnabled={Platform.OS === "ios"}
-            setSupportMultipleWindows={false}
-            style={styles.webView}
-          />
-          {loading && (
-            <View pointerEvents="none" style={styles.loadingState}>
-              <ActivityIndicator color="#5b4fe8" size="large" />
-              <Text style={styles.loadingText}>Opening SpatialGuard…</Text>
+    <SafeAreaProvider>
+      <SafeAreaView
+        style={{
+          flex: 1,
+          backgroundColor: page === "landing" ? colors.purple : colors.page,
+        }}
+      >
+        <StatusBar style={page === "landing" ? "light" : "dark"} />
+        {!ready || (!fonts && !fontError) ? (
+          <ActivityIndicator style={{ flex: 1 }} color={colors.purple} />
+        ) : page === "landing" ? (
+          <View
+            style={{ flex: 1, padding: 28, justifyContent: "space-between" }}
+          >
+            <View style={s.row}>
+              <Mark color="white" />
+              <Label style={[s.title, { color: "white" }]}>SpatialGuard</Label>
             </View>
-          )}
-        </View>
-      )}
-    </SafeAreaView>
+            <View style={{ alignItems: "center", gap: 20 }}>
+              <WelcomeArt />
+              <Label
+                style={{
+                  fontSize: 28,
+                  color: "white",
+                  fontFamily: "SourceSansBold",
+                  textAlign: "center",
+                }}
+              >
+                See what happened.{"\n"}Know where.
+              </Label>
+              <Label style={{ color: "white", textAlign: "center" }}>
+                Your cameras, home map, and incident evidence together.
+              </Label>
+            </View>
+            <View style={{ gap: 12 }}>
+              <Button title="Try it out" onPress={() => setPage(signed ? "workspace" : "signin")} />
+              <Pressable
+                accessibilityRole="button"
+                style={[s.button, { backgroundColor: "white" }]}
+                onPress={() => setPage(signed ? "workspace" : "signin")}
+              >
+                <Label
+                  style={{ color: colors.purple, fontFamily: "SourceSansBold" }}
+                >
+                  {signed ? "Open SpatialGuard" : "Sign in"}
+                </Label>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                style={[s.button, { borderWidth: 1, borderColor: "white" }]}
+                onPress={() => setPage("signup")}
+              >
+                <Label style={s.buttonText}>Create account</Label>
+              </Pressable>
+            </View>
+          </View>
+        ) : page !== "workspace" ? (
+          <Auth
+            mode={page}
+            onBack={() => setPage("landing")}
+            change={setPage}
+            done={() => {
+              setSigned(true);
+              setPage("workspace");
+            }}
+          />
+        ) : (
+          <Workspace
+            onSignout={() => {
+              setSigned(false);
+              setPage("landing");
+            }}
+          />
+        )}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#f2f3fa" },
-  webViewFrame: { flex: 1, overflow: "hidden" },
-  webView: { flex: 1, backgroundColor: "#f2f3fa" },
-  loadingState: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: "#f2f3fa",
-  },
-  loadingText: { color: "#5b607f", fontSize: 15, fontWeight: "600" },
-  errorState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    backgroundColor: "#f2f3fa",
-  },
-  mark: {
-    width: 64,
-    height: 64,
-    marginBottom: 20,
-    paddingTop: 18,
-    borderRadius: 20,
-    color: "#fff",
-    backgroundColor: "#5b4fe8",
-    fontSize: 22,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  title: { color: "#23253f", fontSize: 22, fontWeight: "800", textAlign: "center" },
-  message: { maxWidth: 320, marginTop: 10, color: "#5b607f", lineHeight: 22, textAlign: "center" },
-  retry: {
-    marginTop: 24,
-    paddingHorizontal: 22,
-    paddingVertical: 13,
-    borderRadius: 12,
-    backgroundColor: "#5b4fe8",
-  },
-  retryText: { color: "#fff", fontWeight: "700" },
-});
+function Auth({
+  mode,
+  onBack,
+  change,
+  done,
+}: {
+  mode: "signin" | "signup" | "forgot";
+  onBack: () => void;
+  change: (m: "signin" | "signup" | "forgot") => void;
+  done: () => void;
+}) {
+  const [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [confirm, setConfirm] = useState(""),
+    [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
+  const submit = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      if (mode === "forgot") {
+        const r = await request<{ message: string }>(
+          "/v1/auth/password/request",
+          "POST",
+          { email },
+        );
+        setMessage(r.message);
+        return;
+      }
+      if (mode === "signup" && confirm !== password)
+        throw new Error("Passwords do not match.");
+      const r = await request<{ token: string | null }>(
+        "/v1/auth/" + mode,
+        "POST",
+        { email: email.trim(), password },
+      );
+      if (!r.token) throw new Error("A mobile session was not returned.");
+      await save(r.token);
+      setPassword("");
+      done();
+    } catch (e) {
+      setMessage((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          s.content,
+          { flexGrow: 1, justifyContent: "center" },
+        ]}
+      >
+        <Button title="Back" onPress={onBack} />
+        <Mark size={48} />
+        <Label style={s.title}>
+          {mode === "signin"
+            ? "Sign in"
+            : mode === "signup"
+              ? "Create account"
+              : "Reset password"}
+        </Label>
+        <Label>Email</Label>
+        <TextInput
+          accessibilityLabel="Email"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          autoComplete="email"
+          value={email}
+          onChangeText={setEmail}
+          style={s.input}
+        />
+        {mode !== "forgot" && (
+          <>
+            <Label>Password</Label>
+            <TextInput
+              accessibilityLabel="Password"
+              secureTextEntry
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
+              value={password}
+              onChangeText={setPassword}
+              style={s.input}
+            />
+          </>
+        )}
+        {mode === "signup" && (
+          <>
+            <Label>Confirm password</Label>
+            <TextInput
+              accessibilityLabel="Confirm password"
+              secureTextEntry
+              value={confirm}
+              onChangeText={setConfirm}
+              style={s.input}
+            />
+          </>
+        )}
+        {!!message && <Label accessibilityRole="alert">{message}</Label>}
+        <Button
+          title={
+            busy
+              ? "Please wait…"
+              : mode === "forgot"
+                ? "Send reset link"
+                : mode === "signup"
+                  ? "Create account"
+                  : "Sign in"
+          }
+          disabled={
+            busy || !email || (mode !== "forgot" && password.length < 8)
+          }
+          onPress={() => void submit()}
+        />
+        <Button
+          title={mode === "signin" ? "Forgot password?" : "Back to sign in"}
+          onPress={() => {
+            setMessage("");
+            change(mode === "signin" ? "forgot" : "signin");
+          }}
+        />
+        <Label
+          onPress={() => void Linking.openURL(ORIGIN + "/privacy")}
+          style={s.muted}
+        >
+          Privacy policy
+        </Label>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}

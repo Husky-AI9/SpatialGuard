@@ -21,6 +21,8 @@ Do not check an item merely because a mock, replay, or automated test passed. Ad
 ## Mobile-first submission scope
 
 - Android is the primary product and submission experience for this milestone. The hosted Railway web app remains the account, callback, legal, and support companion; a broader public web launch is deferred.
+- **iOS is backlog for this submission.** Do not spend hackathon time rebuilding or polishing the Expo iOS client. Revisit it after the Android evidence, physical-device checks, judge flow, and submission package are complete. If iOS is later submitted, treat it as a separate platform verification and store-review track.
+- **Submission implication:** declare Android as the intended platform, record the Android build used in the video, and do not claim iOS support in the listing, video, or reviewer instructions until the iOS client has feature parity and its own device results.
 - Ring Appstore certification covers the Ring integration submitted through the Ring Developer Portal. An Android binary distributed through Google Play is a separate review even though both use the same SpatialGuard service.
 - [x] **CODEX — SOFTWARE — Build the shared hardened interface into Android.** Account security, certification feature gates, Camera Wall activation, evidence language, export, and deletion controls use the same source as the hosted companion.
 - [x] **CODEX — SOFTWARE — Assign the permanent Android application ID `app.spatialguard.mobile`, version code, and release version.**
