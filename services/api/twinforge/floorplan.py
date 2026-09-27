@@ -729,8 +729,15 @@ def generate_layout(image, *, asset_id=None, ceiling_height_m=2.6,
     image-decoding failures remain the responsibility of the caller.
     """
     from .geometry import validate_layout
+    from .wall_trace import trace_layout
 
     failures = []
+    # Plans drawn with solid wall bands trace directly from pixels; everything
+    # else continues to the general extractor below.
+    try:
+        return trace_layout(image, asset_id=asset_id, ceiling_height_m=ceiling_height_m)
+    except PlanNotReadable as exc:
+        failures.append(str(exc)[:300])
     for thin in (False, True):
         try:
             layout, report = extract_layout(

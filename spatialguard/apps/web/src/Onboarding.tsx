@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Camera, Check, Map, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Map, Shield } from "lucide-react";
 import { useDialogFocus } from "./useDialogFocus";
 import RecoveryNotice from "./RecoveryNotice";
+import CameraMark from "./CameraMark";
 
 export type AccountPreferences = {
   onboarding_completed: boolean;
@@ -54,7 +55,7 @@ export default function Onboarding({
       </ul>
     </div>,
     <div className="onboarding-copy" key="consent">
-      <span className="onboarding-icon"><Camera size={24} /></span>
+      <span className="onboarding-icon"><CameraMark size={24} /></span>
       <p className="eyebrow">Choose what SpatialGuard may use</p>
       <h2>Ring access starts only after you allow it</h2>
       <label className="consent-choice">

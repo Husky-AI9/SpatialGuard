@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Camera } from "lucide-react";
+
 import { ringSnapshot } from "./platform";
+import CameraMark from "./CameraMark";
 
 export default function CameraThumbnail({
   siteId,
@@ -46,7 +47,7 @@ export default function CameraThumbnail({
       {source ? (
         <img src={source} alt={`Latest available snapshot from ${name}`} />
       ) : (
-        <Camera size={iconSize} aria-hidden="true" />
+        <CameraMark size={iconSize} aria-hidden="true" />
       )}
     </span>
   );

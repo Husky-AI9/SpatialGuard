@@ -181,13 +181,14 @@ function Plan({
                 stroke={selected === c.id ? "#5b4fe8" : "#9994cb"}
                 strokeWidth=".6"
               />
-              <Circle cx={x} cy={y} r="13" fill={selected === c.id ? colors.purple : "#39406b"} stroke="white" strokeWidth="1.5" />
+              {selected === c.id && <Circle cx={x} cy={y} r="17" fill={colors.purple} fillOpacity={0.18} />}
               <CameraGlyph
-                x={x - 7}
-                y={y - 7}
-                size={14}
-                color="#ffffff"
-                strokeWidth={1.8}
+                x={x - 13}
+                y={y - 13}
+                size={26}
+                color={colors.purple}
+                fill="#ffffff"
+                strokeWidth={2.8}
               />
               <SvgText
                 x={x}

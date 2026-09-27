@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Camera, Radio, VideoOff } from "lucide-react";
+import { Radio, VideoOff } from "lucide-react";
 import type { Camera as PlacedCamera } from "../../../../packages/sdk-typescript";
 import CameraThumbnail from "./CameraThumbnail";
 import { LiveVideo } from "./RingConnection";
 import TestVideoReplay, { type TestTrack } from "./TestVideoReplay";
 import type { components } from "./generated";
 import { request } from "./platform";
+import CameraMark from "./CameraMark";
 
 type Device = components["schemas"]["RingDevice"];
 type RingStatus = components["schemas"]["RingStatus"];
@@ -184,7 +185,7 @@ export default function HomeCctv({
         })}
         {!cameras.length && (
           <div className="cctv-no-cameras">
-            <Camera size={21} />
+            <CameraMark size={21} />
             <p>No cameras placed yet.</p>
           </div>
         )}

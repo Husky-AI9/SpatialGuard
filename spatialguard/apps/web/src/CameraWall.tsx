@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, GripVertical, RefreshCw, Video } from "lucide-react";
+import { GripVertical, RefreshCw, Video } from "lucide-react";
 import { LiveVideo } from "./RingConnection";
 import { request } from "./platform";
 import RecoveryNotice from "./RecoveryNotice";
+import CameraMark from "./CameraMark";
 
 type WallDevice = {
   id: string;
@@ -124,7 +125,7 @@ export default function CameraWall({ compact = false }: { compact?: boolean }) {
           </span>
         </div>
         {active !== device.id
-          ? <div className="wall-paused"><Camera size={24} /><p>{active ? "Another camera is active" : "Live view closed"}</p><button disabled={!device.online} onClick={() => setActive(device.id)}>{device.online ? "Start live view" : "Camera offline"}</button></div>
+          ? <div className="wall-paused"><CameraMark size={24} /><p>{active ? "Another camera is active" : "Live view closed"}</p><button disabled={!device.online} onClick={() => setActive(device.id)}>{device.online ? "Start live view" : "Camera offline"}</button></div>
           : <LiveVideo device={device as never} embedded autoReconnect={false} close={() => setActive("")} />}
       </article>)}
     </div>

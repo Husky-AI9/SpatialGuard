@@ -35,11 +35,10 @@ export function aimPoint(camera: Camera): [number, number] {
 }
 
 /**
- * The same outlined camera glyph used by the SpatialGuard landing page.
- *
- * Keep this as SVG rather than a product-specific hardware drawing: the map
- * marker communicates "camera" at a glance and stays consistent with the
- * landing page, camera cards, and native client.
+ * SpatialGuard's camera marker: a ring with a centre dot, the same mark as the
+ * landing page and app icon. Its size is in metres, like the rest of the map.
+ * The coverage wedge beside it carries the direction, so the mark itself does
+ * not rotate.
  */
 export default function CameraGlyph({
   camera,
@@ -52,28 +51,9 @@ export default function CameraGlyph({
 }) {
   const [cx, cy] = camera.position_m;
   return (
-    <g
-      transform={`translate(${cx} ${-cy}) rotate(${-heading(camera.heading_degrees)}) scale(${scale})`}
-      pointerEvents="none"
-    >
-      <g transform="translate(-.3 -.31) scale(.025)">
-        <path
-          d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
-          fill="none"
-          stroke={fill}
-          strokeWidth="2.1"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle
-          cx="12"
-          cy="13"
-          r="3"
-          fill="none"
-          stroke={fill}
-          strokeWidth="2.1"
-        />
-      </g>
+    <g transform={`translate(${cx} ${-cy}) scale(${scale})`} pointerEvents="none">
+      <circle r=".25" fill="#ffffff" stroke={fill} strokeWidth=".085" />
+      <circle r=".095" fill={fill} />
     </g>
   );
 }

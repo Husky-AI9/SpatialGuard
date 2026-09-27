@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Bell, Camera, Check, Clock3, Download, RefreshCw, Share2, Timer, Wifi, WifiOff, X } from "lucide-react";
+import { Bell, Check, Clock3, Download, RefreshCw, Share2, Timer, Wifi, WifiOff, X } from "lucide-react";
 import { request } from "./platform";
 import RecoveryNotice from "./RecoveryNotice";
+import CameraMark from "./CameraMark";
 
 type HealthPoint = { at: string; online: boolean; source: string };
 type Device = {
@@ -110,7 +111,7 @@ export default function Operations({ features }: { features: FeatureFlags }) {
           <span className={`health-light ${device.online ? "online" : "offline"}`}>{device.online ? <Wifi size={17} /> : <WifiOff size={17} />}</span>
           <div className="health-copy"><h4>{device.name}</h4><p>{device.online ? "Online" : "Offline"} · checked {new Date(device.checked_at).toLocaleString()}</p></div>
           {features.uptime_history && <><div className="uptime-strip" aria-label={`${device.name} seven-day status`}>{sevenDays(device).map((online, index) => <span key={index} className={online === null ? "unknown" : online ? "online" : "offline"} title={online === null ? "No data" : online ? "Online" : "Offline"} />)}</div><strong>{device.uptime_percent === null ? "New" : `${device.uptime_percent}%`}</strong></>}
-        </article>) : <div className="operations-empty"><Camera size={24} /><h3>No Ring cameras connected</h3><p>Connect Ring in Settings, then refresh the authorized inventory.</p></div>}</div>
+        </article>) : <div className="operations-empty"><CameraMark size={24} /><h3>No Ring cameras connected</h3><p>Connect Ring in Settings, then refresh the authorized inventory.</p></div>}</div>
       </div>
       {features.offline_alerts && <aside className="health-side">
         <div className="ops-card"><h3><Bell size={17} /> Alert delivery</h3>
@@ -132,7 +133,7 @@ export default function Operations({ features }: { features: FeatureFlags }) {
       <div className="timelapse-main"><div className="section-title"><div><h3>Time-lapse projects</h3><p>Scheduled still snapshots become a private browser reel. No live video, audio or AI is used.</p></div><span>{data.projects.length}/8 projects</span></div>
         <div className="project-grid">{data.projects.map(project => <article className="timelapse-project" key={project.id}><div className="project-head"><div><h4>{project.name}</h4><p>Every {project.cadence_minutes} min · {String(project.start_hour).padStart(2,"0")}:00–{String(project.end_hour).padStart(2,"0")}:00</p></div><button aria-label={`Delete ${project.name}`} onClick={() => void request(`/v1/ring/timelapses/${project.id}`, "DELETE").then(() => load())}><X size={15} /></button></div>
           <div className="frame-strip">{project.frames.length ? project.frames.slice(0, 4).map(frame => <img key={frame.id} src={`/v1/ring/timelapses/${project.id}/frames/${frame.id}`} alt={`Captured ${new Date(frame.at * 1000).toLocaleString()}`} />) : <div><Clock3 size={22} /><span>No frames yet</span></div>}</div>
-          <div className="project-actions"><button onClick={() => void request(`/v1/ring/timelapses/${project.id}/capture`, "POST").then(() => load())}><Camera size={15} />Capture now</button><a className={project.frame_count ? "button-link" : "button-link disabled"} href={project.frame_count ? `/v1/ring/timelapses/${project.id}/reel` : undefined} download><Download size={15} />Download GIF</a><button disabled={!project.frame_count} onClick={() => void shareReel(project)}><Share2 size={15} />Share reel</button></div><small>{project.frame_count} frame{project.frame_count === 1 ? "" : "s"} · newest 500 retained locally</small>
+          <div className="project-actions"><button onClick={() => void request(`/v1/ring/timelapses/${project.id}/capture`, "POST").then(() => load())}><CameraMark size={15} />Capture now</button><a className={project.frame_count ? "button-link" : "button-link disabled"} href={project.frame_count ? `/v1/ring/timelapses/${project.id}/reel` : undefined} download><Download size={15} />Download GIF</a><button disabled={!project.frame_count} onClick={() => void shareReel(project)}><Share2 size={15} />Share reel</button></div><small>{project.frame_count} frame{project.frame_count === 1 ? "" : "s"} · newest 500 retained locally</small>
         </article>)}</div>
       </div>
       <aside className="ops-card timelapse-create"><h3>Create a project</h3>

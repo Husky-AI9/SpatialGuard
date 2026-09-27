@@ -1,17 +1,16 @@
 import React from "react";
-import Svg, { Circle, G, Path } from "react-native-svg";
+import Svg, { Circle, G } from "react-native-svg";
 
 /**
- * Lucide Camera path shared by the web landing page and native map.
- * The path is kept inline so Expo Go does not need a second icon package and
- * the native marker remains visually identical to the web glyph.
+ * SpatialGuard's camera mark: a ring with a centre dot, matching the web app,
+ * the floor-plan map markers and the app icon.
  */
 export default function CameraIcon({
   size = 20,
-  color = "#ffffff",
+  color = "#5b4fe8",
   x = 0,
   y = 0,
-  strokeWidth = 2,
+  strokeWidth = 2.6,
 }: {
   size?: number;
   color?: string;
@@ -34,31 +33,26 @@ export default function CameraIcon({
   );
 }
 
-/** Group form for placing the same glyph inside an existing SVG scene. */
+/** Group form for placing the same mark inside an existing SVG scene. */
 export function CameraGlyph({
   size = 20,
-  color = "#ffffff",
+  color = "#5b4fe8",
+  fill = "none",
   x = 0,
   y = 0,
-  strokeWidth = 2,
+  strokeWidth = 2.6,
 }: {
   size?: number;
   color?: string;
+  fill?: string;
   x?: number;
   y?: number;
   strokeWidth?: number;
 }) {
   return (
-    <G
-      transform={`translate(${x} ${y}) scale(${size / 24})`}
-      fill="none"
-      stroke={color}
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-      <Circle cx="12" cy="13" r="3" />
+    <G transform={`translate(${x} ${y}) scale(${size / 24})`}>
+      <Circle cx="12" cy="12" r="8.5" fill={fill} stroke={color} strokeWidth={strokeWidth} />
+      <Circle cx="12" cy="12" r="3.4" fill={color} />
     </G>
   );
 }

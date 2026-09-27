@@ -627,8 +627,8 @@ body.landing-body {
 .sg-entry-route { fill: none; stroke: #d08b2b; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 6 8; }
 .sg-entry-person circle { fill: #5b4fe8; stroke: #fff; stroke-width: 3; }
 .sg-entry-person rect { fill: #d09a4f; stroke: #fff; stroke-width: 2; }
-.sg-entry-camera circle { fill: #25263b; stroke: #fff; stroke-width: 3; }
-.sg-entry-camera > svg { color: #fff; }
+.sg-entry-camera .sg-camera-ring { fill: #fff; stroke: var(--sg-camera, #5b4fe8); stroke-width: 4.5; filter: drop-shadow(0 2px 4px rgba(35, 37, 63, .25)); }
+.sg-entry-camera .sg-camera-dot { fill: var(--sg-camera, #5b4fe8); }
 
 .sg-entry-camera-card,
 .sg-entry-incident {
@@ -895,8 +895,8 @@ body.landing-body {
   .sg-mobile-plant circle { fill: #6d9d63; stroke: #e4f0dd; stroke-width: 1; }
   .sg-mobile-coverage-cone { fill: rgba(127, 115, 238, .17); stroke: rgba(255, 255, 255, .64); stroke-width: 1.2; stroke-dasharray: 4 5; }
   .sg-mobile-path { fill: none; stroke: #d48d28; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 5 7; }
-  .sg-mobile-camera circle { fill: #1f2135; stroke: #fff; stroke-width: 3; }
-  .sg-mobile-camera > svg { color: #fff; }
+  .sg-mobile-camera .sg-camera-ring { fill: #fff; stroke: #5b4fe8; stroke-width: 4.2; }
+  .sg-mobile-camera .sg-camera-dot { fill: #5b4fe8; }
   .sg-mobile-parcel path { stroke: #fff5df; stroke-width: 1.2; stroke-linejoin: round; }
   .sg-mobile-parcel-top { fill: #e8ad4b; }
   .sg-mobile-parcel-left { fill: #b9722e; }

@@ -1,20 +1,10 @@
 import { useEffect, type MouseEvent } from "react";
-import {
-  ArrowRight,
-  Camera,
-  Check,
-  LogIn,
-  Map,
-  PackageCheck,
-  Play,
-  Route,
-  Shield,
-  UserPlus,
-} from "lucide-react";
+import { ArrowRight, Check, LogIn, Map, PackageCheck, Play, Route, Shield, UserPlus } from "lucide-react";
 import "./landing.css";
 import DesktopLanding from "./DesktopLanding";
 import { native, localWeb } from "./platform";
 import SpatialGuardMark from "./SpatialGuardMark";
+import CameraMark from "./CameraMark";
 
 function Brand() {
   return (
@@ -109,12 +99,12 @@ export default function Landing() {
             <path className="sg-mobile-coverage-cone" d="M55 137 8 112A69 69 0 0 0 10 177Z" />
             <path className="sg-mobile-path" d="M304 214c-30-8-48-21-55-30-13-16-31-10-52 1" />
             <g className="sg-mobile-camera" transform="translate(235 94)">
-              <circle r="18" />
-              <Camera x="-9" y="-9" width="18" height="18" />
+              <circle className="sg-camera-ring" r="12" />
+              <circle className="sg-camera-dot" r="4.8" />
             </g>
             <g className="sg-mobile-camera" transform="translate(55 137)">
-              <circle r="18" />
-              <Camera x="-9" y="-9" width="18" height="18" />
+              <circle className="sg-camera-ring" r="12" />
+              <circle className="sg-camera-dot" r="4.8" />
             </g>
             <g className="sg-mobile-parcel" transform="translate(179 164) scale(1.15)">
               <path className="sg-mobile-parcel-top" d="m0 8 14-8 15 8-15 8Z" />
@@ -197,17 +187,17 @@ export default function Landing() {
                 <rect x="12" y="-8" width="20" height="18" rx="3" />
               </g>
               <g className="sg-entry-camera" transform="translate(540 77)">
-                <circle r="20" />
-                <Camera x="-10" y="-10" width="20" height="20" />
+                <circle className="sg-camera-ring" r="13" />
+                <circle className="sg-camera-dot" r="5.2" />
               </g>
               <g className="sg-entry-camera" transform="translate(80 338)">
-                <circle r="20" />
-                <Camera x="-10" y="-10" width="20" height="20" />
+                <circle className="sg-camera-ring" r="13" />
+                <circle className="sg-camera-dot" r="5.2" />
               </g>
             </svg>
 
             <article className="sg-entry-camera-card">
-              <span className="sg-entry-camera-thumb"><Camera size={20} /></span>
+              <span className="sg-entry-camera-thumb"><CameraMark size={20} /></span>
               <span><strong>Front camera</strong><small>Live available</small></span>
               <span className="sg-entry-live">Live</span>
             </article>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera, Radio, VideoOff } from "lucide-react";
+import { Radio, VideoOff } from "lucide-react";
 import type { Camera as PlacedCamera } from "../../../../packages/sdk-typescript";
 import CameraThumbnail from "./CameraThumbnail";
 import CameraWall from "./CameraWall";
@@ -7,6 +7,7 @@ import { LiveVideo } from "./RingConnection";
 import type { components } from "./generated";
 import { request } from "./platform";
 import RecoveryNotice from "./RecoveryNotice";
+import CameraMark from "./CameraMark";
 
 type Device = components["schemas"]["RingDevice"];
 type RingStatus = components["schemas"]["RingStatus"];
@@ -95,7 +96,7 @@ export default function CameraWorkspace({
                 <LiveVideo key={liveDevice.id} device={liveDevice} embedded close={() => setLiveDevice(null)} />
               ) : (
                 <div className="cctv-empty">
-                  {selected ? <VideoOff size={34} /> : <Camera size={34} />}
+                  {selected ? <VideoOff size={34} /> : <CameraMark size={34} />}
                   <strong>{selected ? (mappedDevice(selected.id) ? "Live view is stopped" : "Camera is not paired") : "Choose a camera"}</strong>
                   <span>{selected && !mappedDevice(selected.id) ? "Pair this floor-plan camera with an authorized Ring camera to view it here." : "Select a camera from the CCTV list."}</span>
                   {selected && !mappedDevice(selected.id) && <button className="primary" onClick={onPairCamera}>Pair Ring camera</button>}
@@ -127,7 +128,7 @@ export default function CameraWorkspace({
                   </article>
                 );
               })}
-              {!cameras.length && <div className="cctv-no-cameras"><Camera size={22} /><p>Add cameras from your floor plan first.</p></div>}
+              {!cameras.length && <div className="cctv-no-cameras"><CameraMark size={22} /><p>Add cameras from your floor plan first.</p></div>}
             </div>
           </aside>
         </div>

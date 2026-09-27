@@ -374,8 +374,11 @@ export default function Map2D({
               onKeyDown={(e) => nudge(c, e)}
             >
               <circle cx={c.position_m[0]} cy={-c.position_m[1]} r=".34" fill="transparent" />
-              <CameraGlyph camera={c} fill="#ffffff" scale={1.18} />
-              <CameraGlyph camera={c} fill={active ? "#5b4fe8" : "#39406b"} />
+              {active && (
+                <circle cx={c.position_m[0]} cy={-c.position_m[1]} r=".42"
+                  fill="#5b4fe8" fillOpacity=".18" pointerEvents="none" />
+              )}
+              <CameraGlyph camera={c} fill="#5b4fe8" scale={active ? 1.12 : 1} />
               <title>
                 {c.name} · aimed {Math.round(heading(c.heading_degrees))}°, {Math.round(c.fov_degrees)}°
                 field of view, {c.range_m} m range
