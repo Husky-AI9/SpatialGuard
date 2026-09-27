@@ -3913,3 +3913,37 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
 .ring-connection select:disabled { background: #f3f4f9; color: var(--muted); }
 .ring-guidance { padding: 10px 12px; border: 1px solid #efd9a6; border-radius: 12px; background: #fdf6e7; color: #6b4f16; }
 .ring-guidance ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* Map controls (bottom right of the map card) ------------------------------ */
+.map-area { position: relative; }
+.spatial-map { touch-action: pan-y; }
+.spatial-map.zoomed { touch-action: none; cursor: grab; }
+.spatial-map.zoomed:active { cursor: grabbing; }
+.map-controls {
+  position: absolute; right: 14px; bottom: 14px; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.map-controls button {
+  width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%;
+  display: grid; place-items: center; color: var(--accent); background: #fff;
+  border: 1px solid #dcd9f7; box-shadow: 0 4px 12px rgba(35, 37, 63, .14);
+}
+.map-controls .map-control-round[aria-pressed="true"] {
+  color: #fff; background: var(--accent); border-color: var(--accent);
+  box-shadow: 0 6px 16px rgba(91, 79, 232, .35);
+}
+.map-control-stack {
+  display: grid; overflow: hidden; border: 1px solid #dcd9f7; border-radius: 999px;
+  background: #fff; box-shadow: 0 4px 12px rgba(35, 37, 63, .14);
+}
+.map-control-stack button { border: 0; border-radius: 0; box-shadow: none; }
+.map-control-stack button + button { border-top: 1px solid #eceafd; }
+.map-controls button:active:not(:disabled) { transform: scale(.96); }
+@media (hover: hover) {
+  .map-controls .map-control-round:hover:not(:disabled):not([aria-pressed="true"]),
+  .map-control-stack button:hover:not(:disabled) { background: var(--accent-soft); border-color: #dcd9f7; }
+}
+@media (max-width: 760px) {
+  .map-controls { right: 10px; bottom: 10px; gap: 8px; }
+  .map-controls button { width: 40px; height: 40px; min-height: 40px; }
+}

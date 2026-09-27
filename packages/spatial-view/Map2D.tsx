@@ -4,6 +4,7 @@ import { bounds } from "./geometry";
 import { placeMapLabels, type MapLabel, type LabelBox } from "./mapLabels";
 import TopDownPerson, { activityColor, type ActivityKind } from "./TopDownPerson";
 import CameraGlyph, {
+  localCoveragePath,
   aimPoint,
   coveragePath,
   heading,
@@ -57,6 +58,8 @@ function ActorGlyph({ marker }: { marker: Marker }) {
 const LABEL = 0.44;
 // SVG gives no cheap text measurement, so approximate from the glyph count and
 // only stack words when the name genuinely will not fit the room.
+const MIN_ZOOM = 0.65;
+const MAX_ZOOM = 4;
 const fits = (text: string, width: number) => text.length * LABEL * 0.52 <= width * 0.92;
 export type { CameraChange } from "./cameraGlyph";
 type XY = [number, number];
@@ -74,6 +77,10 @@ export default function Map2D({
   fitBuilding = false,
   onCameraChange,
   onPlace,
+  zoom: zoomProp,
+  onZoomChange,
+  viewKey = 0,
+  motion = false,
 }: {
   layout: Layout;
   selected: string;
@@ -88,6 +95,13 @@ export default function Map2D({
   fitBuilding?: boolean;
   onCameraChange?: (id: string, change: CameraChange) => void;
   onPlace?: (xy: XY) => void;
+  /** Controlled zoom (1 = fitted). Omit to let the map manage its own zoom. */
+  zoom?: number;
+  onZoomChange?: (zoom: number) => void;
+  /** Change to recentre the view (for a "fit" control). */
+  viewKey?: number;
+  /** Show pulsing motion waves across every camera's coverage. */
+  motion?: boolean;
 }) {
   const plan = background ? layout.floor_plan : null;
   const viewLayout = fitBuilding ? {
@@ -101,10 +115,25 @@ export default function Map2D({
   const viewScale = fitBuilding ? 0.7 : 1;
   const w = baseWidth / viewScale, h = baseHeight / viewScale;
   const x = baseX - (w - baseWidth) / 2, y = baseY - (h - baseHeight) / 2;
-  const [zoom, setZoom] = useState(1);
+  const [innerZoom, setInnerZoom] = useState(1);
+  const zoom = zoomProp ?? innerZoom;
+  const setZoom = (next: number | ((current: number) => number)) => {
+    const value = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, typeof next === "function" ? next(zoom) : next));
+    if (onZoomChange) onZoomChange(value);
+    else setInnerZoom(value);
+  };
   const zoomedWidth = w / zoom, zoomedHeight = h / zoom;
-  const zoomedX = x + (w - zoomedWidth) / 2;
-  const zoomedY = y + (h - zoomedHeight) / 2;
+  // Panning is only meaningful once zoomed in; the view can travel to the map's edges.
+  const [pan, setPan] = useState<XY>([0, 0]);
+  const reach: XY = [Math.max(0, (w - zoomedWidth) / 2), Math.max(0, (h - zoomedHeight) / 2)];
+  const clampPan = ([px, py]: XY): XY => [
+    Math.max(-reach[0], Math.min(reach[0], px)),
+    Math.max(-reach[1], Math.min(reach[1], py)),
+  ];
+  const [panX, panY] = clampPan(pan);
+  useEffect(() => setPan([0, 0]), [viewKey]);
+  const zoomedX = x + (w - zoomedWidth) / 2 + panX;
+  const zoomedY = y + (h - zoomedHeight) / 2 + panY;
   const svg = useRef<SVGSVGElement>(null);
   const [viewport, setViewport] = useState({width: 800, height: 600});
   useEffect(() => {
@@ -118,6 +147,10 @@ export default function Map2D({
     return () => resize.disconnect();
   }, []);
   const dragRef = useRef<Drag | null>(null);
+  // Background gestures: one pointer pans, two pointers pinch-zoom.
+  const pointers = useRef(new Map<number, XY>());
+  const gesture = useRef<{ start: XY; pan: XY; pinch?: number; zoom: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
   const [preview, setPreview] = useState<Drag | null>(null);
   const moveable = editable && !placing && !!onCameraChange;
   useEffect(() => {
@@ -215,7 +248,7 @@ export default function Map2D({
   return (
     <svg
       ref={svg}
-      className={`spatial-map${moveable ? " editable" : ""}${placing ? " placing" : ""}`}
+      className={`spatial-map${moveable ? " editable" : ""}${placing ? " placing" : ""}${zoom > 1.001 ? " zoomed" : ""}`}
       viewBox={`${zoomedX} ${-zoomedY - zoomedHeight} ${zoomedWidth} ${zoomedHeight}`}
       role="group"
       aria-label={evidenceLinks.length
@@ -229,11 +262,50 @@ export default function Map2D({
       onWheel={(event) => {
         event.preventDefault();
         event.stopPropagation();
-        setZoom((current) => Math.max(0.65, Math.min(3.5,
-          current * (event.deltaY < 0 ? 1.12 : 0.89))));
+        setZoom((current) => current * (event.deltaY < 0 ? 1.12 : 0.89));
+      }}
+      onClickCapture={(e) => {
+        // A pan that ends over a room must not also select it.
+        if (suppressClick.current) {
+          suppressClick.current = false;
+          e.stopPropagation();
+          e.preventDefault();
+        }
+      }}
+      onPointerDown={(e) => {
+        if (placing || dragRef.current || (e.pointerType === "mouse" && e.button !== 0)) return;
+        pointers.current.set(e.pointerId, [e.clientX, e.clientY]);
+        const points = [...pointers.current.values()];
+        gesture.current = {
+          start: points[0],
+          pan: [panX, panY],
+          zoom,
+          moved: false,
+          pinch: points.length === 2
+            ? Math.hypot(points[0][0] - points[1][0], points[0][1] - points[1][1])
+            : undefined,
+        };
       }}
       onPointerMove={(e) => {
         const drag = dragRef.current;
+        const current = gesture.current;
+        if (!drag && current && pointers.current.has(e.pointerId)) {
+          pointers.current.set(e.pointerId, [e.clientX, e.clientY]);
+          const points = [...pointers.current.values()];
+          if (points.length >= 2 && current.pinch) {
+            const distance = Math.hypot(points[0][0] - points[1][0], points[0][1] - points[1][1]);
+            current.moved = true;
+            setZoom(current.zoom * distance / current.pinch);
+            return;
+          }
+          const dx = e.clientX - current.start[0], dy = e.clientY - current.start[1];
+          if (!current.moved && Math.hypot(dx, dy) < 5) return;
+          if (zoom <= 1.001) return;
+          if (!current.moved) svg.current!.setPointerCapture(e.pointerId);
+          current.moved = true;
+          setPan(clampPan([current.pan[0] - dx * unit, current.pan[1] + dy * unit]));
+          return;
+        }
         if (!drag) return;
         const camera = layout.cameras.find((c) => c.id === drag.id);
         if (!camera) return;
@@ -250,6 +322,11 @@ export default function Map2D({
         setPreview({ ...drag });
       }}
       onPointerUp={(e) => {
+        pointers.current.delete(e.pointerId);
+        if (gesture.current && !pointers.current.size) {
+          suppressClick.current = gesture.current.moved;
+          gesture.current = null;
+        }
         const drag = dragRef.current;
         if (!drag) return;
         dragRef.current = null;
@@ -258,7 +335,11 @@ export default function Map2D({
         if (Object.keys(drag.change).length) onCameraChange!(drag.id, drag.change);
         else setPreview(null);
       }}
-      onPointerCancel={cancelDrag}
+      onPointerCancel={(e) => {
+        pointers.current.delete(e.pointerId);
+        gesture.current = null;
+        cancelDrag();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Escape") cancelDrag();
       }}
@@ -354,8 +435,25 @@ export default function Map2D({
       </g>}
       <g className="map-coverage" pointerEvents="none">
         {cameras.map(c => <path key={c.id} className="camera-coverage" d={coveragePath(c)}
-          fill="#5B4FE8" fillOpacity={selected === c.id ? .24 : .05} />)}
+          fill="#5B4FE8" fillOpacity={selected === c.id ? .24 : motion ? .12 : .05} />)}
       </g>
+      {motion && (
+        <g className="motion-waves" pointerEvents="none" aria-hidden="true">
+          {cameras.map((c) => (
+            <g key={c.id} transform={`translate(${c.position_m[0]} ${-c.position_m[1]})`}>
+              {[0, 1, 2].map((i) => (
+                <g key={i} opacity="0">
+                  <path d={localCoveragePath(c)} fill="#5B4FE8" />
+                  <animateTransform attributeName="transform" type="scale" values=".06;1"
+                    dur="2.4s" begin={`${i * 0.8}s`} repeatCount="indefinite" />
+                  <animate attributeName="opacity" values=".5;.28;0" dur="2.4s"
+                    begin={`${i * 0.8}s`} repeatCount="indefinite" />
+                </g>
+              ))}
+            </g>
+          ))}
+        </g>
+      )}
       {layout.cameras.map((original) => {
         const c: Camera =
           preview?.id === original.id ? { ...original, ...preview.change } : original;

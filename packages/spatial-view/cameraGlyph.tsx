@@ -25,6 +25,14 @@ export function coveragePath(camera: Camera) {
   return `M ${cx} ${-cy} L ${ax} ${-ay} A ${r} ${r} 0 0 0 ${bx} ${-by} Z`;
 }
 
+/** The same wedge drawn around the camera at (0, 0), for effects that scale from it. */
+export function localCoveragePath(camera: Camera) {
+  const start = ((camera.heading_degrees - camera.fov_degrees / 2) * Math.PI) / 180;
+  const end = ((camera.heading_degrees + camera.fov_degrees / 2) * Math.PI) / 180;
+  const r = camera.range_m;
+  return `M 0 0 L ${Math.cos(start) * r} ${-Math.sin(start) * r} A ${r} ${r} 0 0 0 ${Math.cos(end) * r} ${-Math.sin(end) * r} Z`;
+}
+
 // Aim handle sits at the tip of the cone, but never underneath the camera body.
 export const aimDistance = (camera: Camera) => Math.max(0.95, camera.range_m);
 

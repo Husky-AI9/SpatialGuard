@@ -28,6 +28,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
+import MapControls from "./MapControls";
 import type { EvidenceLink, Marker } from "@twinforge/spatial-view/Map2D";
 import type { CameraChange } from "@twinforge/spatial-view/cameraGlyph";
 import CameraControls from "./CameraControls";
@@ -142,6 +143,10 @@ export default function App() {
     [busy, setBusy] = useState(false),
     [run, setRun] = useState<Run | null>(null),
     [view, setView] = useState("2D"),
+    [mapZoom, setMapZoom] = useState(1),
+    [mapViewKey, setMapViewKey] = useState(0),
+    [motionMode, setMotionMode] = useState(false),
+    [showPeople, setShowPeople] = useState(true),
     [lowPower, setLowPower] = useState(() => {
       const saved = window.localStorage.getItem("spatialguard-low-power");
       if (saved !== null) return saved === "true";
@@ -864,8 +869,12 @@ export default function App() {
               layout={place.layout as Layout}
               selected={room}
               onSelect={mapSelect}
-              markers={markers}
+              markers={showPeople ? markers : []}
               evidenceLinks={evidenceLinks}
+              zoom={mapZoom}
+              onZoomChange={setMapZoom}
+              viewKey={mapViewKey}
+              motion={motionMode && !lowPower}
               fitBuilding={tab === "Home"}
               editable={editable}
               placing={placing}
@@ -885,6 +894,22 @@ export default function App() {
               />
             </Suspense>
           ) : <CameraWall compact />}
+          {view === "2D" && !selected && (
+            <MapControls
+              motion={motionMode}
+              people={showPeople}
+              onMotion={() => setMotionMode((on) => !on)}
+              onPeople={() => setShowPeople((on) => !on)}
+              canZoomIn={mapZoom < 4}
+              canZoomOut={mapZoom > 0.65}
+              onZoomIn={() => setMapZoom((z) => Math.min(4, z * 1.3))}
+              onZoomOut={() => setMapZoom((z) => Math.max(0.65, z / 1.3))}
+              onFit={() => {
+                setMapZoom(1);
+                setMapViewKey((k) => k + 1);
+              }}
+            />
+          )}
           {selected?.evidence_mode === "live" && (
             <div className="evidence-map-legend" aria-label="Spatial evidence graph legend">
               <span><i className="evidence-observed" />Observed by camera</span>
