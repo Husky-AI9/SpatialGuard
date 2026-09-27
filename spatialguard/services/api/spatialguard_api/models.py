@@ -342,6 +342,29 @@ class EventPage(Model):
     cursor: int
 
 
+class HeatmapUnpositioned(Model):
+    camera_id: str
+    events: int
+
+
+class Heatmap(Model):
+    """Normalised people density on a site grid; row-major from the minimum y."""
+
+    site_id: str
+    since: str
+    until: str
+    samples: int
+    # Camera events with no position, spread across that camera's view (an estimate).
+    estimated: int = 0
+    estimated_cameras: list[HeatmapUnpositioned] = []
+    cell_m: float
+    origin_xy_m: tuple[float, float]
+    columns: int
+    rows: int
+    values: list[float]
+    unpositioned: list[HeatmapUnpositioned]
+
+
 class IncidentPage(Model):
     incidents: list[Incident]
     next_cursor: int | None = None

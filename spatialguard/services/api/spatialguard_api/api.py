@@ -1189,6 +1189,21 @@ def create_app(db_path=None, engine=None, ring_service=None):
             rows = db.execute("SELECT seq,data FROM incidents WHERE site_id=? AND seq<? ORDER BY seq DESC LIMIT 31", (site_id, before or 9223372036854775807)).fetchall()
             return m.IncidentPage(incidents=[json.loads(r["data"]) for r in rows[:30]], next_cursor=rows[29]["seq"] if len(rows)>30 else None)
 
+    @app.get("/v1/sites/{site_id}/heatmap", response_model=m.Heatmap)
+    def heatmap(site_id: str, window: str = Query("24h", pattern="^(1h|12h|24h)$"),
+                since: str | None = Query(None, max_length=40), until: str | None = Query(None, max_length=40),
+                p=Depends(principal)):
+        """People heatmap for a preset window, or an explicit since/until range."""
+        from . import heatmap as hm
+        try:
+            start, end = hm.resolve_range(window, since, until)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        with store.connect() as db:
+            site = owned(db, site_id, p)
+            rows = db.execute("SELECT data FROM incidents WHERE site_id=?", (site_id,)).fetchall()
+        return hm.build_heatmap(site, [json.loads(r["data"]) for r in rows], start, end)
+
     def incident_row(db, incident_id, p):
         row = db.execute("SELECT * FROM incidents WHERE id=?", (incident_id,)).fetchone()
         if not row:

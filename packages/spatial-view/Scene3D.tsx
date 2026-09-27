@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { heatCanvas, heatExtent, type HeatGrid } from "./heatmap";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import type { Layout } from "../sdk-typescript";
@@ -333,6 +334,7 @@ export default function Scene3D({
   markers = [],
   evidenceLinks = [],
   cameraModelFactory = cameraModel,
+  heatmap = null,
 }: {
   layout: Layout;
   selected: string;
@@ -340,7 +342,10 @@ export default function Scene3D({
   markers?: Marker[];
   evidenceLinks?: EvidenceLink[];
   cameraModelFactory?: CameraModelFactory;
+  /** People heatmap grid laid on the floor, or null for none. */
+  heatmap?: HeatGrid | null;
 }) {
+  const heatLayer = useRef<THREE.Group | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const canvasHost = useRef<HTMLDivElement>(null);
   const cameraPins = useRef(new Map<string, HTMLButtonElement>());
@@ -397,6 +402,9 @@ export default function Scene3D({
     const markerLayer = new THREE.Group();
     liveMarkers.current = markerLayer;
     scene.add(markerLayer);
+    const heatGroup = new THREE.Group();
+    heatLayer.current = heatGroup;
+    scene.add(heatGroup);
     // A plot of ground so the plan sits somewhere instead of floating.
     if (plot) {
       const grass = new THREE.Mesh(
@@ -575,6 +583,40 @@ export default function Scene3D({
       liveMarkers.current = null;
     };
   }, [layout, selected, onSelect, cameraModelFactory]);
+  // The heat texture lies just above the floor slabs; rebuilt with the scene.
+  useEffect(() => {
+    const layer = heatLayer.current;
+    if (!layer) return;
+    const dispose = () => {
+      layer.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          const material = object.material as THREE.MeshBasicMaterial;
+          material.map?.dispose();
+          material.dispose();
+        }
+      });
+      layer.clear();
+    };
+    dispose();
+    const canvas = heatmap ? heatCanvas(heatmap) : null;
+    if (!heatmap || !canvas) return dispose;
+    const [hx, hy, hw, hh] = heatExtent(heatmap);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(hw, hh),
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false }),
+    );
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.copy(worldToViewer([hx + hw / 2, hy + hh / 2, 0.075]));
+    plane.renderOrder = 2;
+    plane.name = "people-heatmap";
+    layer.add(plane);
+    return dispose;
+  }, [heatmap, layout, selected, onSelect, cameraModelFactory]);
   useEffect(() => {
     const layer = liveMarkers.current;
     if (!layer) return;

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import type { Camera, Layout } from "../sdk-typescript";
 import { bounds } from "./geometry";
 import { placeMapLabels, type MapLabel, type LabelBox } from "./mapLabels";
+import { heatCanvas, heatExtent, type HeatGrid } from "./heatmap";
 import TopDownPerson, { activityColor, type ActivityKind } from "./TopDownPerson";
 import CameraGlyph, {
   localCoveragePath,
@@ -81,6 +82,7 @@ export default function Map2D({
   onZoomChange,
   viewKey = 0,
   motion = false,
+  heatmap = null,
 }: {
   layout: Layout;
   selected: string;
@@ -102,7 +104,10 @@ export default function Map2D({
   viewKey?: number;
   /** Show pulsing motion waves across every camera's coverage. */
   motion?: boolean;
+  /** People heatmap grid to draw over the floor, or null for none. */
+  heatmap?: HeatGrid | null;
 }) {
+  const heatImage = useMemo(() => heatCanvas(heatmap ?? { origin_xy_m: [0, 0], cell_m: 1, columns: 0, rows: 0, values: [] })?.toDataURL() ?? "", [heatmap]);
   const plan = background ? layout.floor_plan : null;
   const viewLayout = fitBuilding ? {
     ...layout,
@@ -418,6 +423,21 @@ export default function Map2D({
           </g>
         );
       })}
+      {heatmap && heatImage && (() => {
+        const [hx, hy, hw, hh] = heatExtent(heatmap);
+        return (
+          <image
+            className="people-heatmap"
+            href={heatImage}
+            x={hx}
+            y={-hy - hh}
+            width={hw}
+            height={hh}
+            preserveAspectRatio="none"
+            pointerEvents="none"
+          />
+        );
+      })()}
       {layout.portals.map((p) => (
         <line
           key={p.id}

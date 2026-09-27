@@ -3947,3 +3947,35 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
   .map-controls { right: 10px; bottom: 10px; gap: 8px; }
   .map-controls button { width: 40px; height: 40px; min-height: 40px; }
 }
+
+/* People heatmap ------------------------------------------------------------ */
+.heatmap-panel {
+  position: absolute; top: 12px; left: 12px; z-index: 5; max-width: min(360px, calc(100% - 90px));
+  display: grid; gap: 6px; padding: 10px 12px;
+  border: 1px solid #dcd9f7; border-radius: 14px; background: rgba(255, 255, 255, .96);
+  box-shadow: 0 6px 18px rgba(35, 37, 63, .14);
+}
+.heatmap-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.heatmap-head strong { font-size: 14px; color: var(--ink); }
+.heatmap-range { display: flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 999px; background: #fff; }
+.heatmap-range button {
+  min-height: 30px; padding: 4px 10px; border: 0; border-radius: 999px; font-size: 13px;
+  color: var(--muted); background: transparent;
+}
+.heatmap-range button[aria-pressed="true"] { color: #fff; background: var(--accent); }
+.heatmap-summary { margin: 0; font-size: 13px; color: var(--ink); }
+.heatmap-note { margin: 0; font-size: 12px; color: #6b4f16; }
+.heatmap-estimate { color: var(--muted); }
+.heatmap-legend {
+  position: absolute; left: 12px; bottom: 12px; z-index: 5;
+  display: grid; justify-items: center; gap: 6px; padding: 8px 6px;
+  border: 1px solid #dcd9f7; border-radius: 999px; background: rgba(255, 255, 255, .96);
+  color: var(--accent); box-shadow: 0 4px 12px rgba(35, 37, 63, .14);
+}
+.heatmap-legend-bar { width: 10px; height: 120px; border-radius: 6px; }
+.people-heatmap { mix-blend-mode: multiply; }
+@media (max-width: 760px) {
+  .heatmap-panel { left: 8px; top: 8px; max-width: calc(100% - 70px); padding: 8px 10px; }
+  .heatmap-legend { left: 8px; bottom: 8px; }
+  .heatmap-legend-bar { height: 84px; }
+}

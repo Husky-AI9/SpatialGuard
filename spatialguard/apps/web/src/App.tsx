@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import MapControls from "./MapControls";
+import { HeatmapLegend, HeatmapPanel, usePeopleHeatmap, type HeatRange } from "./PeopleHeatmap";
 import type { EvidenceLink, Marker } from "@twinforge/spatial-view/Map2D";
 import type { CameraChange } from "@twinforge/spatial-view/cameraGlyph";
 import CameraControls from "./CameraControls";
@@ -146,7 +147,8 @@ export default function App() {
     [mapZoom, setMapZoom] = useState(1),
     [mapViewKey, setMapViewKey] = useState(0),
     [motionMode, setMotionMode] = useState(false),
-    [showPeople, setShowPeople] = useState(true),
+    [heatmapOn, setHeatmapOn] = useState(false),
+    [heatRange, setHeatRange] = useState<HeatRange>({ preset: "24h" }),
     [lowPower, setLowPower] = useState(() => {
       const saved = window.localStorage.getItem("spatialguard-low-power");
       if (saved !== null) return saved === "true";
@@ -458,6 +460,8 @@ export default function App() {
     };
   }, [site?.id, planAsset]);
   const sampleLoaded = sites.some((s) => s.name === "Demo home");
+  // Hooks must run before the early returns below.
+  const heat = usePeopleHeatmap(site?.id, heatmapOn && !selected, heatRange, incidents[0]?.id);
   const rememberSite = (id: string) =>
     void request("/v1/preferences", "PUT", { active_site_id: id }).catch(
       () => {},
@@ -804,6 +808,7 @@ export default function App() {
   const editable = !selected && online && !busy;
   const activeCamera = place.layout.cameras.find((c) => c.id === room);
   const activeRoom = place.layout.rooms.find((r) => r.id === room);
+  const heatGrid = heatmapOn && !selected && heat.data?.values.length ? heat.data : null;
   const map = (
     <section className="map-panel" aria-label="Home map">
       <div className="panel-heading">
@@ -869,7 +874,8 @@ export default function App() {
               layout={place.layout as Layout}
               selected={room}
               onSelect={mapSelect}
-              markers={showPeople ? markers : []}
+              markers={markers}
+              heatmap={heatGrid}
               evidenceLinks={evidenceLinks}
               zoom={mapZoom}
               onZoomChange={setMapZoom}
@@ -891,15 +897,43 @@ export default function App() {
                 onSelect={mapSelect}
                 markers={markers}
                 evidenceLinks={evidenceLinks}
+                heatmap={heatGrid}
               />
             </Suspense>
           ) : <CameraWall compact />}
+          {(view === "2D" || view === "3D") && heatmapOn && !selected && (
+            <>
+              <HeatmapPanel
+                range={heatRange}
+                onRange={setHeatRange}
+                data={heat.data}
+                loading={heat.loading}
+                error={heat.error}
+                cameraName={(id) => place.layout.cameras.find((c) => c.id === id)?.name ?? "a camera"}
+              />
+              {heatGrid && <HeatmapLegend />}
+            </>
+          )}
+          {view === "3D" && !selected && (
+            <MapControls
+              compact
+              motion={motionMode}
+              people={heatmapOn}
+              onMotion={() => setMotionMode((on) => !on)}
+              onPeople={() => setHeatmapOn((on) => !on)}
+              canZoomIn={false}
+              canZoomOut={false}
+              onZoomIn={() => {}}
+              onZoomOut={() => {}}
+              onFit={() => {}}
+            />
+          )}
           {view === "2D" && !selected && (
             <MapControls
               motion={motionMode}
-              people={showPeople}
+              people={heatmapOn}
               onMotion={() => setMotionMode((on) => !on)}
-              onPeople={() => setShowPeople((on) => !on)}
+              onPeople={() => setHeatmapOn((on) => !on)}
               canZoomIn={mapZoom < 4}
               canZoomOut={mapZoom > 0.65}
               onZoomIn={() => setMapZoom((z) => Math.min(4, z * 1.3))}

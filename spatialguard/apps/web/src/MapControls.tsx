@@ -16,6 +16,7 @@ function RunningIcon({ size = 20 }: { size?: number }) {
 }
 
 export default function MapControls({
+  compact = false,
   motion,
   people,
   onMotion,
@@ -35,10 +36,12 @@ export default function MapControls({
   onFit: () => void;
   canZoomIn: boolean;
   canZoomOut: boolean;
+  /** 3D has its own orbit controls and no motion layer: only the heatmap toggle. */
+  compact?: boolean;
 }) {
   return (
     <div className="map-controls" role="toolbar" aria-label="Map controls">
-      <button
+      {!compact && <button
         className="map-control-round"
         aria-pressed={motion}
         aria-label="Motion detection"
@@ -46,21 +49,21 @@ export default function MapControls({
         onClick={onMotion}
       >
         <RunningIcon />
-      </button>
+      </button>}
       <button
         className="map-control-round"
         aria-pressed={people}
-        aria-label="People"
-        title={people ? "Hide people" : "Show people"}
+        aria-label="People heatmap"
+        title={people ? "Hide people heatmap" : "Show people heatmap"}
         onClick={onPeople}
       >
         <Users size={20} />
       </button>
-      <div className="map-control-stack">
+      {!compact && <div className="map-control-stack">
         <button aria-label="Zoom in" title="Zoom in" disabled={!canZoomIn} onClick={onZoomIn}><ZoomIn size={20} /></button>
         <button aria-label="Zoom out" title="Zoom out" disabled={!canZoomOut} onClick={onZoomOut}><ZoomOut size={20} /></button>
         <button aria-label="Fit map" title="Fit map" onClick={onFit}><Maximize size={19} /></button>
-      </div>
+      </div>}
     </div>
   );
 }
