@@ -76,7 +76,7 @@ test("replay to incident, evidence, review, map and monitoring", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("img", {
-      name: "Synthetic replay illustration of a person, not camera footage",
+      name: "Replay illustration",
     }),
   ).toBeVisible();
   await page
@@ -85,7 +85,7 @@ test("replay to incident, evidence, review, map and monitoring", async ({
     .click();
   await expect(
     page.getByText(
-      "Unknown location — no footage or coordinate evidence for this gap.",
+      "Location unknown for this gap.",
     ),
   ).toBeVisible();
   await page.getByRole("button", { name: "Mark reviewed" }).click();
@@ -289,7 +289,7 @@ test("low-power mode keeps 2D evidence available and disables WebGL", async ({ p
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Display & performance" }).click();
   await page.getByRole("button", { name: "Turn on low-power mode" }).click();
-  await expect(page.getByText("Low-power mode is on", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use full graphics" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await expect(page.getByRole("button", { name: "2D", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "3D", exact: true })).toBeDisabled();
@@ -596,7 +596,7 @@ test("empty incidents and failed evidence are explicit", async ({ page }) => {
     .click();
   await expect(
     page.getByText(
-      "Evidence unavailable. Reconnect and select the observation again.",
+      "Evidence unavailable. Reconnect and try again.",
     ),
   ).toBeVisible();
 });
@@ -701,21 +701,19 @@ test("trace a floor plan into a reviewable 2D and 3D map", async ({ page }) => {
   );
   // Vision is opt-in and discloses the upload before it happens. This suite traces
   // locally so it never sends the drawing anywhere or bills the OpenAI account.
-  const useVision = dialog.getByRole("checkbox", { name: /GPT Sol/ });
+  const useVision = dialog.getByRole("checkbox", { name: /Read room names/ });
   await expect(useVision).toBeVisible();
-  if (await useVision.isChecked())
-    await expect(dialog.getByText(/uploads your floor plan to OpenAI/)).toBeVisible();
+  if (await useVision.isEnabled())
+    await expect(dialog.getByText(/sent to OpenAI/)).toBeVisible();
   await useVision.uncheck();
   await expect(useVision).not.toBeChecked();
-  await expect(dialog.getByText(/uploads your floor plan to OpenAI/)).toBeHidden();
-  await expect(dialog.getByText(/the drawing stays on this PC/)).toBeVisible();
+  await expect(dialog.getByText(/GPT Sol/)).toHaveCount(0);
   await page.getByRole("button", { name: "Trace floor plan" }).click();
   // Tracing runs in TwinForge's worker, so allow for the queue.
   await expect(page.getByRole("button", { name: "Use this map" })).toBeVisible({
     timeout: 60000,
   });
   await expect(dialog.getByText(/3 spaces · 2 connections/)).toBeVisible();
-  await expect(dialog.getByText("Traced locally on this PC.")).toBeVisible();
   await expect(dialog.locator(".spatial-map polygon")).toHaveCount(3);
   // The drawing shows through behind the traced geometry.
   await expect(dialog.locator(".spatial-map image")).toBeVisible();
@@ -893,13 +891,12 @@ test("setup guide explains consent, maps, and evidence on a phone", async ({ pag
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Open setup guide" }).click();
   const guide = page.getByRole("dialog", { name: "SpatialGuard setup" });
-  await expect(guide.getByRole("heading", { name: "One place to understand camera events" })).toBeVisible();
+  await expect(guide.getByRole("heading", { name: "Welcome to SpatialGuard" })).toBeVisible();
   await guide.getByRole("button", { name: "Continue" }).click();
-  await expect(guide.getByText("Use authorized Ring data")).toBeVisible();
+  await expect(guide.getByText("Ring cameras", { exact: true })).toBeVisible();
+  await expect(guide.getByText(/sent to OpenAI/)).toBeVisible();
   await guide.getByRole("button", { name: "Continue" }).click();
-  await expect(guide.getByRole("heading", { name: "Add a floor plan, then place each camera" })).toBeVisible();
-  await guide.getByRole("button", { name: "Continue" }).click();
-  await expect(guide.getByText("Unknown gap")).toBeVisible();
+  await expect(guide.getByRole("heading", { name: "Add your floor plan" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({ path: path.join(output, "onboarding-phone.png") });
   await guide.getByRole("button", { name: "Skip setup" }).click();
@@ -943,7 +940,6 @@ test("recoverable failures explain the cause, effect, and next action", async ({
   await page.goto("/workspace");
   const notice = page.getByRole("alert");
   await expect(notice.getByText("SpatialGuard could not reach the service")).toBeVisible();
-  await expect(notice.getByText(/may be stale/)).toBeVisible();
   await expect(notice.getByText("Check your connection and try again.")).toBeVisible();
   await notice.getByRole("button", { name: "Try again" }).click();
   await expect(notice).toHaveCount(0);
@@ -960,7 +956,7 @@ test("snapshot classification has no manual feature toggle", async ({ page }) =>
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("button", { name: "Privacy & retention" })).toBeVisible();
   await page.getByRole("button", { name: "Privacy & retention" }).click();
-  await expect(page.getByText("Analyze event snapshots", { exact: true })).toBeVisible();
+  await expect(page.getByText("Activity labels", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Luna incident classification" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Luna classification/ })).toHaveCount(0);
 });

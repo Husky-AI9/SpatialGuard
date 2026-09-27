@@ -57,11 +57,11 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
         <div className="incident-title-row"><div><h2 id="incident-review-title" tabIndex={-1} ref={heading}>{incident.title}</h2><p>{eventTime(observation?.observed_at ?? incident.created_at)} · {camera?.name ?? "Camera unavailable"}</p></div><div className="desktop-review-action">{reviewButton}</div></div>
       </header>
       <div className="incident-review-scroll" ref={scroll} tabIndex={0} aria-label="Incident evidence and details">
-        {(!online || error) && <p className="incident-review-notice" role="status">{error || "Disconnected. Reconnect to review or analyze this incident."}</p>}
+        {(!online || error) && <p className="incident-review-notice" role="status">{error || "You’re offline. Reconnect to continue."}</p>}
         <div className="evidence-view incident-media">
           {incident.evidence_mode === "live" && observation ? <IncidentRecording key={observation.observation_id} incidentId={incident.id} observationId={observation.observation_id} camera={camera} classification={incident.classification} onMovement={onMovement} onPlayback={setPlayback} />
-            : image ? <><img src={image} alt="Synthetic replay illustration of a person, not camera footage" /><p className="incident-media-note">Synthetic replay illustration · {camera?.name ?? "Unknown camera"}</p></>
-            : <p role="status">{incident.evidence_mode === "live" ? "Select a camera event to load its recording. Activity position remains unknown." : observation?.location.kind === "unknown" ? "Unknown location — no footage or coordinate evidence for this gap." : imageError || "Loading evidence…"}</p>}
+            : image ? <><img src={image} alt="Replay illustration" /><p className="incident-media-note">Synthetic replay illustration · {camera?.name ?? "Unknown camera"}</p></>
+            : <p role="status">{incident.evidence_mode === "live" ? "Select an event to play its recording." : observation?.location.kind === "unknown" ? "Location unknown for this gap." : imageError || "Loading evidence…"}</p>}
         </div>
         {compact && <div className="incident-review-tabs" role="tablist" aria-label="Incident sections">
           {panes.map((item, index) => <button key={item} id={`incident-tab-${item}`} role="tab" aria-selected={pane === item} aria-controls={`incident-pane-${item}`} tabIndex={pane === item ? 0 : -1} onClick={() => setPane(item)} onKeyDown={event => {
@@ -74,11 +74,11 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
             <div className="incident-classification-heading"><ActivityIcon classification={incident.classification} /><strong>{incident.classification.display_label}</strong></div>
             <span className={`confidence confidence-${incident.classification.confidence}`}>{incident.classification.confidence} confidence</span>
             <p>{incident.classification.summary}</p>
-            <details><summary>What supports this classification?</summary><ul>{incident.classification.visible_evidence.map(item => <li key={item}>{item}</li>)}</ul><p>{incident.classification.uncertainty}</p><p>AI interpretation, review required. Identity is unconfirmed.</p></details>
+            <details><summary>What supports this classification?</summary><ul>{incident.classification.visible_evidence.map(item => <li key={item}>{item}</li>)}</ul><p>{incident.classification.uncertainty}</p><p>AI label · please review.</p></details>
           </section> : incident.evidence_mode === "live" ? <section className="classification-card classification-empty">
             <strong>{incident.classification_status === "unavailable" ? "Classification unavailable" : "Not analyzed"}</strong>
             <button disabled={busy || !online || !consent} onClick={onAnalyze}>Analyze snapshot</button>
-            <p>{consent ? "Analyze the latest authorized camera snapshot. The image is sent to OpenAI for this request and is not stored by SpatialGuard." : "Allow Ring data and snapshot classification in Privacy settings before sending an image to OpenAI."}</p>
+            <p>{consent ? "Label this activity from the latest snapshot. The image is sent to OpenAI and not stored." : "Turn on snapshot analysis in Privacy settings to use this."}</p>
           </section> : null}
           <section className="evidence-inspector" aria-label="Selected evidence details">
             <h3>Evidence details</h3><dl>
@@ -86,9 +86,9 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
               <div><dt>Camera</dt><dd>{camera?.name ?? "Unknown camera"}</dd></div>
               <div><dt>Person</dt><dd>{incident.classification?.display_label ?? "Unknown"} · identity unconfirmed</dd></div>
               <div><dt>Evidence mode</dt><dd>{incident.evidence_mode === "live" ? "Live Ring event" : mode === "Replay" ? "Synthetic replay" : mode}</dd></div>
-              <div><dt>Media</dt><dd>{image ? "Replay illustration" : incident.evidence_mode === "live" ? "Recording requested from Ring; availability shown in the player" : "Unavailable"}</dd></div>
+              <div><dt>Media</dt><dd>{image ? "Replay illustration" : incident.evidence_mode === "live" ? "Loading recording from Ring…" : "Unavailable"}</dd></div>
               <div><dt>Trigger</dt><dd>{incident.rule}</dd></div>
-              <div><dt>Certainty</dt><dd>{incident.evidence_mode === "live" ? "Observed camera event. Any movement shown is estimated from recording; identity is unknown." : observation?.location.kind === "unknown" ? "Unknown location — coverage gap" : "Illustrative replay position"}</dd></div>
+              <div><dt>Certainty</dt><dd>{incident.evidence_mode === "live" ? "Camera event. Movement is estimated." : observation?.location.kind === "unknown" ? "Unknown location — coverage gap" : "Illustrative replay position"}</dd></div>
             </dl>
           </section>
         </div>

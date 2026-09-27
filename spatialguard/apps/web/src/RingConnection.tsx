@@ -294,8 +294,8 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
         {status?.state === "connected"
           ? "Account connected · Live integration"
           : status?.configured
-            ? "App credentials configured. Link your Ring account to authorize cameras."
-            : "Ring app credentials are not configured."}
+            ? "Link your Ring account to add cameras."
+            : "Ring isn’t available right now."}
       </p>
       {status?.state &&
         !["connected", "not_connected"].includes(status.state) && (
@@ -306,9 +306,7 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
         )}
       {error && <RecoveryNotice message={error} onRetry={() => void act(() => load(true))} retryLabel="Retry Ring" />}
       <p>
-        Open the Ring Appstore, choose SpatialGuard, and authorize the cameras
-        you want to use. Return here after linking to review compatibility and
-        place each camera on your home map.
+        In the Ring app, find SpatialGuard and choose the cameras to share. Then come back here.
       </p>
       <div className="button-row">
         {status?.state !== "connected" && <button
@@ -352,8 +350,8 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
               </strong>
               <p>
                 {status.subscription.eligible
-                  ? "Your current Ring Appstore access is eligible for the enabled SpatialGuard features."
-                  : "Subscription access ended. Camera media and event features remain unavailable until Ring reports an eligible plan."}
+                  ? "All features are available."
+                  : "Your Ring plan ended. Renew it to use cameras here."}
               </p>
               <button onClick={() => void openExternal(status.subscription!.manage_url)}>
                 Manage in Ring My Apps
@@ -384,11 +382,6 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
               Disconnect Ring
             </button>
           </div>
-          <p className="fine">
-            Disconnect pauses the provider integration and removes local
-            credentials. Remove SpatialGuard in Ring to revoke its device
-            permissions.
-          </p>
         </>
       )}
       {devices.map((d) => (
@@ -400,8 +393,8 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
           </p>
           <p className="fine">
             {d.support?.live_view && d.support?.motion_events
-              ? "Compatible camera · live view and motion events available"
-              : "Compatibility needs attention · camera features are unavailable"}
+              ? "Live view and motion events"
+              : "Not compatible"}
           </p>
           {d.guidance?.length ? (
             <div className="ring-guidance" role="status" aria-label={`${d.name} setup guidance`}>
@@ -455,9 +448,7 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
         <LiveVideo key={view.id} device={view} close={() => setView(null)} />
       )}
       <p className="fine">
-        Enable monitoring and select the mapped cameras to receive incidents.
-        Motion events contain no calibrated person coordinates. Live views last
-        up to 25 seconds, use no audio, and are not saved as incident footage.
+        Live views last up to 25 seconds and aren’t recorded.
       </p>
     </section>
   );

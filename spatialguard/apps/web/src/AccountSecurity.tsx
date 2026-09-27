@@ -36,7 +36,7 @@ export default function AccountSecurity({ onSessionsChanged, ringDataConsent }: 
         <span><strong>{verification.verified ? "Email verified" : "Email verification needed"}</strong><small>{verification.email}</small></span>
         {!verification.verified && <button onClick={() => void request<{message:string}>("/v1/account/verification/request", "POST").then(result => setMessage(result.message))}>Send verification email</button>}
       </div>}
-      <p>Change your password or revoke every other signed-in device. Password changes also revoke other sessions.</p>
+      <p>Change your password or sign out other devices.</p>
       <div className="settings-form-grid">
         <label>Current password<input type="password" autoComplete="current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} /></label>
         <label>New password<input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={e => setNewPassword(e.target.value)} /></label>
@@ -46,19 +46,19 @@ export default function AccountSecurity({ onSessionsChanged, ringDataConsent }: 
       {message && <p className="fine" role="status">{message}</p>}
       <h3>Recent security activity</h3>{securityActivity.length ? <ol className="access-history">{securityActivity.slice(0, 10).map((item, index) => <li key={`${item.at}-${index}`}><strong>{item.action.replaceAll(".", " ")}</strong><span>{new Date(item.at).toLocaleString()}</span></li>)}</ol> : <p className="fine">No recent account security changes.</p>}
     </section>
-    {notifications && <section><h2>Notifications</h2><p>Choose account messages by category. Marketing starts off.</p>
+    {notifications && <section><h2>Notifications</h2><p>Choose which emails you get.</p>
       <div className="settings-checks">{([
         ["incident_email", "Incident email"], ["operational_email", "Operational email"], ["weekly_summary", "Weekly summary"], ["marketing", "Product news and marketing"],
       ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={notifications[key]} onChange={e => setNotifications({ ...notifications, [key]: e.target.checked })} /> {label}</label>)}</div>
       <button className="primary" onClick={() => void request<NotificationPreferences>("/v1/account/notifications", "PUT", notifications).then(setNotifications)}>Save notification choices</button>
-      <h3>Delivery history</h3>{notificationHistory.length ? <ol className="access-history">{notificationHistory.slice(0, 10).map((item, index) => <li key={`${item.at}-${index}`}><strong>{item.category}</strong><span>{item.state} · {item.channel}</span><small>{item.detail} · {new Date(item.at).toLocaleString()}</small></li>)}</ol> : <p className="fine">No messages have been sent, delayed, suppressed, or failed.</p>}
+      <h3>Delivery history</h3>{notificationHistory.length ? <ol className="access-history">{notificationHistory.slice(0, 10).map((item, index) => <li key={`${item.at}-${index}`}><strong>{item.category}</strong><span>{item.state} · {item.channel}</span><small>{item.detail} · {new Date(item.at).toLocaleString()}</small></li>)}</ol> : <p className="fine">No messages sent yet.</p>}
     </section>}
-    <section><h2>Ring data access history</h2><p>Recent owner and service access to Ring data. Provider tokens and internal device identifiers are never shown.</p>
-      {access.length ? <ol className="access-history">{access.slice(0, 20).map(item => <li key={item.id}><strong>{item.action.replaceAll(".", " ")}</strong><span>{item.device} · {new Date(item.at).toLocaleString()}</span><small>{item.purpose} · {item.result}</small></li>)}</ol> : <p className="fine">No Ring images or live sessions have been accessed from this account.</p>}
+    <section><h2>Ring data access history</h2><p>Recent access to your Ring data.</p>
+      {access.length ? <ol className="access-history">{access.slice(0, 20).map(item => <li key={item.id}><strong>{item.action.replaceAll(".", " ")}</strong><span>{item.device} · {new Date(item.at).toLocaleString()}</span><small>{item.purpose} · {item.result}</small></li>)}</ol> : <p className="fine">No Ring access yet.</p>}
     </section>
-    <section><h2>Your data</h2><p>Download a machine-readable copy of your account settings, places, incident records, and Ring data access history.</p><button className="primary" onClick={() => void downloadExport()}><Download size={16} /> Download JSON export</button></section>
-    {ringDataConsent && <section><h2>Ring event delivery</h2><p>Sanitized provider processing history. Request references are one-way hashes; camera and account identifiers are excluded.</p>
-      {deliveries.length ? <ol className="access-history">{deliveries.slice(0, 20).map((item, index) => <li key={`${item.request_id}-${index}`}><strong>{item.event_type.replaceAll("_", " ")}</strong><span>{item.state} · {new Date(item.received_at).toLocaleString()}</span><small>Request {item.request_id || "legacy"} · {item.attempts} attempt{item.attempts === 1 ? "" : "s"}{item.failure ? ` · ${item.failure}` : ""}</small></li>)}</ol> : <p className="fine">No Ring provider events have been received for this account.</p>}
+    <section><h2>Your data</h2><p>Download a copy of your data.</p><button className="primary" onClick={() => void downloadExport()}><Download size={16} /> Download JSON export</button></section>
+    {ringDataConsent && <section><h2>Ring event delivery</h2><p>Recent Ring events received.</p>
+      {deliveries.length ? <ol className="access-history">{deliveries.slice(0, 20).map((item, index) => <li key={`${item.request_id}-${index}`}><strong>{item.event_type.replaceAll("_", " ")}</strong><span>{item.state} · {new Date(item.received_at).toLocaleString()}</span><small>Request {item.request_id || "legacy"} · {item.attempts} attempt{item.attempts === 1 ? "" : "s"}{item.failure ? ` · ${item.failure}` : ""}</small></li>)}</ol> : <p className="fine">No Ring events yet.</p>}
     </section>}
   </>;
 }

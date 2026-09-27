@@ -21,6 +21,7 @@ export default function HomeCctv({
   onClear,
   onViewAll,
   onPairCamera,
+  ringVersion = 0,
   onTestTrack,
   onTestClassification,
   classificationEnabled,
@@ -31,7 +32,8 @@ export default function HomeCctv({
   onSelect: (cameraId: string) => void;
   onClear: () => void;
   onViewAll: () => void;
-  onPairCamera: () => void;
+  onPairCamera: (camera: { id: string; name: string }) => void;
+  ringVersion?: number;
   onTestTrack: (track: TestTrack | null) => void;
   onTestClassification: (classification: IncidentClassification | null) => void;
   classificationEnabled: boolean;
@@ -58,7 +60,7 @@ export default function HomeCctv({
     return () => {
       active = false;
     };
-  }, [siteId]);
+  }, [siteId, ringVersion]);
 
   const mappedDevice = (cameraId: string) =>
     devices.find(
@@ -178,7 +180,7 @@ export default function HomeCctv({
                 </span>
               </button>
               {!ring && ringState !== "loading" && (
-                <button className="pair-camera-button" onClick={onPairCamera}>Pair</button>
+                <button className="pair-camera-button" onClick={() => onPairCamera(camera)}>Pair</button>
               )}
             </div>
           );

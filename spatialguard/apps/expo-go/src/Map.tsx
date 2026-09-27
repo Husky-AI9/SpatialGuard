@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { PanResponder, View } from "react-native";
+import { PanResponder, Pressable, View } from "react-native";
 import Svg, {
   Polygon,
   Path,
@@ -49,14 +49,19 @@ export default function FloorMap(props: Props) {
     <View style={{ gap: 10 }}>
       <View style={styles.row}>
         <Label style={[styles.heading, { flex: 1 }]}>Ground floor</Label>
-        {(["2D", "3D"] as const).map((v) => (
-          <Button
-            key={v}
-            title={v}
-            onPress={() => setMode(v)}
-            disabled={mode === v}
-          />
-        ))}
+        <View style={{ flexDirection: "row", padding: 2, borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: "#fff" }}>
+          {(["2D", "3D"] as const).map((v) => (
+            <Pressable
+              key={v}
+              accessibilityRole="button"
+              accessibilityState={{ selected: mode === v }}
+              onPress={() => setMode(v)}
+              style={{ minWidth: 48, minHeight: 34, paddingHorizontal: 12, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: mode === v ? colors.purple : "transparent" }}
+            >
+              <Label style={{ fontFamily: "SourceSansBold", fontSize: 15, color: mode === v ? "#fff" : colors.muted }}>{v}</Label>
+            </Pressable>
+          ))}
+        </View>
       </View>
       {mode === "2D" ? (
         <Plan {...props} zoom={zoom} onZoom={setZoom} />
@@ -64,15 +69,9 @@ export default function FloorMap(props: Props) {
         <Scene {...props} zoom={zoom} />
       )}
       <View style={styles.row}>
-        <Button
-          title="−"
-          onPress={() => setZoom((z) => Math.max(0.5, z / 1.25))}
-        />
-        <Button title="Reset view" onPress={() => setZoom(1)} />
-        <Button
-          title="+"
-          onPress={() => setZoom((z) => Math.min(4, z * 1.25))}
-        />
+        <Button small variant="secondary" title="−" onPress={() => setZoom((z) => Math.max(0.5, z / 1.25))} />
+        <Button small variant="secondary" title="Reset view" onPress={() => setZoom(1)} />
+        <Button small variant="secondary" title="+" onPress={() => setZoom((z) => Math.min(4, z * 1.25))} />
       </View>
       {props.incident && (
         <Label style={styles.muted}>
@@ -124,7 +123,7 @@ function Plan({
       {...responder.panHandlers}
       style={{
         backgroundColor: colors.grass,
-        borderRadius: 9,
+        borderRadius: 14,
         overflow: "hidden",
       }}
     >
@@ -162,7 +161,8 @@ function Plan({
               }
               textAnchor="middle"
               fontSize="9"
-              fill={colors.ink}
+              fontFamily="SourceSans"
+              fill="#3a3f63"
             >
               {r.name}
             </SvgText>
@@ -190,17 +190,24 @@ function Plan({
                 fill="#ffffff"
                 strokeWidth={2.8}
               />
-              <SvgText
-                x={x}
-                y={y - 11}
-                fontSize="9"
-                textAnchor="middle"
-                fill={colors.ink}
-                stroke="white"
-                strokeWidth=".2"
-              >
-                {c.name}
-              </SvgText>
+              {/* White halo copy first so the name stays readable over coverage. */}
+              {["halo", "text"].map((layer) => (
+                <SvgText
+                  key={layer}
+                  x={x}
+                  y={y - 17}
+                  fontSize="10"
+                  fontWeight="700"
+                  fontFamily="SourceSansBold"
+                  textAnchor="middle"
+                  fill={colors.ink}
+                  stroke={layer === "halo" ? "white" : "none"}
+                  strokeWidth={layer === "halo" ? 3 : 0}
+                  strokeLinejoin="round"
+                >
+                  {c.name}
+                </SvgText>
+              ))}
             </G>
           );
         })}

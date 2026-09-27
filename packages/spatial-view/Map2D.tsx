@@ -311,7 +311,8 @@ export default function Map2D({
               stroke="#8f9bc9"
               strokeWidth=".05"
             />
-            <text
+            {/* The uploaded drawing already prints its room names. */}
+            {!plan && <text
               x={cx}
               y={-cy}
               textAnchor="middle"
@@ -332,7 +333,7 @@ export default function Map2D({
                   {word}
                 </tspan>
               ))}
-            </text>
+            </text>}
           </g>
         );
       })}

@@ -53,11 +53,11 @@ test("desktop places timeline below map, evidence beside it, and preserves revie
   expect(timeline!.y).toBeGreaterThan(map!.y + map!.height);
   expect(details!.x).toBeGreaterThan(map!.x + map!.width);
   await page.getByRole('button',{name:/Unknown · coverage gap/}).click();
-  await expect(page.getByRole('status')).toContainText('Unknown location');
+  await expect(page.getByRole('status')).toContainText('Location unknown');
   await page.getByRole('button',{name:'Mark reviewed'}).click();
   await expect(page.getByRole('button',{name:'Reviewed',exact:true})).toBeDisabled();
   await page.getByRole('button',{name:/Observed ·/}).first().click();
-  await expect(page.getByRole('img',{name:/Synthetic replay/})).toBeVisible();
+  await expect(page.getByRole('img',{name:/Replay illustration/})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect((await new AxeBuilder({page}).include('.incident-review').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
   await page.screenshot({path:path.join(root,'.data/spatialguard/incident-review-desktop.png'),fullPage:true});
@@ -70,7 +70,7 @@ test("phone separates evidence, timeline and map while keeping review reachable"
   await page.getByRole('tab',{name:'Timeline',exact:true}).click();
   await expect(page.getByRole('tabpanel',{name:'Evidence',exact:true})).toBeHidden();
   await page.getByRole('button',{name:/Unknown · coverage gap/}).click();
-  await expect(page.getByRole('status')).toContainText('Unknown location');
+  await expect(page.getByRole('status')).toContainText('Location unknown');
   const action = await page.getByRole('button',{name:'Mark reviewed'}).boundingBox();
   expect(action!.y+action!.height).toBeLessThanOrEqual(844);
   await page.getByRole('tab',{name:'Map',exact:true}).click();

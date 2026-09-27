@@ -13,7 +13,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { request, restore, save, ORIGIN } from "./src/api";
-import { Button, Label, Mark, colors, styles as s } from "./src/ui";
+import { Button, Icon, Label, Mark, colors, styles as s } from "./src/ui";
 import Workspace from "./src/Workspace";
 import WelcomeArt from "./src/WelcomeArt";
 export default function App() {
@@ -35,6 +35,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView
+        edges={page === "landing" ? ["top", "left", "right"] : undefined}
         style={{
           flex: 1,
           backgroundColor: page === "landing" ? colors.purple : colors.page,
@@ -44,49 +45,34 @@ export default function App() {
         {!ready || (!fonts && !fontError) ? (
           <ActivityIndicator style={{ flex: 1 }} color={colors.purple} />
         ) : page === "landing" ? (
-          <View
-            style={{ flex: 1, padding: 28, justifyContent: "space-between" }}
-          >
-            <View style={s.row}>
-              <Mark color="white" />
-              <Label style={[s.title, { color: "white" }]}>SpatialGuard</Label>
+          <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 16, alignItems: "center" }}>
+              <View style={[s.row, { gap: 10 }]}>
+                <Mark color="white" size={30} />
+                <Label style={[s.title, { color: "white" }]}>SpatialGuard</Label>
+              </View>
+              <View style={{ flex: 1, justifyContent: "center", width: "100%", alignItems: "center" }}>
+                <WelcomeArt />
+              </View>
             </View>
-            <View style={{ alignItems: "center", gap: 20 }}>
-              <WelcomeArt />
-              <Label
-                style={{
-                  fontSize: 28,
-                  color: "white",
-                  fontFamily: "SourceSansBold",
-                  textAlign: "center",
-                }}
-              >
-                See what happened.{"\n"}Know where.
+            <View style={{ backgroundColor: colors.page, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 36, gap: 12 }}>
+              <Label style={{ textAlign: "center", color: colors.muted, fontFamily: "SourceSansBold", fontSize: 12, letterSpacing: 1.2 }}>
+                WELCOME TO SPATIALGUARD
               </Label>
-              <Label style={{ color: "white", textAlign: "center" }}>
-                Your cameras, home map, and incident evidence together.
+              <Label style={{ fontSize: 30, lineHeight: 34, fontFamily: "SourceSansBold", textAlign: "center", color: colors.ink }}>
+                See what happened.{"\n"}
+                <Label style={{ fontSize: 30, fontFamily: "SourceSansBold", color: colors.purple }}>Know where.</Label>
               </Label>
-            </View>
-            <View style={{ gap: 12 }}>
-              <Button title="Try it out" onPress={() => setPage(signed ? "workspace" : "signin")} />
-              <Pressable
-                accessibilityRole="button"
-                style={[s.button, { backgroundColor: "white" }]}
-                onPress={() => setPage(signed ? "workspace" : "signin")}
-              >
-                <Label
-                  style={{ color: colors.purple, fontFamily: "SourceSansBold" }}
-                >
-                  {signed ? "Open SpatialGuard" : "Sign in"}
-                </Label>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                style={[s.button, { borderWidth: 1, borderColor: "white" }]}
-                onPress={() => setPage("signup")}
-              >
-                <Label style={s.buttonText}>Create account</Label>
-              </Pressable>
+              <Label style={{ color: colors.muted, textAlign: "center", fontSize: 15 }}>
+                Your cameras, movement, and evidence in one clear home view.
+              </Label>
+              <Button icon="play" title={signed ? "Open SpatialGuard" : "Try it out"} onPress={() => setPage(signed ? "workspace" : "signin")} style={{ marginTop: 6 }} />
+              {!signed && (
+                <View style={s.row}>
+                  <Button variant="secondary" title="Sign in" onPress={() => setPage("signin")} style={{ flex: 1 }} />
+                  <Button variant="secondary" title="Sign up" onPress={() => setPage("signup")} style={{ flex: 1, backgroundColor: colors.purpleSoft, borderColor: "#c9c3f7" }} />
+                </View>
+              )}
             </View>
           </View>
         ) : page !== "workspace" ? (
@@ -169,8 +155,11 @@ function Auth({
           { flexGrow: 1, justifyContent: "center" },
         ]}
       >
-        <Button title="Back" onPress={onBack} />
-        <Mark size={48} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={[s.row, { gap: 6, alignSelf: "flex-start", paddingVertical: 6 }]}>
+          <Icon name="back" size={18} />
+          <Label style={s.strong}>Back</Label>
+        </Pressable>
+        <Mark size={44} />
         <Label style={s.title}>
           {mode === "signin"
             ? "Sign in"
@@ -178,7 +167,7 @@ function Auth({
               ? "Create account"
               : "Reset password"}
         </Label>
-        <Label>Email</Label>
+        <Label style={s.strong}>Email</Label>
         <TextInput
           accessibilityLabel="Email"
           autoCapitalize="none"
@@ -191,7 +180,7 @@ function Auth({
         />
         {mode !== "forgot" && (
           <>
-            <Label>Password</Label>
+            <Label style={s.strong}>Password</Label>
             <TextInput
               accessibilityLabel="Password"
               secureTextEntry
@@ -206,7 +195,7 @@ function Auth({
         )}
         {mode === "signup" && (
           <>
-            <Label>Confirm password</Label>
+            <Label style={s.strong}>Confirm password</Label>
             <TextInput
               accessibilityLabel="Confirm password"
               secureTextEntry
@@ -216,7 +205,7 @@ function Auth({
             />
           </>
         )}
-        {!!message && <Label accessibilityRole="alert">{message}</Label>}
+        {!!message && <Label accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14 }}>{message}</Label>}
         <Button
           title={
             busy
@@ -233,6 +222,7 @@ function Auth({
           onPress={() => void submit()}
         />
         <Button
+          variant="ghost"
           title={mode === "signin" ? "Forgot password?" : "Back to sign in"}
           onPress={() => {
             setMessage("");
@@ -241,7 +231,7 @@ function Auth({
         />
         <Label
           onPress={() => void Linking.openURL(ORIGIN + "/privacy")}
-          style={s.muted}
+          style={{ color: colors.purple, fontFamily: "SourceSansBold", fontSize: 14, textAlign: "center" }}
         >
           Privacy policy
         </Label>

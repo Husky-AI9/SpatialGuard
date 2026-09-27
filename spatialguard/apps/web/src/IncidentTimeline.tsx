@@ -38,7 +38,7 @@ export default function IncidentTimeline({ incident, cameras, step, onSelect, pl
         {events.map(event => {
           const association = incident.associations.find(item => item.to_observation_id === event.observation_id);
           return <Fragment key={event.observation_id}>
-            {association && <li className="event-association"><Link2 size={20} /><div><strong>Possible continuation · {association.unobserved_gap_seconds}s unobserved</strong><details><summary>Why only possible?</summary><p>{association.reason}</p><p>The route and whether this is the same person are unconfirmed.</p></details></div></li>}
+            {association && <li className="event-association"><Link2 size={20} /><div><strong>Possible continuation · {association.unobserved_gap_seconds}s unobserved</strong><details><summary>Why only possible?</summary><p>{association.reason}</p><p>Route between cameras is estimated.</p></details></div></li>}
             <li className={unknown(event) ? "event-gap" : "event-observed"}>
               {unknown(event) ? <HelpCircle size={20} /> : <span className="event-observed-dot" />}
               <button aria-pressed={step === event.index} onClick={() => onSelect(event.index)}>

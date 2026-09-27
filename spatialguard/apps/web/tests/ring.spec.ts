@@ -24,13 +24,13 @@ test("camera wall is available from Home and Cameras while Operations stays task
   await page.route("**/v1/ring/operations", route => route.fulfill({ json: operations }));
   await page.goto("/");
   await page.getByRole("button", { name: "Operations", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Know what is online." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Camera health" })).toBeVisible();
   await expect(page.getByText("99.8%")).toBeVisible();
   await expect(page.getByText("Front Door")).toBeVisible();
   await page.getByRole("tab", { name: "Time-lapse" }).click();
   await expect(page.getByRole("heading", { name: "Time-lapse projects" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create a project" })).toBeVisible();
-  await expect(page.getByText("No live video, audio or AI is used.")).toBeVisible();
+  await expect(page.getByText("Scheduled snapshots turned into a short reel.")).toBeVisible();
 
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.getByRole("button", { name: "Camera wall", exact: true }).click();
@@ -40,7 +40,7 @@ test("camera wall is available from Home and Cameras while Operations stays task
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
   await page.getByRole("button", { name: "Camera wall", exact: true }).click();
   await expect(page.locator(".camera-page > .camera-wall-view")).toBeVisible();
-  await expect(page.getByText("Open an incident to view its camera events", { exact: false })).toBeVisible();
+  await expect(page.getByText("Open an incident to watch its recordings", { exact: false })).toBeVisible();
 });
 
 test("Ring setup keeps customer flow clear and provides single-use fallback", async ({
@@ -66,7 +66,7 @@ test("Ring setup keeps customer flow clear and provides single-use fallback", as
     page.getByRole("heading", { name: "Ring connection", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("App credentials configured.", { exact: false }),
+    page.getByText("Link your Ring account to add cameras.", { exact: false }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Open Ring Appstore" })).toBeVisible();
   await expect(page.getByText("Developer connection settings")).toHaveCount(0);
@@ -158,7 +158,7 @@ test("phone Ring inventory handles mapping and provider errors without fake live
     page.getByRole("heading", { name: "Front camera" }),
   ).toBeVisible();
   await expect(page.getByText("Ring plan active")).toBeVisible();
-  await expect(page.getByText("Compatible camera", { exact: false })).toBeVisible();
+  await expect(page.getByText("Live view and motion events", { exact: false })).toBeVisible();
   await expect(page.getByText("Smart Alerts are unavailable", { exact: false })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Open live view" }),

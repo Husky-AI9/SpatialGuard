@@ -11,7 +11,6 @@ import {
   Shield,
   House,
   History,
-  Camera,
   Settings,
   Activity,
   Play,
@@ -34,6 +33,8 @@ import type { CameraChange } from "@twinforge/spatial-view/cameraGlyph";
 import CameraControls from "./CameraControls";
 import RenameField from "./RenameField";
 import PlanImporter from "./PlanImporter";
+import PairCameraSheet from "./PairCameraSheet";
+import CameraMark from "./CameraMark";
 import RingConnection from "./RingConnection";
 import CameraWorkspace from "./CameraWorkspace";
 import CameraWall from "./CameraWall";
@@ -77,7 +78,7 @@ import { ActivityIcon, actorFromClassification, DEFAULT_ACTOR, type ActorPresent
 const tabs = [
   { name: "Home", icon: House },
   { name: "Incidents", icon: History },
-  { name: "Cameras", icon: Camera },
+  { name: "Cameras", icon: CameraMark },
   { name: "Operations", icon: Activity },
   { name: "Settings", icon: Settings },
 ] as const;
@@ -96,7 +97,9 @@ function time(value: string) {
   });
 }
 function stamp(value: string) {
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+  });
 }
 const EMPTY_PLACE = {
   id: "",
@@ -164,6 +167,8 @@ export default function App() {
     [image, setImage] = useState(""),
     [imageError, setImageError] = useState(""),
     [accountPreferences, setAccountPreferences] = useState<AccountPreferences | null>(null),
+    [pairTarget, setPairTarget] = useState<{ id: string; name: string } | null>(null),
+    [ringVersion, setRingVersion] = useState(0),
     [onboardingOpen, setOnboardingOpen] = useState(false),
     [deleteOpen, setDeleteOpen] = useState(false),
     [deletePassword, setDeletePassword] = useState(""),
@@ -421,7 +426,7 @@ export default function App() {
         .catch(() => {
           if (live)
             setImageError(
-              "Evidence unavailable. Reconnect and select the observation again.",
+              "Evidence unavailable. Reconnect and try again.",
             );
         });
     return () => {
@@ -830,10 +835,7 @@ export default function App() {
         <div className="map-empty">
           <Map size={30} />
           <h3>No floor plan yet</h3>
-          <p>
-            Upload a drawing of your ground floor to see your Ring cameras on a
-            real map of your home, and where their coverage stops.
-          </p>
+          <p>Upload a drawing of your home to see every camera on a map.</p>
           <div className="button-row">
             <button
               className="primary"
@@ -848,10 +850,7 @@ export default function App() {
               Load sample
             </button>
           </div>
-          <small>
-            The sample is a synthetic demo home with two cameras and replay
-            activity — nothing from your own home.
-          </small>
+          
         </div>
       )}
       {site && (
@@ -908,7 +907,7 @@ export default function App() {
           </div>
           <p className="camera-lens">
             {activeRoom.provenance.kind === "inferred"
-              ? "Traced from your drawing — rename it to match the real room."
+              ? "Traced from your drawing."
               : "Part of the synthetic demo fixture."}
           </p>
         </div>
@@ -975,9 +974,7 @@ export default function App() {
             <History size={28} />
             <h3>No incidents yet</h3>
             <p>
-              {site
-                ? "Run the synthetic replay to follow activity from the front approach into the hallway."
-                : "Add a floor plan to start. Incidents are recorded against a place."}
+              {site ? "Activity your cameras record shows up here." : "Add a floor plan to get started."}
             </p>
             <button
               onClick={replay}
@@ -998,27 +995,20 @@ export default function App() {
                 <span>
                   <strong>{incident.title}</strong>
                   <small>
-                    {stamp(incident.created_at)} ?{" "}
+                    {stamp(incident.created_at)} ·{" "}
                     {incident.evidence_mode === "live"
-                      ? "Live integration"
+                      ? "Live"
                       : incident.evidence_mode === "simulator"
-                        ? "Official simulator"
+                        ? "Simulator"
                         : "Replay"}
                   </small>
-                  <small>
-                    {incident.status === "reviewed" ? "Reviewed" : "Needs review"} ?{" "}
-                    {incident.evidence_mode === "live"
-                      ? incident.observations.length
-                      : incident.observations.filter(
-                          (observation) => observation.location.kind !== "unknown",
-                        ).length}{" "}
-                    {incident.evidence_mode === "live" ? "camera events" : "observations"}
-                  </small>
+                  <em className={incident.status === "reviewed" ? "status-chip done" : "status-chip"}>
+                    {incident.status === "reviewed" ? "Reviewed" : "Needs review"}
+                  </em>
                 </span>
-                <ArrowUpRight size={18} />
               </button>
               <button
-                className="incident-delete primary"
+                className="incident-delete"
                 type="button"
                 aria-label={`Delete ${incident.title}`}
                 title="Delete incident"
@@ -1026,7 +1016,6 @@ export default function App() {
                 disabled={busy}
               >
                 <Trash2 size={17} />
-                <span>Delete</span>
               </button>
             </div>
           ))
@@ -1067,6 +1056,27 @@ export default function App() {
 
   return (
     <div className={`app-shell${lowPower ? " low-power" : ""}`}>
+      {pairTarget && site && (
+        <PairCameraSheet
+          siteId={site.id}
+          camera={pairTarget}
+          consent={!!accountPreferences?.ring_data_consent}
+          onAllowRing={async () => {
+            if (accountPreferences)
+              await saveAccountPreferences({ ...accountPreferences, ring_data_consent: true });
+          }}
+          onConnectRing={() => {
+            setPairTarget(null);
+            setTab("Home");
+            setRingSetupOpen(true);
+          }}
+          onPaired={() => {
+            setRingVersion((v) => v + 1);
+            void refresh();
+          }}
+          onClose={() => setPairTarget(null)}
+        />
+      )}
       {importing && (
         <PlanImporter
           onClose={() => setImporting(false)}
@@ -1167,15 +1177,15 @@ export default function App() {
               </button>
               <header>
                 <h2>Connect and pair Ring cameras</h2>
-                <p>Authorize Ring, then match each camera to its position on the current floor plan.</p>
+                
               </header>
               {accountPreferences?.ring_data_consent ? (
                 <RingConnection sites={sites} refreshOnReturn={returnedFromRing} />
               ) : (
                 <section className="ring-consent-required">
                   <h3>Allow Ring camera access</h3>
-                  <p>Turn on authorized Ring data in Settings before connecting cameras.</p>
-                  <button className="primary" onClick={() => nav("Settings")}>Open Settings</button>
+                  <p>SpatialGuard needs your permission to use your Ring cameras.</p>
+                  <button className="primary" disabled={!accountPreferences} onClick={() => accountPreferences && void act(() => saveAccountPreferences({ ...accountPreferences, ring_data_consent: true }))}>Allow Ring access</button>
                 </section>
               )}
             </div>
@@ -1250,7 +1260,7 @@ export default function App() {
                 <>
                 <button className="mobile-ring-setup" onClick={() => setRingSetupOpen(true)}>
                   <Link2 size={19} />
-                  <span><strong>Connect Ring cameras</strong><small>Authorize and pair cameras with this floor plan</small></span>
+                  <span><strong>Connect Ring cameras</strong><small>Link your Ring account</small></span>
                   <ArrowUpRight size={17} />
                 </button>
                 <div className="home-dashboard">
@@ -1269,7 +1279,8 @@ export default function App() {
                       }}
                       onClear={() => setRoom("")}
                       onViewAll={() => nav("Cameras")}
-                      onPairCamera={() => setRingSetupOpen(true)}
+                      onPairCamera={setPairTarget}
+                      ringVersion={ringVersion}
                       classificationEnabled={place.monitoring.classification_enabled}
                       onTestTrack={updateTestTrack}
                       onTestClassification={updateTestClassification}
@@ -1299,10 +1310,8 @@ export default function App() {
                 )
               }
               onSelectCamera={setRoom}
-              onPairCamera={() => {
-                setTab("Home");
-                setRingSetupOpen(true);
-              }}
+              onPairCamera={setPairTarget}
+              ringVersion={ringVersion}
             />
           )}
           {tab === "Operations" && <Operations features={features} />}
@@ -1339,7 +1348,7 @@ export default function App() {
               </section>
               <section className="settings-getting-started">
                 <h2>Getting started</h2>
-                <p>Review how Ring access, home maps, and the spatial evidence graph work together.</p>
+                
                 <button onClick={() => setOnboardingOpen(true)}>Open setup guide</button>
               </section>
               </>}
@@ -1347,8 +1356,8 @@ export default function App() {
                 <h2>Places</h2>
                 <p>
                   {sites.length
-                    ? "Removing a place deletes its map, its floor-plan drawing, and every incident recorded against it, here and in TwinForge. This cannot be undone."
-                    : "No places yet. Trace your own floor plan, or load the demo home to try the app out."}
+                    ? "Removing a place also deletes its incidents."
+                    : "No places yet."}
                 </p>
                 {sites.map((s) => (
                   <div className="session-row" key={s.id}>
@@ -1393,15 +1402,11 @@ export default function App() {
                     {sampleLoaded ? "Switch to demo home" : "Load demo home"}
                   </button>
                 </div>
-                <p className="fine">
-                  The demo home is a synthetic fixture for trying the app out:
-                  five spaces, two cameras, and replay activity. Nothing in it
-                  comes from your home.
-                </p>
+                
               </section>}
               {settingsPage === "privacy" && <section id="settings-privacy">
-                <h2>Privacy and retention</h2>
-                <p>Choose which provider data SpatialGuard may process and how long incident and security records remain in this workspace.</p>
+                <h2>Privacy</h2>
+                
                 {accountPreferences ? (
                   <div className="privacy-controls">
                     <label className="consent-choice">
@@ -1411,13 +1416,13 @@ export default function App() {
                           ring_data_consent: event.target.checked,
                           classification_consent: event.target.checked ? accountPreferences.classification_consent : false,
                         })} />
-                      <span><strong>Use authorized Ring data</strong><small>Camera inventory, live view, snapshots, events, device status, and time-lapse captures.</small></span>
+                      <span><strong>Ring cameras</strong><small>Live view, events and camera status.</small></span>
                     </label>
                     <label className="consent-choice">
                       <input type="checkbox" disabled={!accountPreferences.ring_data_consent}
                         checked={accountPreferences.classification_consent}
                         onChange={(event) => setAccountPreferences({ ...accountPreferences, classification_consent: event.target.checked })} />
-                      <span><strong>Analyze event snapshots</strong><small>Send up to three chronological event snapshots to the configured OpenAI model for a reviewable category.</small></span>
+                      <span><strong>Activity labels</strong><small>Event snapshots are sent to OpenAI to label activity.</small></span>
                     </label>
                     <div className="retention-grid">
                       <label>Incident retention
@@ -1437,7 +1442,7 @@ export default function App() {
                     </div>
                     <button className="primary" disabled={busy || !online}
                       onClick={() => void act(() => saveAccountPreferences(accountPreferences))}>Save privacy choices</button>
-                    <p className="fine">Retention cleanup runs in the background. Disabling Ring permission stops new provider processing; use Ring connection below to disconnect the integration.</p>
+                    
                     <p className="legal-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/data-deletion">Data deletion</a></p>
                   </div>
                 ) : <p>Loading privacy choices…</p>}
@@ -1447,11 +1452,12 @@ export default function App() {
               ) : (
                 <section id="settings-ring">
                   <h2>Ring connection</h2>
-                  <p>Allow Ring data in Privacy settings before linking a Ring account. Your Ring password is entered only on Ring’s own authorization page.</p>
+                  <p>SpatialGuard needs your permission to use your Ring cameras.</p>
+                  <button className="primary" disabled={!accountPreferences} onClick={() => accountPreferences && void act(() => saveAccountPreferences({ ...accountPreferences, ring_data_consent: true }))}>Allow Ring access</button>
                 </section>
               ))}
               {settingsPage === "devices" && <>
-              <section>
+              {localWeb && <section>
                 <h2>Android pairing</h2>
                 {native ? (
                   <p>This device is paired to your local workspace.</p>
@@ -1485,7 +1491,7 @@ export default function App() {
                     )}
                   </>
                 )}
-              </section>
+              </section>}
               <section id="settings-devices">
                 <h2>Connected sessions</h2>
                 {sessions.map((s) => (
@@ -1513,21 +1519,16 @@ export default function App() {
               </>}
               {settingsPage === "display" && <section className="settings-sessions">
                 <h2>Display and performance</h2>
-                <p>Low-power mode keeps incident review in the accessible 2D view and avoids WebGL and nonessential animation.</p>
+                <p>Uses the 2D map only and turns off animation.</p>
                 <button aria-pressed={lowPower} onClick={() => setLowPower(value => !value)}>
                   {lowPower ? "Use full graphics" : "Turn on low-power mode"}
                 </button>
-                <p className="fine" role="status">{lowPower ? "Low-power mode is on. The evidence timeline and 2D map remain available." : "Full graphics are available. Your reduced-motion system setting is still respected."}</p>
+                
               </section>}
               {settingsPage === "security" && <>
               <section id="settings-display">
                 <h2>Data and evidence</h2>
-                <p>
-                  Replay evidence is synthetic. Live Ring incidents retain event
-                  metadata and classifications; SpatialGuard does not store the
-                  snapshot used for classification. Live video is viewed through
-                  a bounded provider session and is not recorded by SpatialGuard.
-                </p>
+                <p>Live video is never recorded by SpatialGuard.</p>
                 <p>Application version 0.1</p>
               </section>
               {currentSession?.email && <AccountSecurity ringDataConsent={!!accountPreferences?.ring_data_consent} onSessionsChanged={() => void request<Session[]>("/v1/sessions").then(setSessions)} />}
@@ -1535,7 +1536,7 @@ export default function App() {
               {settingsPage === "delete" && currentSession?.email && (
                 <section className="danger-zone">
                   <h2>Delete account</h2>
-                  <p>Permanently remove this account, its maps, uploaded floor plans, incidents, sessions, Ring data, and time-lapse files. This cannot be undone.</p>
+                  <p>Deletes your account and all its data. This can’t be undone.</p>
                   <button className="danger" onClick={() => setDeleteOpen(true)}>Delete my account</button>
                 </section>
               )}
@@ -1563,7 +1564,7 @@ export default function App() {
             <button className="modal-close" aria-label="Close" onClick={() => setDeleteOpen(false)}><X size={18} /></button>
             <p className="eyebrow">Permanent action</p>
             <h2 id="delete-account-title">Delete SpatialGuard account?</h2>
-            <p>This removes the workspace and tries to disconnect the Ring integration first. It cannot be undone.</p>
+            <p>This can’t be undone.</p>
             <label>Current password<input type="password" autoComplete="current-password" value={deletePassword}
               onChange={(event) => setDeletePassword(event.target.value)} /></label>
             <label>Type DELETE to confirm<input value={deleteConfirmation}

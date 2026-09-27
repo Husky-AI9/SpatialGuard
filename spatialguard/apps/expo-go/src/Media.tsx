@@ -16,9 +16,9 @@ export function Snapshot({ device }: { device: Device }) {
         headers: authHeaders(),
       }}
       style={{
-        width: 94,
-        height: 60,
-        borderRadius: 7,
+        width: 56,
+        height: 56,
+        borderRadius: 12,
         backgroundColor: "#e6e6f3",
       }}
       onError={() => setFailed(true)}
@@ -26,16 +26,15 @@ export function Snapshot({ device }: { device: Device }) {
   ) : (
     <View
       style={{
-        width: 94,
-        height: 60,
+        width: 56,
+        height: 56,
         backgroundColor: "#e6e6f3",
         justifyContent: "center",
         alignItems: "center",
-        borderRadius: 7,
+        borderRadius: 12,
       }}
     >
       <CameraIcon size={22} color="#39406b" strokeWidth={1.9} />
-      <Label style={[styles.muted, { fontSize: 12 }]}>No snapshot</Label>
     </View>
   );
 }

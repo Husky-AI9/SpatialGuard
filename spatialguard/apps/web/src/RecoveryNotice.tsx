@@ -11,13 +11,13 @@ export function recoveryCopy(message: string) {
   if (/session|sign.?in|unauthor|credential/.test(value))
     return {
       cause: "Your session needs attention",
-      effect: "SpatialGuard stopped loading private camera and incident data.",
+      effect: "Your data didn’t load.",
       action: "Sign in again, then return to this screen.",
     };
   if (/timeout|timed out|network|fetch|reach|connect/.test(value))
     return {
       cause: "SpatialGuard could not reach the service",
-      effect: "What you see may be stale; no new monitoring result is implied.",
+      effect: "What you see may be out of date.",
       action: "Check your connection and try again.",
     };
   if (/offline|unavailable/.test(value))
@@ -29,19 +29,19 @@ export function recoveryCopy(message: string) {
   if (/already open|already closed|another.*active|conflict/.test(value))
     return {
       cause: "The camera session changed",
-      effect: "SpatialGuard closed this view instead of showing an uncertain stream state.",
+      effect: "The live view was closed.",
       action: "Close any other live view, then start this camera again.",
     };
   if (/privacy|masked|permission|forbidden/.test(value))
     return {
       cause: "Ring privacy or permission settings blocked this action",
-      effect: "SpatialGuard did not display or process the protected media.",
+      effect: "Nothing was shown.",
       action: "Review the camera settings in Ring before trying again.",
     };
   return {
     cause: "That action did not finish",
     effect: "No successful update was recorded.",
-    action: "Try again. If it repeats, open Settings and check the Ring connection.",
+    action: "Try again.",
   };
 }
 
@@ -51,7 +51,6 @@ export default function RecoveryNotice({ message, onRetry, retryLabel = "Try aga
     <AlertTriangle size={20} aria-hidden="true" />
     <div>
       <strong>{copy.cause}</strong>
-      <p>{copy.effect}</p>
       <small>{copy.action}</small>
       <details><summary>Technical detail</summary><code>{message}</code></details>
     </div>

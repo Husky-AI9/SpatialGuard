@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { request, type Site, type Device } from "./api";
-import { Button, Card, Label, styles as s, colors } from "./ui";
+import { Button, Card, CardHeader, Chip, Icon, Label, styles as s, colors } from "./ui";
+
 export function RingSettings({
   sites,
   devices,
@@ -16,10 +17,10 @@ export function RingSettings({
   refresh: () => Promise<unknown>;
 }) {
   const [message, setMessage] = useState("");
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async (fn: () => Promise<unknown>, done = "") => {
     try {
       await fn();
-      setMessage("Saved");
+      setMessage(done);
     } catch (e) {
       setMessage((e as Error).message);
     }
@@ -27,59 +28,79 @@ export function RingSettings({
   return (
     <>
       <Card>
-        <Label style={s.heading}>Connect Ring</Label>
+        <CardHeader
+          title="Ring connection"
+          action={<Chip text={devices.length ? "Connected" : consent ? "Not linked" : "Off"} tone={devices.length ? "success" : "muted"} />}
+        />
         {!consent ? (
-          <Button title="Allow Ring data" onPress={() => void run(enable)} />
+          <>
+            <Label style={s.muted}>SpatialGuard needs your permission to use your Ring cameras.</Label>
+            <Button title="Allow Ring access" onPress={() => void run(enable)} />
+          </>
+        ) : devices.length ? (
+          <Button variant="secondary" icon="refresh" title="Refresh cameras" onPress={() => void run(refresh, "Cameras updated")} />
         ) : (
           <>
-            <Label>
-              Authorize SpatialGuard in your Ring app, then use this single-use
-              code to link your account.
-            </Label>
+            <Label style={s.muted}>In the Ring app, find SpatialGuard and choose the cameras to share. Then come back here.</Label>
             <Button
               title="Get linking code"
               onPress={() =>
                 void run(async () => {
-                  const r = await request<{ code: string }>(
-                    "/v1/ring/sign-in-code",
-                    "POST",
-                  );
+                  const r = await request<{ code: string }>("/v1/ring/sign-in-code", "POST");
                   Alert.alert("Ring linking code", r.code);
                 })
               }
             />
-            <Button title="Refresh cameras" onPress={() => void run(refresh)} />
+            <Button variant="secondary" icon="refresh" title="Refresh cameras" onPress={() => void run(refresh, "Cameras updated")} />
           </>
         )}
-        {!!message && <Label>{message}</Label>}
+        {!!message && <Label style={[s.muted, { fontSize: 13 }]}>{message}</Label>}
       </Card>
       {devices.map((d) => (
         <Card key={d.id}>
-          <Label style={s.heading}>{d.name}</Label>
-          <Label style={s.muted}>Pair with a camera on your floor plan</Label>
-          {sites.flatMap((site) =>
-            (site.layout.cameras ?? []).map((c) => (
-              <Button
-                key={site.id + c.id}
-                title={`${site.name} · ${c.name}${d.site_id === site.id && d.camera_id === c.id ? " ✓" : ""}`}
-                onPress={() =>
-                  void run(async () => {
-                    await request(
-                      `/v1/ring/devices/${encodeURIComponent(d.id)}/mapping`,
-                      "PUT",
-                      { site_id: site.id, camera_id: c.id },
-                    );
-                    await refresh();
-                  })
-                }
-              />
-            )),
-          )}
+          <View style={s.row}>
+            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.purpleSoft, alignItems: "center", justifyContent: "center" }}>
+              <Icon name="camera" size={20} color={colors.purple} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Label style={s.strong}>{d.name}</Label>
+              <Label style={[s.muted, { fontSize: 13 }]}>
+                {d.support?.live_view === false ? "Not compatible" : d.camera_id ? "Paired" : "Not paired"}
+              </Label>
+            </View>
+          </View>
+          <Label style={[s.muted, { fontSize: 12, fontFamily: "SourceSansBold" }]}>PAIR WITH</Label>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {sites.flatMap((site) =>
+              (site.layout.cameras ?? []).map((c) => {
+                const on = d.site_id === site.id && d.camera_id === c.id;
+                return (
+                  <Pressable
+                    key={site.id + c.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    onPress={() =>
+                      void run(async () => {
+                        await request(`/v1/ring/devices/${encodeURIComponent(d.id)}/mapping`, "PUT", { site_id: site.id, camera_id: c.id });
+                        await refresh();
+                      }, "Paired")
+                    }
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: on ? colors.purple : colors.border, backgroundColor: on ? colors.purple : colors.card }}
+                  >
+                    <Label style={{ fontSize: 14, fontFamily: "SourceSansBold", color: on ? "#fff" : colors.ink }}>
+                      {sites.length > 1 ? `${site.name} · ` : ""}{c.name}
+                    </Label>
+                  </Pressable>
+                );
+              }),
+            )}
+          </View>
         </Card>
       ))}
     </>
   );
 }
+
 type OperationsData = {
   devices: {
     id: string;
@@ -106,59 +127,67 @@ export function Operations() {
         if (active) setData(v);
       })
       .catch((e) => {
-        if (active) setError(e.message);
+        // Ring not linked or not allowed yet is the empty state, not an error.
+        if (active) (e?.status && [403, 404, 409].includes(e.status) ? setData({ devices: [], alerts: [], projects: [] }) : setError(e.message));
       });
     return () => {
       active = false;
     };
   }, []);
-  return error ? (
-    <Card>
-      <Label>{error}</Label>
-    </Card>
-  ) : !data ? (
-    <ActivityIndicator color={colors.purple} />
-  ) : (
+  if (error)
+    return (
+      <Card style={{ borderColor: "#f3c4c9", backgroundColor: "#fff4f5" }}>
+        <Label style={{ color: "#7c1d26" }}>{error}</Label>
+      </Card>
+    );
+  if (!data) return <ActivityIndicator color={colors.purple} style={{ marginTop: 24 }} />;
+  const online = data.devices.filter((d) => d.online).length;
+  return (
     <>
-      <Card>
-        <Label style={s.heading}>Camera health</Label>
+      <Card style={{ gap: 0 }}>
+        <View style={{ paddingBottom: 8 }}>
+          <CardHeader title="Camera health" detail="Last 7 days" action={<Chip text={`${online}/${data.devices.length} online`} />} />
+        </View>
         {data.devices.map((d) => (
-          <View key={d.id} style={{ gap: 4 }}>
-            <Label>
-              {d.name} · {d.online ? "Online" : "Offline"}
-            </Label>
-            <Label style={s.muted}>
-              {d.uptime_percent === null
-                ? "No history yet"
-                : `${d.uptime_percent}% uptime`}{" "}
-              · Checked {new Date(d.checked_at).toLocaleString()}
-            </Label>
+          <View key={d.id} style={[s.row, { paddingVertical: 12, borderTopWidth: 1, borderColor: colors.line }]}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: d.online ? "#22a05b" : colors.danger }} />
+            <View style={{ flex: 1 }}>
+              <Label style={s.strong}>{d.name}</Label>
+              <Label style={[s.muted, { fontSize: 13 }]}>
+                {d.uptime_percent === null ? "No history yet" : `${d.uptime_percent}% uptime`}
+              </Label>
+            </View>
+            <Chip text={d.online ? "Online" : "Offline"} tone={d.online ? "success" : "danger"} />
           </View>
         ))}
-        {!data.devices.length && <Label>No connected cameras.</Label>}
+        {!data.devices.length && (
+          <View style={{ alignItems: "center", paddingVertical: 20, gap: 6 }}>
+            <Icon name="camera" size={22} color={colors.muted} />
+            <Label style={s.strong}>No Ring cameras connected</Label>
+            <Label style={s.muted}>Link Ring in Settings to see your cameras here.</Label>
+          </View>
+        )}
       </Card>
       <Card>
-        <Label style={s.heading}>Status alerts</Label>
+        <CardHeader title="Recent status alerts" />
         {data.alerts.map((a) => (
-          <Label key={a.id}>
-            {data.devices.find((d) => d.id === a.device)?.name || "Camera"} ·{" "}
-            {a.kind} · {new Date(a.at * 1000).toLocaleString()}
+          <Label key={a.id} style={{ fontSize: 14 }}>
+            {data.devices.find((d) => d.id === a.device)?.name || "Camera"} · {a.kind} · {new Date(a.at * 1000).toLocaleString()}
           </Label>
         ))}
-        {!data.alerts.length && <Label>No status changes recorded.</Label>}
+        {!data.alerts.length && <Label style={s.muted}>No status changes recorded.</Label>}
       </Card>
-      <Card>
-        <Label style={s.heading}>Time-lapse</Label>
-        {data.projects.map((p) => (
-          <View key={p.id}>
-            <Label>{p.name}</Label>
-            <Label style={s.muted}>
-              {p.frame_count} frames · Every {p.cadence_minutes} minutes
-            </Label>
-          </View>
-        ))}
-        {!data.projects.length && <Label>No time-lapse projects.</Label>}
-      </Card>
+      {!!data.projects.length && (
+        <Card>
+          <CardHeader title="Time-lapse" />
+          {data.projects.map((p) => (
+            <View key={p.id}>
+              <Label style={s.strong}>{p.name}</Label>
+              <Label style={[s.muted, { fontSize: 13 }]}>{p.frame_count} frames · every {p.cadence_minutes} min</Label>
+            </View>
+          ))}
+        </Card>
+      )}
     </>
   );
 }

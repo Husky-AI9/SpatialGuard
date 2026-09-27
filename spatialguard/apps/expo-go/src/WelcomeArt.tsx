@@ -92,18 +92,8 @@ export default function WelcomeArt() {
         [55, 137],
       ].map(([x, y]) => (
         <G key={x} transform={`translate(${x} ${y})`}>
-          <Circle r="18" fill="#23253f" stroke="white" strokeWidth="3" />
-          <G
-            transform="translate(-9 -9) scale(.75)"
-            fill="none"
-            stroke="white"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <Path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
-            <Circle cx="12" cy="13" r="3" />
-          </G>
+          <Circle r="12" fill="white" stroke="#5b4fe8" strokeWidth="4.2" />
+          <Circle r="4.8" fill="#5b4fe8" />
         </G>
       ))}
       <G

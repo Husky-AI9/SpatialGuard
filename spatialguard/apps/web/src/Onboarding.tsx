@@ -45,52 +45,38 @@ export default function Onboarding({
   const pages = [
     <div className="onboarding-copy" key="account">
       <span className="onboarding-icon"><Shield size={24} /></span>
-      <p className="eyebrow">Your SpatialGuard workspace</p>
-      <h2>One place to understand camera events</h2>
-      <p>Your SpatialGuard email account is separate from Ring. SpatialGuard never asks for or stores your Ring password. Ring authorization happens on Ring’s own linking page.</p>
+      <h2>Welcome to SpatialGuard</h2>
+      <p>See what your cameras saw, and where, on a map of your home.</p>
       <ul>
-        <li><Check size={16} />Incidents stay tied to the map revision used when they happened.</li>
-        <li><Check size={16} />Replay, live events, and estimates are always labelled separately.</li>
-        <li><Check size={16} />You control retention and can delete the account from Settings.</li>
+        <li><Check size={16} />Your Ring password is never shared with us.</li>
+        <li><Check size={16} />You choose what data we can use.</li>
+        <li><Check size={16} />Delete your data anytime.</li>
       </ul>
     </div>,
     <div className="onboarding-copy" key="consent">
       <span className="onboarding-icon"><CameraMark size={24} /></span>
-      <p className="eyebrow">Choose what SpatialGuard may use</p>
-      <h2>Ring access starts only after you allow it</h2>
+      <h2>Choose what we can use</h2>
       <label className="consent-choice">
         <input type="checkbox" checked={draft.ring_data_consent}
           onChange={(event) => setDraft({ ...draft, ring_data_consent: event.target.checked,
             classification_consent: event.target.checked ? draft.classification_consent : false })} />
-        <span><strong>Use authorized Ring data</strong><small>Inventory, snapshots, live video, signed events, device status, and time-lapse captures.</small></span>
+        <span><strong>Ring cameras</strong><small>Live view, events and camera status.</small></span>
       </label>
       <label className="consent-choice">
         <input type="checkbox" disabled={!draft.ring_data_consent} checked={draft.classification_consent}
           onChange={(event) => setDraft({ ...draft, classification_consent: event.target.checked })} />
-        <span><strong>Analyze event snapshots</strong><small>Send up to three authorized event snapshots to the configured OpenAI model for a cautious, reviewable category. No face identification or gender inference.</small></span>
+        <span><strong>Activity labels</strong><small>Event snapshots are sent to OpenAI to label activity. No face recognition.</small></span>
       </label>
-      <p className="fine">Both choices are optional and can be changed in Privacy settings.</p>
+      <p className="fine">You can change these later in Settings.</p>
     </div>,
     <div className="onboarding-copy" key="map">
       <span className="onboarding-icon"><Map size={24} /></span>
-      <p className="eyebrow">Build the home context</p>
-      <h2>Add a floor plan, then place each camera</h2>
-      <p>The map explains which camera observed an event. Without camera calibration, SpatialGuard does not claim an exact person position or movement path.</p>
+      <h2>Add your floor plan</h2>
+      <p>Upload a drawing of your home, then place your cameras on it.</p>
       <div className="onboarding-map-actions">
-        <button className="primary" onClick={onUploadPlan}>Upload my floor plan</button>
-        <button onClick={onLoadSample}>Explore the synthetic demo</button>
+        <button className="primary" onClick={onUploadPlan}>Upload floor plan</button>
+        <button onClick={onLoadSample}>Try the demo home</button>
       </div>
-    </div>,
-    <div className="onboarding-copy" key="evidence">
-      <span className="onboarding-icon"><Shield size={24} /></span>
-      <p className="eyebrow">Read the evidence honestly</p>
-      <h2>Observed does not mean tracked</h2>
-      <div className="onboarding-evidence">
-        <span><i className="evidence-observed" /><strong>Observed</strong><small>A mapped camera reported the event.</small></span>
-        <span><i className="evidence-possible" /><strong>Possible continuation</strong><small>Another camera reported activity within five minutes.</small></span>
-        <span><i className="evidence-unknown">?</i><strong>Unknown gap</strong><small>No camera evidence establishes the route or identity between them.</small></span>
-      </div>
-      <p>SpatialGuard keeps uncertainty visible so an incident can be reviewed without turning a camera event into a false location claim.</p>
     </div>,
   ];
 
@@ -98,7 +84,7 @@ export default function Onboarding({
     <div className="modal-backdrop onboarding-backdrop" role="presentation">
       <section {...dialog} className="onboarding-dialog" role="dialog" aria-modal="true" aria-label="SpatialGuard setup">
         <header>
-          <span>SpatialGuard setup</span>
+          <span>Setup</span>
           <span>{page + 1} of {pages.length}</span>
         </header>
         <div>{pages[page]}</div>

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { AlertTriangle, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import type { Layout } from "../../../../packages/sdk-typescript";
 import type { components } from "./generated";
@@ -162,10 +162,7 @@ export default function PlanImporter({
               generate();
             }}
           >
-            <p className="muted">
-              Upload a drawing of one floor. TwinForge traces it into an editable 2D
-              and 3D map that you can place cameras on.
-            </p>
+            <p className="muted">Upload a drawing of one floor to build your home map.</p>
             <label className={file ? "plan-drop has-file" : "plan-drop"}>
               <span className="plan-drop-icon" aria-hidden="true">
                 <Upload size={20} />
@@ -193,7 +190,7 @@ export default function PlanImporter({
                 />
               </label>
               <label>
-                Assumed ceiling height (m)
+                Ceiling height (m)
                 <input
                   type="number"
                   min="0.1"
@@ -213,32 +210,14 @@ export default function PlanImporter({
                 onChange={(e) => setVision(e.target.checked)}
               />
               <span>
-                Use GPT Sol to recognise rooms and ignore furniture
-                {checkingVision && " — checking availability…"}
-                {!checkingVision && !visionAvailable && " — unavailable on this server"}
+                <strong>Read room names and sizes</strong>
+                <small>
+                  {checkingVision ? "Checking availability…"
+                    : !visionAvailable ? "Not available right now"
+                      : "Your drawing is sent to OpenAI to read its labels."}
+                </small>
               </span>
             </label>
-            {vision ? (
-              <p className="fine plan-disclosure">
-                <AlertTriangle size={14} />
-                <span>
-                  This uploads your floor plan to OpenAI using the TwinForge server's
-                  API key, and that account is billed for the request. The drawing
-                  leaves this machine. If the model is unavailable or returns invalid
-                  geometry, TwinForge traces locally instead and tells you so.
-                </span>
-              </p>
-            ) : (
-              <p className="fine">
-                Local tracing only — the drawing stays on this PC. Furnished drawings
-                may produce just an approximate footprint.
-              </p>
-            )}
-            <p className="fine">
-              Either way, scale is estimated from the drawing and never measured.
-              Stairs, roofs, and window details are not traced, and rooms that open
-              into each other without a door become one space.
-            </p>
             {error && <RecoveryNotice message={error} />}
             <div className="button-row">
               <button type="button" onClick={onClose}>
@@ -259,18 +238,11 @@ export default function PlanImporter({
           <div className="plan-progress">
             <p role="status">
               {job.state === "queued"
-                ? "Queued — waiting for the TwinForge worker…"
-                : vision
-                  ? "Reading rooms with GPT Sol, checking the geometry, then building the draft…"
-                  : "Reading walls and openings, then building the draft…"}
+                ? "Waiting to start…"
+                : "Tracing walls and doors…"}
             </p>
             <progress aria-label="Tracing floor plan" />
-            <p className="fine">
-              This needs the local TwinForge worker running.{" "}
-              {vision
-                ? "Vision tracing can take up to a few minutes."
-                : "Tracing usually takes a few seconds."}
-            </p>
+            <p className="fine">{vision ? "This can take up to a minute." : "This takes a few seconds."}</p>
             <div className="button-row">
               <button onClick={discard} disabled={busy}>
                 Cancel tracing
@@ -317,22 +289,11 @@ export default function PlanImporter({
                 </Suspense>
               )}
             </div>
-            <p className="fine plan-source">
-              {job.vision_status === "completed"
-                ? "Traced by GPT Sol from your drawing."
-                : job.vision_status === "failed"
-                  ? `GPT Sol did not produce usable geometry (${job.vision_error}) — TwinForge traced locally instead.`
-                  : "Traced locally on this PC."}
-            </p>
-            {job.warning && <p role="status">{job.warning}</p>}
+            {job.vision_status === "failed" && (
+              <p className="fine plan-source">Room names couldn't be read, so rooms are numbered.</p>
+            )}
             <div className="plan-scale">
-              <p>
-                <strong>Measure two dimensions.</strong> Tracing estimates metres from
-                assumed door widths, so camera ranges and coverage only mean anything
-                once you measure the building. The drawing suggests about{" "}
-                {job.traced_width_m} m × {job.traced_depth_m} m — replace these with
-                measurements of the real building, outer wall to outer wall.
-              </p>
+              <p><strong>Check the size</strong> Outer wall to outer wall.</p>
               <div className="plan-fields">
                 <label>
                   Overall width (m)
@@ -359,19 +320,7 @@ export default function PlanImporter({
                   />
                 </label>
               </div>
-              <p className="fine">
-                The width sets the scale and the depth is an independent check. If the
-                two disagree with the drawing by more than 2%, nothing is published.
-              </p>
             </div>
-            <p className="fine">
-              Scale basis: {job.scale_basis ?? "estimated"}. Room names:{" "}
-              {job.label_reader && ["Tesseract", "vision"].includes(job.label_reader)
-                ? "read from printed labels"
-                : "not read from the drawing"}
-              . Accepting records that you reviewed this traced geometry; it does not
-              make it measured.
-            </p>
             {error && <RecoveryNotice message={error} />}
             <div className="button-row">
               <button onClick={discard} disabled={busy}>
