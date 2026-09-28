@@ -16,6 +16,8 @@ export type MotionIncident = {
 
 /** How long a camera keeps pulsing after it reports motion. */
 export const MOTION_HOLD_MS = 30_000;
+/** A visit recorded within this long counts as newly arrived activity. */
+const FRESH_MS = 2 * 60_000;
 
 /**
  * When each sighting really happened. Live incidents carry clock times; a
@@ -46,7 +48,12 @@ export class MotionTracker {
     const first = this.known === null;
     const seen = this.known ?? new Set<string>();
     for (const incident of incidents) {
-      const arrived = !first && !seen.has(incident.id);
+      // "Arrived" means recorded just now, not merely new to this list: apps
+      // start with an empty list and then load older visits, which must not
+      // make every camera pulse when the home screen opens.
+      const created = Date.parse(incident.created_at);
+      const fresh = Number.isFinite(created) && now - created <= FRESH_MS;
+      const arrived = !first && !seen.has(incident.id) && fresh;
       seen.add(incident.id);
       for (const [camera, at] of sightingTimes(incident)) {
         const end = Math.max(Number.isFinite(at) ? at + MOTION_HOLD_MS : 0, arrived ? now + MOTION_HOLD_MS : 0);

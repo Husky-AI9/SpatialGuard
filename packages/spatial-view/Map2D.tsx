@@ -458,7 +458,8 @@ export default function Map2D({
       </g>}
       <g className="map-coverage" pointerEvents="none">
         {cameras.map(c => <path key={c.id} className="camera-coverage" d={coveragePath(c)}
-          fill="#5B4FE8" fillOpacity={selected === c.id ? .24 : motion && motionCameras.includes(c.id) ? .16 : .05} />)}
+          // Idle views stay clearly visible on the floor plan; activity and selection deepen them.
+          fill="#5B4FE8" fillOpacity={selected === c.id ? .3 : motion && motionCameras.includes(c.id) ? .24 : .15} />)}
       </g>
       {motion && motionCameras.length > 0 && (
         <g className="motion-waves" pointerEvents="none" aria-hidden="true">
