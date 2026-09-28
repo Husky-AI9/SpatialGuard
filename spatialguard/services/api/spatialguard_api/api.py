@@ -769,7 +769,8 @@ def create_app(db_path=None, engine=None, ring_service=None):
             engine_call(tf.delete_site, engine_site)
             with store.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
-                for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights"):
+                for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights",
+                          "site_alerts", "site_alert_settings"):
                     db.execute(f"DELETE FROM {table} WHERE site_id=?", (engine_site,))
                 db.execute("DELETE FROM sites WHERE id=? AND owner=?", (engine_site, p["owner"]))
                 db.execute("DELETE FROM plans WHERE engine_site=? AND owner=?", (engine_site, p["owner"]))
@@ -779,7 +780,8 @@ def create_app(db_path=None, engine=None, ring_service=None):
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             for site_id in site_ids:
-                for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights"):
+                for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights",
+                          "site_alerts", "site_alert_settings"):
                     db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             for table in (
                 "sites", "plans", "sessions", "pairing", "audit", "account_preferences",
@@ -896,7 +898,8 @@ def create_app(db_path=None, engine=None, ring_service=None):
             engine_call(tf.delete_site, site_id)
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights"):
+            for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights",
+                          "site_alerts", "site_alert_settings"):
                 db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             db.execute("DELETE FROM sites WHERE id=? AND owner=?", (site_id, p["owner"]))
             db.execute("DELETE FROM settings WHERE key=? AND value=?", (active_key(p), site_id))
@@ -1281,6 +1284,33 @@ def create_app(db_path=None, engine=None, ring_service=None):
                        "(SELECT id FROM site_insights WHERE site_id=? ORDER BY id DESC LIMIT 12)", (site_id, site_id))
             audit(db, p["owner"], "insight.generated", site_id)
         return insight_state(insight)
+
+    @app.get("/v1/sites/{site_id}/alerts", response_model=m.CrowdAlerts)
+    def site_alerts(site_id: str, p=Depends(principal)):
+        """Queue and crowding alert settings, recent alerts, and zones busy right now."""
+        from . import alerts
+        with store.connect() as db:
+            site = owned(db, site_id, p)
+            return {"settings": alerts.settings(db, site), "alerts": alerts.recent(db, site_id),
+                    "live": alerts.live(db, site)}
+
+    @app.put("/v1/sites/{site_id}/alerts/settings", response_model=m.CrowdAlertSettings)
+    def site_alert_settings(site_id: str, body: m.CrowdAlertSettingsInput, p=Depends(principal)):
+        from . import alerts
+        if body.window_minutes not in alerts.WINDOWS:
+            raise HTTPException(422, "Choose a window of 2, 5, 10, 15 or 30 minutes")
+        with store.connect() as db:
+            site = owned(db, site_id, p)
+            result = alerts.save_settings(db, site, body.enabled, body.window_minutes, body.limits)
+            audit(db, p["owner"], "alerts.settings", site_id)
+            return result
+
+    @app.post("/v1/sites/{site_id}/alerts/{alert_id}/acknowledge", status_code=204)
+    def acknowledge_site_alert(site_id: str, alert_id: int, p=Depends(principal)):
+        with store.connect() as db:
+            owned(db, site_id, p)
+            if not db.execute("UPDATE site_alerts SET acknowledged=1 WHERE id=? AND site_id=?", (alert_id, site_id)).rowcount:
+                raise HTTPException(404, "Alert not found")
 
     def incident_row(db, incident_id, p):
         row = db.execute("SELECT * FROM incidents WHERE id=?", (incident_id,)).fetchone()

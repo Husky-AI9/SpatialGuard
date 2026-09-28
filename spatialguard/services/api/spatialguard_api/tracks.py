@@ -155,6 +155,9 @@ def process_one(ring, store) -> bool:
         exists = db.execute("SELECT 1 FROM incidents WHERE id=?", (row["incident_id"],)).fetchone()
         if exists:
             save(db, row["incident_id"], row["observation_id"], row["site_id"], row["camera_id"], row["observed_at"], track)
+            # A detected path can place the visitor in a zone that is now busy.
+            from . import alerts
+            alerts.try_evaluate(db, row["site_id"])
         else:
             db.execute("DELETE FROM observation_tracks WHERE incident_id=?", (row["incident_id"],))
     return True

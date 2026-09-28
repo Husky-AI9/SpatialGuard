@@ -18,7 +18,7 @@ const when = (value: string) =>
 const failed = (state: string) => /fail|denied|error|reject/i.test(state);
 
 const EMAILS = [
-  ["incident_email", "Incidents", "An email when new activity is recorded."],
+  ["incident_email", "Visit activity", "An email when new activity is recorded."],
   ["operational_email", "Camera status", "When a camera goes offline or comes back."],
   ["weekly_summary", "Weekly summary", "A short recap every week."],
   ["marketing", "Product news", "New features and tips."],

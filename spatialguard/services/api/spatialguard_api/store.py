@@ -206,6 +206,14 @@ class Store:
                 created TEXT NOT NULL, data TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS site_insights_site ON site_insights(site_id, id);
+            -- Queue and crowding alerts (alerts.py): owner limits and raised alerts.
+            CREATE TABLE IF NOT EXISTS site_alert_settings (site_id TEXT PRIMARY KEY, data TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS site_alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, site_id TEXT NOT NULL, zone TEXT NOT NULL,
+                kind TEXT NOT NULL, count INTEGER NOT NULL, alert_limit INTEGER NOT NULL,
+                window_minutes INTEGER NOT NULL, at TEXT NOT NULL, acknowledged INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS site_alerts_site ON site_alerts(site_id, id);
             CREATE TABLE IF NOT EXISTS notification_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL,
                 category TEXT NOT NULL, channel TEXT NOT NULL, state TEXT NOT NULL,

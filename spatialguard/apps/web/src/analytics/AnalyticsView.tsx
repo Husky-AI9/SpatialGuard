@@ -11,6 +11,7 @@
 import { Building2, Clock3, DoorOpen, Info, Minus, RefreshCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import type { components } from "../generated";
 import { ACCENT, BusyGrid, ChartCard, DailyCompare, HourlyColumns, PREVIOUS, RankedBars, hourLabel } from "./charts";
+import AlertsCard, { type AlertSettingsInput, type CrowdAlerts } from "./AlertsCard";
 import "./analytics.css";
 
 export type SiteAnalytics = components["schemas"]["SiteAnalytics"];
@@ -29,6 +30,11 @@ export type AnalyticsViewProps = {
   insightError: string;
   onInsight: () => void;
   onRetry: () => void;
+  /** Queue and crowding alerts; omitted until loaded. */
+  alerts?: CrowdAlerts | null;
+  alertsBusy?: boolean;
+  onAlertSettings?: (next: AlertSettingsInput) => void;
+  onAcknowledge?: (id: number) => void;
 };
 
 const weekday = (date: string, style: "short" | "long" = "short") =>
@@ -182,6 +188,11 @@ export default function AnalyticsView(props: AnalyticsViewProps) {
 
           <InsightCard insight={props.insight} busy={props.insightBusy} error={props.insightError}
             onInsight={props.onInsight} visits={totals.visits} />
+
+          {props.alerts && props.onAlertSettings && props.onAcknowledge && (
+            <AlertsCard alerts={props.alerts} busy={!!props.alertsBusy}
+              onSettings={props.onAlertSettings} onAcknowledge={props.onAcknowledge} />
+          )}
 
           <div className="an-grid">
             <ChartCard className="an-span" title="Visits per day" subtitle="This week against the same day last week"

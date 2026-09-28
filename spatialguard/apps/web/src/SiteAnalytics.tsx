@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AnalyticsView, { type InsightState, type SiteAnalytics as Data, type SiteSummary } from "./analytics/AnalyticsView";
+import type { AlertSettingsInput, CrowdAlerts } from "./analytics/AlertsCard";
 import { request } from "./platform";
 
 export const timeZone = () => {
@@ -26,6 +27,8 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
   const [insightBusy, setInsightBusy] = useState(false);
   const [insightError, setInsightError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [alerts, setAlerts] = useState<CrowdAlerts | null>(null);
+  const [alertsBusy, setAlertsBusy] = useState(false);
   const autoWritten = useRef(new Set<string>());
 
   useEffect(() => {
@@ -54,11 +57,13 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
     Promise.all([
       request<Data>(`/v1/sites/${siteId}/analytics?tz=${encodeURIComponent(tz)}`),
       request<InsightState>(`/v1/sites/${siteId}/analytics/insight`),
+      request<CrowdAlerts>(`/v1/sites/${siteId}/alerts`),
     ])
-      .then(([next, state]) => {
+      .then(([next, state, crowd]) => {
         if (!live) return;
         setData(next);
         setInsight(state);
+        setAlerts(crowd);
       })
       .catch((problem) => live && setError(problem instanceof Error ? problem.message : "Analytics are unavailable."))
       .finally(() => live && setLoading(false));
@@ -79,6 +84,22 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
       setInsightBusy(false);
     }
   }, [siteId, tz]);
+
+  const saveAlerts = useCallback(async (next: AlertSettingsInput) => {
+    if (!siteId) return;
+    setAlertsBusy(true);
+    try {
+      const settings = await request<CrowdAlerts["settings"]>(`/v1/sites/${siteId}/alerts/settings`, "PUT", next);
+      setAlerts((current) => (current ? { ...current, settings } : current));
+    } finally {
+      setAlertsBusy(false);
+    }
+  }, [siteId]);
+  const acknowledge = useCallback(async (id: number) => {
+    if (!siteId) return;
+    await request(`/v1/sites/${siteId}/alerts/${id}/acknowledge`, "POST");
+    setAlerts((current) => current && { ...current, alerts: current.alerts.map((a) => (a.id === id ? { ...a, acknowledged: true } : a)) });
+  }, [siteId]);
 
   // This week's note is written automatically, once, when it is missing or a week old.
   useEffect(() => {
@@ -106,6 +127,10 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
       insightError={insightError}
       onInsight={() => void writeInsight()}
       onRetry={() => setAttempt((n) => n + 1)}
+      alerts={alerts}
+      alertsBusy={alertsBusy}
+      onAlertSettings={(next) => void saveAlerts(next).catch(() => undefined)}
+      onAcknowledge={(id) => void acknowledge(id).catch(() => undefined)}
     />
   );
 }

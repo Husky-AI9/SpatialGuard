@@ -63,7 +63,7 @@ export default function IncidentRecording({ incidentId, observationId, camera, c
     if (!player.paused && !player.ended) frame.current = requestAnimationFrame(tick);
   };
   const state = track ? samplePersonTrack(track.points, at).state : null;
-  const movementStatus = !camera ? 'Map camera unavailable for this incident.'
+  const movementStatus = !camera ? 'Map camera unavailable for this visit.'
     : trackError || (!asset.digest ? 'Movement waits for the recording.' : !track ? 'Analyzing recorded movement…'
       : !track.points.length ? 'No person detected in this recording.'
       : state === 'before' ? 'Person has not appeared yet.'

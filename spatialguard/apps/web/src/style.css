@@ -4008,3 +4008,23 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
 @keyframes motion-dot { 50% { box-shadow: 0 0 0 5px rgba(91, 79, 232, .22); } }
 @media (prefers-reduced-motion: reduce) { .motion-status-live span { animation: none; } }
 @media (max-width: 760px) { .motion-status { top: 8px; left: 8px; } }
+
+/* Live queue / crowding alert banner --------------------------------------------- */
+/* A toast in the bottom corner: it never shifts a layout or covers page headers. */
+.crowd-banner {
+  position: fixed; right: 20px; bottom: 20px; z-index: 50; /* above the page, beneath every dialog (onboarding 60, modals 1000) */
+  width: min(460px, calc(100% - 40px)); display: flex; align-items: center; gap: 12px;
+  margin: 0; padding: 12px 14px; border: 1px solid #f0c6ad; border-left: 4px solid #d9480f; border-radius: 14px;
+  background: #fff8f3; color: var(--ink); box-shadow: 0 10px 26px rgba(217, 72, 15, .14); animation: crowd-in .25s ease-out;
+}
+.crowd-banner-icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; color: #b3400b; background: #fde6d8; }
+.crowd-banner-copy { display: grid; flex: 1; min-width: 0; }
+.crowd-banner-copy strong { font-size: 15px; }
+.crowd-banner-copy small { color: #7a4a2e; font-size: 13px; }
+.crowd-banner-view { min-height: 36px; padding: 6px 14px; border: 0; border-radius: 999px; background: #b3400b; color: #fff; font-weight: 700; cursor: pointer; }
+.crowd-banner-dismiss { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #7a4a2e; cursor: pointer; }
+.crowd-banner-dismiss:hover { background: #fde6d8; }
+@keyframes crowd-in { from { opacity: 0; transform: translateY(8px); } }
+/* On a phone it sits just above the tab bar. */
+@media (max-width: 760px) { .crowd-banner { right: 12px; bottom: calc(82px + env(safe-area-inset-bottom)); width: calc(100% - 24px); padding: 10px 12px; gap: 10px; } }
+@media (prefers-reduced-motion: reduce) { .crowd-banner { animation: none; } }

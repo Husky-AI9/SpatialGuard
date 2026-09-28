@@ -32,9 +32,9 @@ export default function IncidentTimeline({ incident, cameras, step, onSelect, pl
     <div className="incident-timeline-heading"><h3>Event timeline</h3>
       <span className="playback-clock">{playback.duration > 0 ? `Video at ${clipTime(playback.seconds)}` : `${observed.length} camera observation${observed.length === 1 ? "" : "s"}`}</span>
     </div>
-    {events.length === 0 ? <p className="timeline-empty">No observations are available for this incident.</p> : compact ? <>
+    {events.length === 0 ? <p className="timeline-empty">No observations are available for this visit.</p> : compact ? <>
       <ol className="incident-event-list">
-        <li className="event-gap"><HelpCircle size={20} /><div><small>Before {eventTime(first)}</small><strong>Unknown gap</strong><span>No earlier observation in this incident</span></div></li>
+        <li className="event-gap"><HelpCircle size={20} /><div><small>Before {eventTime(first)}</small><strong>Unknown gap</strong><span>No earlier observation in this visit</span></div></li>
         {events.map(event => {
           const association = incident.associations.find(item => item.to_observation_id === event.observation_id);
           return <Fragment key={event.observation_id}>
@@ -49,9 +49,9 @@ export default function IncidentTimeline({ incident, cameras, step, onSelect, pl
             </li>
           </Fragment>;
         })}
-        <li className="event-gap"><HelpCircle size={20} /><div><small>After {eventTime(last)}</small><strong>Unknown continuation</strong><span>No later camera observation in this incident</span></div></li>
+        <li className="event-gap"><HelpCircle size={20} /><div><small>After {eventTime(last)}</small><strong>Unknown continuation</strong><span>No later camera observation in this visit</span></div></li>
       </ol>
-      <div className="incident-camera-summary"><h4>Camera by camera</h4>{cameraIds.map(id => <div key={id}><span>{cameraName(id)}</span><span>{events.some(event => event.source_id === id && !unknown(event)) ? `${events.filter(event => event.source_id === id && !unknown(event)).length} observations` : "No activity in this incident"}</span></div>)}</div>
+      <div className="incident-camera-summary"><h4>Camera by camera</h4>{cameraIds.map(id => <div key={id}><span>{cameraName(id)}</span><span>{events.some(event => event.source_id === id && !unknown(event)) ? `${events.filter(event => event.source_id === id && !unknown(event)).length} observations` : "No activity in this visit"}</span></div>)}</div>
     </> : <>
       <div className="incident-timeline-legend"><span><i className="timeline-observed-key" />Observed {observed.length}</span><span><i className="timeline-possible-key" />Possible continuation {incident.associations.length}</span><span><HelpCircle size={13} />Unknown position / gap</span></div>
       <div className="incident-timeline-scroll" tabIndex={0} aria-label="Camera timeline, scroll horizontally for more detail">
@@ -70,7 +70,7 @@ export default function IncidentTimeline({ incident, cameras, step, onSelect, pl
             {cursor !== null && playback.duration > 0 && <span className="timeline-playhead" style={{left: `${cursor}%`}} />}
           </div></div>
           {cameraIds.map(id => <div className="timeline-lane" key={id}><div className="timeline-lane-title">{cameraName(id)}</div><div className="timeline-track">
-            {!observed.some(event => event.source_id === id) && <span className="timeline-no-activity">No activity in this incident</span>}
+            {!observed.some(event => event.source_id === id) && <span className="timeline-no-activity">No activity in this visit</span>}
             {observed.filter(event => event.source_id === id).map(event => <button className={`timeline-camera-event${observed.filter(item => item.source_id === id).length > 1 ? " is-dense" : ""}`} key={event.observation_id} aria-pressed={step === event.index} aria-label={`View ${cameraName(id)} event at ${eventTime(event.observed_at)}`} onClick={() => onSelect(event.index)} style={{left: `${percent(Date.parse(event.observed_at))}%`, maxWidth: `calc(${100 - percent(Date.parse(event.observed_at))}% + 12px)`}} title={`${eventTime(event.observed_at)} · ${event.category.replaceAll("_", " ")}`}><Video size={14} /><span>{event.category.replaceAll("_", " ")}{step === event.index && playback.duration > 0 ? ` · ${clipTime(playback.duration)}` : ""}</span><ArrowRight size={14} /></button>)}
             {cursor !== null && playback.duration > 0 && <span className="timeline-playhead" style={{left: `${cursor}%`}} />}
           </div></div>)}

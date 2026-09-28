@@ -1882,6 +1882,136 @@
         }
       }
     },
+    "/v1/sites/{site_id}/alerts": {
+      "get": {
+        "summary": "Site Alerts",
+        "description": "Queue and crowding alert settings, recent alerts, and zones busy right now.",
+        "operationId": "site_alerts_v1_sites__site_id__alerts_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrowdAlerts"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/alerts/settings": {
+      "put": {
+        "summary": "Site Alert Settings",
+        "operationId": "site_alert_settings_v1_sites__site_id__alerts_settings_put",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrowdAlertSettingsInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrowdAlertSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/alerts/{alert_id}/acknowledge": {
+      "post": {
+        "summary": "Acknowledge Site Alert",
+        "operationId": "acknowledge_site_alert_v1_sites__site_id__alerts__alert_id__acknowledge_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/incidents/{incident_id}": {
       "get": {
         "summary": "Incident",
@@ -3879,6 +4009,226 @@
           "model"
         ],
         "title": "ClassifierStatus"
+      },
+      "CrowdAlert": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "zone": {
+            "type": "string",
+            "title": "Zone"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "queue",
+              "crowding"
+            ],
+            "title": "Kind"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "window_minutes": {
+            "type": "integer",
+            "title": "Window Minutes"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "acknowledged": {
+            "type": "boolean",
+            "title": "Acknowledged"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "zone",
+          "kind",
+          "count",
+          "limit",
+          "window_minutes",
+          "at",
+          "acknowledged"
+        ],
+        "title": "CrowdAlert"
+      },
+      "CrowdAlertSettings": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "window_minutes": {
+            "type": "integer",
+            "title": "Window Minutes"
+          },
+          "zones": {
+            "items": {
+              "$ref": "#/components/schemas/CrowdAlertZone"
+            },
+            "type": "array",
+            "title": "Zones"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "enabled",
+          "window_minutes",
+          "zones"
+        ],
+        "title": "CrowdAlertSettings"
+      },
+      "CrowdAlertSettingsInput": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "window_minutes": {
+            "type": "integer",
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Window Minutes",
+            "default": 5
+          },
+          "limits": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 50.0,
+                  "minimum": 1.0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "maxProperties": 200,
+            "title": "Limits"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CrowdAlertSettingsInput"
+      },
+      "CrowdAlertZone": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "queue",
+              "crowding"
+            ],
+            "title": "Kind"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "limit"
+        ],
+        "title": "CrowdAlertZone"
+      },
+      "CrowdAlerts": {
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/CrowdAlertSettings"
+          },
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/CrowdAlert"
+            },
+            "type": "array",
+            "title": "Alerts"
+          },
+          "live": {
+            "items": {
+              "$ref": "#/components/schemas/CrowdLiveZone"
+            },
+            "type": "array",
+            "title": "Live"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "settings",
+          "alerts",
+          "live"
+        ],
+        "title": "CrowdAlerts"
+      },
+      "CrowdLiveZone": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "queue",
+              "crowding"
+            ],
+            "title": "Kind"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "count",
+          "limit"
+        ],
+        "title": "CrowdLiveZone"
       },
       "DeletionReceipt": {
         "properties": {

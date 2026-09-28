@@ -75,7 +75,7 @@ export default function CameraWorkspace({
   };
 
   return (
-    <section className="camera-page" aria-label="Camera monitoring workspace">
+    <section className="camera-page" aria-label="Camera workspace">
       <div className="cctv-toolbar">
         <div className="view-toggle" aria-label="Camera view">
           {(["Single camera", "Camera wall"] as const).map(value => (
@@ -100,7 +100,7 @@ export default function CameraWorkspace({
                 <div className="cctv-empty">
                   {selected ? <VideoOff size={34} /> : <CameraMark size={34} />}
                   <strong>{selected ? (mappedDevice(selected.id) ? "Live view is stopped" : "Camera is not paired") : "Choose a camera"}</strong>
-                  <span>{selected && !mappedDevice(selected.id) ? "Pair it with a Ring camera to watch it here." : "Select a camera from the CCTV list."}</span>
+                  <span>{selected && !mappedDevice(selected.id) ? "Pair it with a Ring camera to watch it here." : "Select a camera from the camera list."}</span>
                   {selected && !mappedDevice(selected.id) && <button className="primary" onClick={() => onPairCamera(selected)}>Pair Ring camera</button>}
                 </div>
               )}
@@ -108,7 +108,7 @@ export default function CameraWorkspace({
           </section>
           <aside className="cctv-sidebar" aria-label="Camera feed list">
             <header>
-              <div><h3>CCTVs</h3><span>{cameras.length} devices</span></div>
+              <div><h3>Cameras</h3><span>{cameras.length} devices</span></div>
               <span className={ringState === "connected" ? "provider-up" : "provider-down"}>{ringState === "connected" ? "Ring connected" : "Ring not linked"}</span>
             </header>
             {ringError && <RecoveryNotice message={ringError} />}
@@ -124,7 +124,7 @@ export default function CameraWorkspace({
                     </button>
                     {!ring && ringState !== "loading" && <button className="pair-camera-button" onClick={() => onPairCamera(camera)}>Pair</button>}
                     {onRemoveCamera && <button className="camera-remove" aria-label={`Remove ${camera.name}`} title="Remove camera" disabled={busy} onClick={() => onRemoveCamera(camera)}><Trash2 size={16} /></button>}
-                    <label className="monitor-switch" title="Include in monitoring">
+                    <label className="monitor-switch" title="Include in tracking">
                       <em>Monitor</em>
                       <input type="checkbox" aria-label={`Monitor ${camera.name}`} checked={included} disabled={busy || !online} onChange={(event) => onToggle(camera.id, event.target.checked)} />
                       <span />

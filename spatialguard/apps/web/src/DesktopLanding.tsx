@@ -88,7 +88,7 @@ export default function DesktopLanding({hostedWeb, openSignIn, openSignUp, openW
 Try Pathlight</a>
 <a className="concept-replay-link" href="#delivery">Follow a visit <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#23253F" strokeWidth="1.6" strokeLinecap="round"><path d="M2 7h10M8 3l4 4-4 4"></path></svg></a>
 </div>
-<div className="concept-access-note">{hostedWeb ? "Private workspace, email sign-in required" : "Local replay: no account required"}</div>
+<div className="concept-access-note">{hostedWeb ? "Private workspace, email sign-in required" : "Local demo: no account required"}</div>
 <div className="concept-stats">
 <div className="concept-stat-card">
 <div className="concept-stat-heading"><span className="concept-stat-value">3</span><span className="concept-stat-unit">cameras</span></div>

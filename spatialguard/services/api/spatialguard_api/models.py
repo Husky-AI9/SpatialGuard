@@ -482,6 +482,49 @@ class InsightRequest(Model):
     tz: str | None = Field(default=None, max_length=64)
 
 
+class CrowdAlertZone(Model):
+    name: str
+    kind: Literal["queue", "crowding"]
+    # Distinct visitors within the window that raise an alert; null turns the zone off.
+    limit: int | None
+
+
+class CrowdAlertSettings(Model):
+    enabled: bool
+    window_minutes: int
+    zones: list[CrowdAlertZone]
+
+
+class CrowdAlertSettingsInput(Model):
+    enabled: bool = True
+    window_minutes: int = Field(default=5, ge=1, le=60)
+    limits: dict[str, Annotated[int, Field(ge=1, le=50)] | None] = Field(default_factory=dict, max_length=200)
+
+
+class CrowdAlert(Model):
+    id: int
+    zone: str
+    kind: Literal["queue", "crowding"]
+    count: int
+    limit: int
+    window_minutes: int
+    at: str
+    acknowledged: bool
+
+
+class CrowdLiveZone(Model):
+    name: str
+    kind: Literal["queue", "crowding"]
+    count: int
+    limit: int | None
+
+
+class CrowdAlerts(Model):
+    settings: CrowdAlertSettings
+    alerts: list[CrowdAlert]
+    live: list[CrowdLiveZone]
+
+
 class IncidentPage(Model):
     incidents: list[Incident]
     next_cursor: int | None = None

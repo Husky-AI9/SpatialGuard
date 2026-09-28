@@ -9,7 +9,15 @@ import mapEmbedHtml from "./mapEmbedHtml";
 type Data = components["schemas"]["SiteAnalytics"];
 type Summary = components["schemas"]["SiteAnalyticsSummary"];
 type InsightState = components["schemas"]["SiteInsightState"];
-type Message = { type: "ready" } | { type: "site"; id: string } | { type: "insight" } | { type: "retry" };
+type CrowdAlerts = components["schemas"]["CrowdAlerts"];
+type AlertSettingsInput = { enabled: boolean; window_minutes: number; limits: Record<string, number | null> };
+type Message =
+  | { type: "ready" }
+  | { type: "site"; id: string }
+  | { type: "insight" }
+  | { type: "retry" }
+  | { type: "alertSettings"; settings: AlertSettingsInput }
+  | { type: "acknowledge"; id: number };
 
 const timeZone = () => {
   try {
@@ -37,6 +45,8 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey }: { siteI
   const [insightBusy, setInsightBusy] = useState(false);
   const [insightError, setInsightError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [alerts, setAlerts] = useState<CrowdAlerts | null>(null);
+  const [alertsBusy, setAlertsBusy] = useState(false);
   const autoWritten = useRef(new Set<string>());
 
   useEffect(() => {
@@ -61,11 +71,13 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey }: { siteI
     Promise.all([
       request<Data>(`/v1/sites/${siteId}/analytics?tz=${encodeURIComponent(tz)}`),
       request<InsightState>(`/v1/sites/${siteId}/analytics/insight`),
+      request<CrowdAlerts>(`/v1/sites/${siteId}/alerts`),
     ])
-      .then(([next, state]) => {
+      .then(([next, state, crowd]) => {
         if (!live) return;
         setData(next);
         setInsight(state);
+        setAlerts(crowd);
       })
       .catch((problem) => live && setError(problem instanceof Error ? problem.message : "Analytics are unavailable."))
       .finally(() => live && setLoading(false));
@@ -105,6 +117,8 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey }: { siteI
     insight,
     insightBusy,
     insightError,
+    alerts,
+    alertsBusy,
   });
   useEffect(() => {
     if (ready) web.current?.injectJavaScript(`window.sgAnalytics && window.sgAnalytics(${payload}); true;`);
@@ -125,6 +139,16 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey }: { siteI
       setSiteId(message.id);
     } else if (message.type === "insight") void writeInsight();
     else if (message.type === "retry") setAttempt((n) => n + 1);
+    else if (message.type === "alertSettings" && siteId && message.settings) {
+      setAlertsBusy(true);
+      request<CrowdAlerts["settings"]>(`/v1/sites/${siteId}/alerts/settings`, "PUT", message.settings)
+        .then((settings) => setAlerts((current) => (current ? { ...current, settings } : current)))
+        .catch(() => undefined)
+        .finally(() => setAlertsBusy(false));
+    } else if (message.type === "acknowledge" && siteId && Number.isInteger(message.id)) {
+      setAlerts((current) => current && { ...current, alerts: current.alerts.map((a) => (a.id === message.id ? { ...a, acknowledged: true } : a)) });
+      void request(`/v1/sites/${siteId}/alerts/${message.id}/acknowledge`, "POST").catch(() => undefined);
+    }
   };
 
   return (

@@ -61,10 +61,10 @@ test("replay to incident, evidence, review, map and monitoring", async ({
   await expect(
     page.getByRole("heading", { name: "Home", exact: true }),
   ).toBeVisible();
-  if (await page.getByRole("button", { name: "Resume monitoring", exact: true }).count())
-    await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
+  if (await page.getByRole("button", { name: "Resume tracking", exact: true }).count())
+    await page.getByRole("button", { name: "Resume tracking", exact: true }).click();
   await page
-    .getByRole("button", { name: "Run replay", exact: true })
+    .getByRole("button", { name: "Run demo visit", exact: true })
     .first()
     .click();
   await expect(
@@ -76,7 +76,7 @@ test("replay to incident, evidence, review, map and monitoring", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("img", {
-      name: "Replay illustration",
+      name: "Demo illustration",
     }),
   ).toBeVisible();
   await page
@@ -105,8 +105,8 @@ test("replay to incident, evidence, review, map and monitoring", async ({
   });
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   // Paused: replay is not offered at all, only a way to resume.
-  await expect(page.locator(".monitor-bar").getByRole("button", { name: "Run replay" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
+  await expect(page.locator(".monitor-bar").getByRole("button", { name: "Run demo visit" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Resume tracking", exact: true }).click();
   await page.reload();
   await page
     .getByRole("button", { name: /Activity observed near the entry/ })
@@ -120,13 +120,13 @@ test("replay to incident, evidence, review, map and monitoring", async ({
 
 test("motion waves play only when a camera reports motion, and during a replay", async ({ page }) => {
   await openDemo(page);
-  if (await page.getByRole("button", { name: "Resume monitoring", exact: true }).count())
-    await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
+  if (await page.getByRole("button", { name: "Resume tracking", exact: true }).count())
+    await page.getByRole("button", { name: "Resume tracking", exact: true }).click();
   // There is no motion mode to switch on: the waves follow the cameras.
   await expect(page.getByRole("button", { name: "Motion detection" })).toHaveCount(0);
   const status = page.locator(".motion-status");
   if (!(await status.count())) await expect(page.locator(".motion-waves")).toHaveCount(0);
-  await page.locator(".monitor-bar").getByRole("button", { name: "Run replay", exact: true }).click();
+  await page.locator(".monitor-bar").getByRole("button", { name: "Run demo visit", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Activity observed near the entry" })).toBeVisible({ timeout: 45000 });
   // Replaying the incident pulses the camera of the current step.
   await expect(page.locator(".motion-waves > g")).toHaveCount(1);
@@ -138,9 +138,9 @@ test("motion waves play only when a camera reports motion, and during a replay",
 
 test("Site Analytics shows visits, hours, zones and entrances with table views", async ({ page }) => {
   await openDemo(page);
-  if (await page.getByRole("button", { name: "Resume monitoring", exact: true }).count())
-    await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
-  await page.locator(".monitor-bar").getByRole("button", { name: "Run replay", exact: true }).click();
+  if (await page.getByRole("button", { name: "Resume tracking", exact: true }).count())
+    await page.getByRole("button", { name: "Resume tracking", exact: true }).click();
+  await page.locator(".monitor-bar").getByRole("button", { name: "Run demo visit", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Activity observed near the entry" })).toBeVisible({ timeout: 45000 });
   await page.getByRole("button", { name: "Analytics", exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "Site Analytics" })).toBeVisible();
@@ -161,8 +161,8 @@ test("home keeps CCTV and incidents in one right rail beside a full green 2D map
 
   const map = page.getByRole("region", { name: "Home map" });
   const rail = page.getByRole("complementary", { name: "Home activity" });
-  await expect(rail.getByRole("heading", { name: "CCTVs" })).toBeVisible();
-  await expect(rail.getByRole("heading", { name: "Recent incidents" })).toBeVisible();
+  await expect(rail.getByRole("heading", { name: "Cameras" })).toBeVisible();
+  await expect(rail.getByRole("heading", { name: "Recent visits" })).toBeVisible();
   const [mapBox, railBox] = await Promise.all([map.boundingBox(), rail.boundingBox()]);
   expect(railBox!.x).toBeGreaterThan(mapBox!.x + mapBox!.width);
   await expect(page.locator(".map-area-2d")).toHaveCSS("background-color", "rgb(207, 224, 194)");
@@ -583,7 +583,8 @@ test("phone navigation, pairing and disconnected state", async ({
   await expect(page.locator("#settings-account").getByRole("heading", { name: "Account", exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "CCTVs" })).toBeVisible();
+  // The page title and the camera list are both "Cameras".
+  await expect(page.getByRole("heading", { name: "Cameras" }).first()).toBeVisible();
   await expect(page.getByRole("region", { name: "Camera feed", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Incident report" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Add camera", exact: true })).toHaveCount(0);
@@ -619,7 +620,7 @@ test("empty incidents and failed evidence are explicit", async ({ page }) => {
   );
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "No incidents yet" }),
+    page.getByRole("heading", { name: "No visits yet" }),
   ).toBeVisible();
   await page.unroute("**/v1/sites/*/incidents");
   await page.getByRole("button", { name: "Refresh workspace" }).click();
@@ -872,9 +873,9 @@ test("with no place, only the map card is empty", async ({ page }) => {
   await page.goto("/");
   // The rest of the app still loads around the empty card.
   await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
-  for (const tab of ["Home", "Incidents", "Cameras", "Settings"])
+  for (const tab of ["Home", "Activity", "Cameras", "Settings"])
     await expect(page.getByRole("button", { name: tab, exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Recent incidents" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent visits" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ground floor" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "No floor plan yet" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload floor plan" })).toBeVisible();
@@ -883,7 +884,7 @@ test("with no place, only the map card is empty", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.locator(".spatial-map")).toHaveCount(0);
   await expect(page.locator(".monitor-bar")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Run replay" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Run demo visit" })).toHaveCount(0);
   await page.getByRole("button", { name: "Cameras", exact: true }).click();
   await expect(page.getByRole("button", { name: "Add camera" })).toHaveCount(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();

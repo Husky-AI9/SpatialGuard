@@ -274,6 +274,8 @@ def process_one(service, engine, classifier=classify_images):
                         # Find where the person walked, in the background.
                         tracks.enqueue(db, incident.id, obs.observation_id, incident.site_id, obs.source_id, row['at'])
                         event(db, incident.site_id, 'incident.created', incident.id)
+            from . import alerts
+            alerts.try_evaluate(db, incident.site_id)
             db.execute("UPDATE ring_inbox SET state='succeeded',processed=?,error=NULL WHERE id=?", (now(), row['id']))
             service._metric(db, row['account'], 'incident_ready_ms', max(
                 0, (datetime.now().astimezone() - datetime.fromisoformat(row['received'])).total_seconds() * 1000

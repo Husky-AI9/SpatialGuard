@@ -42,7 +42,7 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
   useEffect(() => { setPlayback({seconds: 0, duration: 0}); }, [incident.id, step]);
   const observation = incident.observations[step];
   const camera = cameras.find(item => item.id === observation?.source_id);
-  const mode = incident.evidence_mode === "live" ? "Live integration" : incident.evidence_mode === "simulator" ? "Official simulator" : "Replay";
+  const mode = incident.evidence_mode === "live" ? "Live integration" : incident.evidence_mode === "simulator" ? "Official simulator" : "Demo";
   const select = (index: number) => { onSelect(index); scroll.current?.scrollTo({top: 0}); };
   const reviewButton = <button className="primary incident-review-action" disabled={incident.status === "reviewed" || busy || !online} onClick={onReview}>
     <Check size={16} />{incident.status === "reviewed" ? "Reviewed" : "Mark reviewed"}
@@ -53,17 +53,17 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
     {!compact && <div className="incident-spatial-column">{map}{timeline}</div>}
     <section className="detail incident-review-detail" aria-labelledby="incident-review-title">
       <header className="incident-review-header">
-        <div className="incident-review-nav"><button className="incident-back" onClick={onClose} aria-label="Back to all incidents"><ArrowLeft size={18} /><span>All incidents</span></button><span className="mode">{mode}</span></div>
+        <div className="incident-review-nav"><button className="incident-back" onClick={onClose} aria-label="Back to all visits"><ArrowLeft size={18} /><span>All visits</span></button><span className="mode">{mode}</span></div>
         <div className="incident-title-row"><div><h2 id="incident-review-title" tabIndex={-1} ref={heading}>{incident.title}</h2><p>{eventTime(observation?.observed_at ?? incident.created_at)} · {camera?.name ?? "Camera unavailable"}</p></div><div className="desktop-review-action">{reviewButton}</div></div>
       </header>
-      <div className="incident-review-scroll" ref={scroll} tabIndex={0} aria-label="Incident evidence and details">
+      <div className="incident-review-scroll" ref={scroll} tabIndex={0} aria-label="Visit evidence and details">
         {(!online || error) && <p className="incident-review-notice" role="status">{error || "You’re offline. Reconnect to continue."}</p>}
         <div className="evidence-view incident-media">
           {incident.evidence_mode === "live" && observation ? <IncidentRecording key={observation.observation_id} incidentId={incident.id} observationId={observation.observation_id} camera={camera} classification={incident.classification} onMovement={onMovement} onPlayback={setPlayback} />
-            : image ? <><img src={image} alt="Replay illustration" /><p className="incident-media-note">Synthetic replay illustration · {camera?.name ?? "Unknown camera"}</p></>
+            : image ? <><img src={image} alt="Demo illustration" /><p className="incident-media-note">Demo illustration · {camera?.name ?? "Unknown camera"}</p></>
             : <p role="status">{incident.evidence_mode === "live" ? "Select an event to play its recording." : observation?.location.kind === "unknown" ? "Location unknown for this gap." : imageError || "Loading evidence…"}</p>}
         </div>
-        {compact && <div className="incident-review-tabs" role="tablist" aria-label="Incident sections">
+        {compact && <div className="incident-review-tabs" role="tablist" aria-label="Visit sections">
           {panes.map((item, index) => <button key={item} id={`incident-tab-${item}`} role="tab" aria-selected={pane === item} aria-controls={`incident-pane-${item}`} tabIndex={pane === item ? 0 : -1} onClick={() => setPane(item)} onKeyDown={event => {
             const next = event.key === "ArrowRight" ? (index + 1) % panes.length : event.key === "ArrowLeft" ? (index + panes.length - 1) % panes.length : event.key === "Home" ? 0 : event.key === "End" ? panes.length - 1 : null;
             if (next !== null) { event.preventDefault(); setPane(panes[next]); document.getElementById(`incident-tab-${panes[next]}`)?.focus(); }
@@ -85,17 +85,17 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
               <div><dt>Timestamp</dt><dd>{observation ? eventTime(observation.observed_at) : "Unavailable"}</dd></div>
               <div><dt>Camera</dt><dd>{camera?.name ?? "Unknown camera"}</dd></div>
               <div><dt>Person</dt><dd>{incident.classification?.display_label ?? "Unknown"} · identity unconfirmed</dd></div>
-              <div><dt>Evidence mode</dt><dd>{incident.evidence_mode === "live" ? "Live Ring event" : mode === "Replay" ? "Synthetic replay" : mode}</dd></div>
-              <div><dt>Media</dt><dd>{image ? "Replay illustration" : incident.evidence_mode === "live" ? "Loading recording from Ring…" : "Unavailable"}</dd></div>
+              <div><dt>Evidence mode</dt><dd>{incident.evidence_mode === "live" ? "Live Ring event" : mode === "Demo" ? "Demo (sample data)" : mode}</dd></div>
+              <div><dt>Media</dt><dd>{image ? "Demo illustration" : incident.evidence_mode === "live" ? "Loading recording from Ring…" : "Unavailable"}</dd></div>
               <div><dt>Trigger</dt><dd>{incident.rule}</dd></div>
-              <div><dt>Certainty</dt><dd>{incident.evidence_mode === "live" ? "Camera event. Movement is estimated." : observation?.location.kind === "unknown" ? "Unknown location — coverage gap" : "Illustrative replay position"}</dd></div>
+              <div><dt>Certainty</dt><dd>{incident.evidence_mode === "live" ? "Camera event. Movement is estimated." : observation?.location.kind === "unknown" ? "Unknown location — coverage gap" : "Illustrative demo position"}</dd></div>
             </dl>
           </section>
         </div>
         {compact && <div id="incident-pane-Timeline" role="tabpanel" aria-labelledby="incident-tab-Timeline" hidden={pane !== "Timeline"}>{timeline}</div>}
         {compact && <div id="incident-pane-Map" role="tabpanel" aria-labelledby="incident-tab-Map" hidden={pane !== "Map"}>{pane === "Map" && map}</div>}
       </div>
-      {compact && <footer className="review-footer"><span>{incident.evidence_mode === "live" ? "Map positions are estimates" : "Synthetic replay"}</span>{reviewButton}</footer>}
+      {compact && <footer className="review-footer"><span>{incident.evidence_mode === "live" ? "Map positions are estimates" : "Demo (sample data)"}</span>{reviewButton}</footer>}
     </section>
   </div>;
 }

@@ -90,13 +90,13 @@ export default function Timeline({
         </View>
       )}
       {events.length === 0 ? (
-        <Label style={s.muted}>No observations are available for this incident.</Label>
+        <Label style={s.muted}>No observations are available for this visit.</Label>
       ) : (
         <View style={{ gap: 2 }}>
           {row("before", unknownIcon, <>
             <Label style={[s.muted, { fontSize: 12 }]}>Before {eventTime(first)}</Label>
             <Label style={s.strong}>Unknown gap</Label>
-            <Label style={[s.muted, { fontSize: 13 }]}>No earlier observation in this incident</Label>
+            <Label style={[s.muted, { fontSize: 13 }]}>No earlier observation in this visit</Label>
           </>)}
           {events.map((event) => {
             const association = incident.associations.find((item) => item.to_observation_id === event.observation_id);
@@ -126,7 +126,7 @@ export default function Timeline({
           {row("after", unknownIcon, <>
             <Label style={[s.muted, { fontSize: 12 }]}>After {eventTime(last)}</Label>
             <Label style={s.strong}>Unknown continuation</Label>
-            <Label style={[s.muted, { fontSize: 13 }]}>No later camera observation in this incident</Label>
+            <Label style={[s.muted, { fontSize: 13 }]}>No later camera observation in this visit</Label>
           </>)}
         </View>
       )}

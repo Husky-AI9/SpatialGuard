@@ -47,6 +47,7 @@ import HomeCctv from "./HomeCctv";
 import IncidentReview from "./IncidentReview";
 import Operations from "./Operations";
 import SiteAnalytics from "./SiteAnalytics";
+import CrowdAlertBanner, { useCrowdAlert } from "./CrowdAlertBanner";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
 import AccountSecurity from "./AccountSecurity";
 import { useDialogFocus } from "./useDialogFocus";
@@ -83,7 +84,7 @@ type ProductCapabilities = components["schemas"]["ProductCapabilities"];
 import { ActivityIcon, actorFromClassification, DEFAULT_ACTOR, type ActorPresentation } from "./activityPresentation";
 const tabs = [
   { name: "Home", icon: House },
-  { name: "Incidents", icon: History },
+  { name: "Activity", icon: History },
   { name: "Cameras", icon: CameraMark },
   { name: "Analytics", icon: ChartColumnBig },
   { name: "Operations", icon: Activity },
@@ -363,6 +364,7 @@ export default function App() {
         );
         cursor.current = page.cursor;
         if (page.events.length || !online) await refreshRef.current();
+        if (page.events.some((item) => item.kind === "alert.crowding")) void crowdReload.current();
         if (
           runRef.current &&
           ["queued", "running"].includes(runRef.current.state)
@@ -466,6 +468,9 @@ export default function App() {
   const sampleLoaded = sites.some((s) => s.name === "Demo home");
   // Hooks must run before the early returns below.
   const moving = useLiveMotion(incidents, site?.id);
+  const crowd = useCrowdAlert(site?.id);
+  const crowdReload = useRef(crowd.reload);
+  crowdReload.current = crowd.reload;
   // Motion waves follow the cameras: live detections on the home map, and the
   // camera of the current step while an incident is replayed.
   const pulsing = selected
@@ -558,8 +563,8 @@ export default function App() {
   };
   const deleteIncident = (incident: Incident, event: React.MouseEvent) => {
     event.stopPropagation();
-    const label = incident.title || "this incident";
-    if (!window.confirm(`Delete ${label}? This removes the incident and its evidence.`)) return;
+    const label = incident.title || "this visit";
+    if (!window.confirm(`Delete ${label}? This removes the visit and its evidence.`)) return;
     void act(async () => {
       await request<void>(`/v1/incidents/${encodeURIComponent(incident.id)}`, "DELETE");
       setIncidents((all) => all.filter((item) => item.id !== incident.id));
@@ -963,8 +968,8 @@ export default function App() {
             </h3>
             <span>
               {place.monitoring.camera_ids.includes(activeCamera.id)
-                ? "In replay"
-                : "Not in replay"}
+                ? "Tracking"
+                : "Not tracking"}
             </span>
           </div>
           <CameraControls
@@ -1003,20 +1008,20 @@ export default function App() {
   const list = (
     <section className="incident-list">
       <div className="panel-heading">
-        <h2>{tab === "Home" ? "Recent incidents" : "Incident history"}</h2>
+        <h2>{tab === "Home" ? "Recent visits" : "Visit history"}</h2>
         <span>{incidents.length} shown</span>
       </div>
       <div className="incident-scroll">
         {incidents.length === 0 ? (
           <div className="empty">
             <History size={28} />
-            <h3>No incidents yet</h3>
+            <h3>No visits yet</h3>
             <p>
               {site ? "Activity your cameras record shows up here." : "Add a floor plan to get started."}
             </p>
             {site && place.monitoring.enabled && place.monitoring.camera_ids.length > 0 && (
               <button onClick={replay} disabled={busy || running || !online}>
-                <Play size={16} /> Run a test replay
+                <Play size={16} /> Run a demo visit
               </button>
             )}
           </div>
@@ -1035,7 +1040,7 @@ export default function App() {
                       ? "Live"
                       : incident.evidence_mode === "simulator"
                         ? "Simulator"
-                        : "Replay"}
+                        : "Demo"}
                   </small>
                   <em className={incident.status === "reviewed" ? "status-chip done" : "status-chip"}>
                     {incident.status === "reviewed" ? "Reviewed" : "Needs review"}
@@ -1046,7 +1051,7 @@ export default function App() {
                 className="incident-delete"
                 type="button"
                 aria-label={`Delete ${incident.title}`}
-                title="Delete incident"
+                title="Delete visit"
                 onClick={(event) => deleteIncident(incident, event)}
                 disabled={busy}
               >
@@ -1067,7 +1072,7 @@ export default function App() {
               })
             }
           >
-            Load older incidents
+            Load older visits
           </button>
         )}
       </div>
@@ -1203,6 +1208,7 @@ export default function App() {
           {`Disconnected · ${lastSync ? "last checked " + time(lastSync) : "reconnect to update"}`}
         </div>}
         {error && <RecoveryNotice message={error} onRetry={() => void refresh()} />}
+        <CrowdAlertBanner alert={crowd.alert} onView={() => nav("Analytics")} onDismiss={() => void crowd.dismiss()} />
         <main className="content">
           {ringSetupOpen && tab === "Home" && (
             <div className="ring-setup-page">
@@ -1225,20 +1231,20 @@ export default function App() {
             </div>
           )}
           {!ringSetupOpen && <>
-          {(tab === "Home" || tab === "Incidents") && (
-            <div className={tab === "Incidents" && !selected ? "incident-page" : "home-page"}>
+          {(tab === "Home" || tab === "Activity") && (
+            <div className={tab === "Activity" && !selected ? "incident-page" : "home-page"}>
               {site && (
                 <div className={`monitor-bar${place.monitoring.enabled ? " on" : ""}`}>
                   <span className="monitor-dot" aria-hidden="true" />
                   <div className="monitor-text">
                     <strong>
-                      {place.monitoring.enabled ? "Monitoring on" : "Monitoring paused"}
+                      {place.monitoring.enabled ? "Tracking on" : "Tracking paused"}
                     </strong>
                     <span>
                       {!place.monitoring.enabled
-                        ? "No new incidents are recorded while paused."
+                        ? "No new visits are recorded while paused."
                         : place.monitoring.camera_ids.length
-                          ? `${place.monitoring.camera_ids.length} ${place.monitoring.camera_ids.length === 1 ? "camera" : "cameras"} monitored${place.monitoring.classification_enabled ? " · Activity labels on" : ""}`
+                          ? `${place.monitoring.camera_ids.length} ${place.monitoring.camera_ids.length === 1 ? "camera" : "cameras"} tracking${place.monitoring.classification_enabled ? " · Activity labels on" : ""}`
                           : "No cameras selected. Turn cameras on in Cameras."}
                     </span>
                   </div>
@@ -1252,14 +1258,14 @@ export default function App() {
                         {place.monitoring.camera_ids.length > 0 && (
                           <button className="primary" onClick={replay} disabled={busy || running || !online}>
                             <Play size={16} />
-                            {running ? "Processing…" : "Run replay"}
+                            {running ? "Processing…" : "Run demo visit"}
                           </button>
                         )}
                       </>
                     ) : (
                       <button className="primary" onClick={() => updateMonitoring(true)} disabled={busy || !online}>
                         <Play size={16} />
-                        <span>Resume monitoring</span>
+                        <span>Resume tracking</span>
                       </button>
                     )}
                   </div>
@@ -1268,12 +1274,12 @@ export default function App() {
               {run && (
                 <p className="run-status" role="status">
                   {run.state === "succeeded"
-                    ? "Replay complete. Evidence is synthetic."
+                    ? "Demo visit complete. It uses sample data."
                     : run.state === "paused"
-                      ? "Replay stopped because monitoring changed."
+                      ? "Demo visit stopped because tracking changed."
                       : run.state === "failed"
                         ? run.error
-                        : "Replay is being processed by the backend."}
+                        : "The demo visit is being processed."}
                 </p>
               )}
               {selected ? (
@@ -1338,7 +1344,7 @@ export default function App() {
               ringVersion={ringVersion}
             />
           )}
-          {tab === "Analytics" && <SiteAnalytics siteId={site?.id} refreshKey={incidents[0]?.id} />}
+          {tab === "Analytics" && <SiteAnalytics siteId={site?.id} refreshKey={`${incidents[0]?.id}:${crowd.alert?.id ?? ""}`} />}
           {tab === "Operations" && <Operations features={features} />}
           {tab === "Settings" && (
             <div className="settings-page">
@@ -1381,7 +1387,7 @@ export default function App() {
                 <h2>Places</h2>
                 <p>
                   {sites.length
-                    ? "Removing a place also deletes its incidents."
+                    ? "Removing a place also deletes its visits."
                     : "No places yet."}
                 </p>
                 {sites.map((s) => (
@@ -1450,7 +1456,7 @@ export default function App() {
                       <span><strong>Activity labels</strong><small>Event snapshots are sent to OpenAI to label activity.</small></span>
                     </label>
                     <div className="retention-grid">
-                      <label>Incident retention
+                      <label>Visit retention
                         <select value={accountPreferences.incident_retention_days}
                           onChange={(event) => setAccountPreferences({ ...accountPreferences,
                             incident_retention_days: Number(event.target.value) as 30 | 90 | 365 })}>
@@ -1559,7 +1565,7 @@ export default function App() {
                     <h2>Your data</h2>
                     <ul className="data-facts">
                       <li>Live video is never recorded by Pathlight.</li>
-                      <li>Replay incidents use sample data, not your cameras.</li>
+                      <li>Demo visits use sample data, not your cameras.</li>
                     </ul>
                   </section>
                 </div>

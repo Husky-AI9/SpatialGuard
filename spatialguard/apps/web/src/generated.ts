@@ -868,6 +868,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sites/{site_id}/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Site Alerts
+         * @description Queue and crowding alert settings, recent alerts, and zones busy right now.
+         */
+        get: operations["site_alerts_v1_sites__site_id__alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sites/{site_id}/alerts/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Site Alert Settings */
+        put: operations["site_alert_settings_v1_sites__site_id__alerts_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sites/{site_id}/alerts/{alert_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Site Alert */
+        post: operations["acknowledge_site_alert_v1_sites__site_id__alerts__alert_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/incidents/{incident_id}": {
         parameters: {
             query?: never;
@@ -1726,6 +1780,88 @@ export interface components {
             configured: boolean;
             /** Model */
             model: string;
+        };
+        /** CrowdAlert */
+        CrowdAlert: {
+            /** Id */
+            id: number;
+            /** Zone */
+            zone: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "queue" | "crowding";
+            /** Count */
+            count: number;
+            /** Limit */
+            limit: number;
+            /** Window Minutes */
+            window_minutes: number;
+            /** At */
+            at: string;
+            /** Acknowledged */
+            acknowledged: boolean;
+        };
+        /** CrowdAlertSettings */
+        CrowdAlertSettings: {
+            /** Enabled */
+            enabled: boolean;
+            /** Window Minutes */
+            window_minutes: number;
+            /** Zones */
+            zones: components["schemas"]["CrowdAlertZone"][];
+        };
+        /** CrowdAlertSettingsInput */
+        CrowdAlertSettingsInput: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Window Minutes
+             * @default 5
+             */
+            window_minutes: number;
+            /** Limits */
+            limits?: {
+                [key: string]: number | null;
+            };
+        };
+        /** CrowdAlertZone */
+        CrowdAlertZone: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "queue" | "crowding";
+            /** Limit */
+            limit: number | null;
+        };
+        /** CrowdAlerts */
+        CrowdAlerts: {
+            settings: components["schemas"]["CrowdAlertSettings"];
+            /** Alerts */
+            alerts: components["schemas"]["CrowdAlert"][];
+            /** Live */
+            live: components["schemas"]["CrowdLiveZone"][];
+        };
+        /** CrowdLiveZone */
+        CrowdLiveZone: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "queue" | "crowding";
+            /** Count */
+            count: number;
+            /** Limit */
+            limit: number | null;
         };
         /** DeletionReceipt */
         DeletionReceipt: {
@@ -4307,6 +4443,102 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SiteInsightState"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    site_alerts_v1_sites__site_id__alerts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrowdAlerts"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    site_alert_settings_v1_sites__site_id__alerts_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrowdAlertSettingsInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrowdAlertSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_site_alert_v1_sites__site_id__alerts__alert_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+                alert_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -28,7 +28,7 @@ type Message =
 
 type Props = {
   site: Site;
-  /** Recent incidents, for live motion and heatmap refreshes. */
+  /** Recent visits, for live motion and heatmap refreshes. */
   incidents?: Incident[];
   /**
    * An incident under review, drawn instead of the map modes: its evidence at

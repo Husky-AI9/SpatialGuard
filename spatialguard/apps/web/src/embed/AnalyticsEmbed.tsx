@@ -6,13 +6,16 @@
  */
 import { useEffect, useState } from "react";
 import AnalyticsView, { type AnalyticsViewProps } from "../analytics/AnalyticsView";
+import type { AlertSettingsInput } from "../analytics/AlertsCard";
 
-export type AnalyticsEmbedState = Omit<AnalyticsViewProps, "onSite" | "onInsight" | "onRetry">;
+export type AnalyticsEmbedState = Omit<AnalyticsViewProps, "onSite" | "onInsight" | "onRetry" | "onAlertSettings" | "onAcknowledge">;
 export type AnalyticsEmbedMessage =
   | { type: "ready" }
   | { type: "site"; id: string }
   | { type: "insight" }
-  | { type: "retry" };
+  | { type: "retry" }
+  | { type: "alertSettings"; settings: AlertSettingsInput }
+  | { type: "acknowledge"; id: number };
 
 declare global {
   interface Window {
@@ -42,6 +45,8 @@ export default function AnalyticsEmbed() {
         onSite={(id) => post({ type: "site", id })}
         onInsight={() => post({ type: "insight" })}
         onRetry={() => post({ type: "retry" })}
+        onAlertSettings={(settings) => post({ type: "alertSettings", settings })}
+        onAcknowledge={(id) => post({ type: "acknowledge", id })}
       />
     </main>
   );

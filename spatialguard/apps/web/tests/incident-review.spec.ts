@@ -23,7 +23,7 @@ test.beforeAll(async () => {
           rule:'Activity in a monitored zone',observations,classification:null,associations:[{
             from_observation_id:'event-0',to_observation_id:'event-2',unobserved_gap_seconds:6,reason:'Adjacent cameras; identity unconfirmed.'}]};
         return <div className="app-shell"><aside className="sidebar">Pathlight</aside><div className="workspace">
-          <header className="topbar">Home</header><main className="content"><div className="monitor-bar">Monitoring enabled</div>
+          <header className="topbar">Home</header><main className="content"><div className="monitor-bar">Tracking on</div>
           {open?<IncidentReview incident={incident} cameras={layout.cameras} step={step} onSelect={setStep}
             onClose={()=>setOpen(false)} onReview={()=>setReviewed(true)} onAnalyze={()=>{}} onMovement={()=>{}}
             map={<section className="map-panel"><div className="panel-heading"><h2>Ground floor</h2></div><div className="map-area"><Map2D layout={layout} /></div><div className="map-caption">Synthetic replay · estimated map positions</div></section>}
@@ -57,7 +57,7 @@ test("desktop places timeline below map, evidence beside it, and preserves revie
   await page.getByRole('button',{name:'Mark reviewed'}).click();
   await expect(page.getByRole('button',{name:'Reviewed',exact:true})).toBeDisabled();
   await page.getByRole('button',{name:/Observed ·/}).first().click();
-  await expect(page.getByRole('img',{name:/Replay illustration/})).toBeVisible();
+  await expect(page.getByRole('img',{name:/Demo illustration/})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   expect((await new AxeBuilder({page}).include('.incident-review').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
   await page.screenshot({path:path.join(root,'.data/spatialguard/incident-review-desktop.png'),fullPage:true});
@@ -86,7 +86,7 @@ test("phone separates evidence, timeline and map while keeping review reachable"
   expect((await new AxeBuilder({page}).include('.incident-review').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);
   await page.getByRole('button',{name:'Mark reviewed'}).click();
   await expect(page.getByRole('button',{name:'Reviewed',exact:true})).toBeDisabled();
-  await page.getByRole('button',{name:'Back to all incidents'}).click();
+  await page.getByRole('button',{name:'Back to all visits'}).click();
   await expect(page.getByRole('button',{name:'Open incident'})).toBeVisible();
   expect(await page.evaluate(()=>document.body.style.overflow)).not.toBe('hidden');
   await page.getByRole('button',{name:'Open incident'}).click();

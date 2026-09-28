@@ -20,7 +20,7 @@ export default function Landing() {
   const workspaceHref = native ? "/?workspace=1" : "/workspace";
   const hostedWeb = !native && !localWeb;
   const accountRequired = hostedWeb || native;
-  const previewLabel = accountRequired ? "Private account required" : "Local replay: no account required";
+  const previewLabel = accountRequired ? "Private account required" : "Local demo: no account required";
   const openAuth = (mode: "signin" | "signup") =>
     window.location.assign(native ? `/?auth=${mode}` : `/${mode}`);
   const openWorkspace = (event: MouseEvent<HTMLAnchorElement>) => {

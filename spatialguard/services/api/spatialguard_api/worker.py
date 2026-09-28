@@ -70,6 +70,8 @@ def process_one(store, engine):
                     db.execute("INSERT OR IGNORE INTO evidence VALUES (?,?,?)", (asset.id, site["id"], asset.model_dump_json()))
                 if inserted:
                     event(db, site["id"], "incident.created", incident.id)
+                    from . import alerts
+                    alerts.try_evaluate(db, site["id"])
             db.execute("UPDATE runs SET state='succeeded',error=NULL WHERE id=?", (run["id"],))
             event(db, site["id"], "replay.completed", run["id"])
     except Exception:

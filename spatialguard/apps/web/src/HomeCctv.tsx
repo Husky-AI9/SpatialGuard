@@ -79,7 +79,7 @@ export default function HomeCctv({
   if (selected) {
     const ring = mappedDevice(selected.id);
     return (
-      <section className="home-cctv home-cctv-open" aria-label="CCTV overview">
+      <section className="home-cctv home-cctv-open" aria-label="Camera overview">
         <div className="panel-heading">
           <div>
             <h2>{selected.name}</h2>
@@ -126,7 +126,7 @@ export default function HomeCctv({
           ) : (
             <div className="home-cctv-empty">
               {ring ? <Radio size={25} /> : <VideoOff size={25} />}
-              <strong>{ring ? "Live view stopped" : "Replay camera"}</strong>
+              <strong>{ring ? "Live view stopped" : "Demo camera"}</strong>
               <span>
                 {ring
                   ? "Select this camera again to reopen its live feed."
@@ -143,10 +143,10 @@ export default function HomeCctv({
   }
 
   return (
-    <section className="home-cctv" aria-label="CCTV overview">
+    <section className="home-cctv" aria-label="Camera overview">
       <div className="panel-heading">
         <div>
-          <h2>CCTVs</h2>
+          <h2>Cameras</h2>
           <span>{cameras.length} devices</span>
         </div>
         <button className="primary" onClick={onViewAll}>View all</button>

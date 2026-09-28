@@ -152,7 +152,7 @@ export function EventRecording({
   const first = track?.points[0]?.t_seconds ?? 0;
   const last = track?.points[track.points.length - 1]?.t_seconds ?? 0;
   const movement = !hasCamera
-    ? "Map camera unavailable for this incident."
+    ? "Map camera unavailable for this visit."
     : trackError || (!clip ? "Movement waits for the recording." : !track ? "Analyzing recorded movement…"
       : !track.points.length ? "No person detected in this recording."
       : at < first ? "Person has not appeared yet."

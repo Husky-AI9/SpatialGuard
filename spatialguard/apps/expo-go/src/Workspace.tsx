@@ -46,11 +46,12 @@ import { Operations, RingSettings } from "./Settings";
 import AnalyticsScreen from "./Analytics";
 import type { components } from "../../web/src/generated";
 type Preferences = components["schemas"]["AccountPreferences"];
-type Tab = "Home" | "Incidents" | "Cameras" | "Analytics" | "Operations" | "Settings";
+type CrowdAlert = components["schemas"]["CrowdAlert"];
+type Tab = "Home" | "Activity" | "Cameras" | "Analytics" | "Operations" | "Settings";
 type Section = "" | "Account" | "Places & floor plans" | "Privacy" | "Ring cameras" | "Delete account";
 const tabs: { name: Tab; icon: IconName }[] = [
   { name: "Home", icon: "house" },
-  { name: "Incidents", icon: "history" },
+  { name: "Activity", icon: "history" },
   { name: "Cameras", icon: "camera" },
   { name: "Analytics", icon: "chart" },
   { name: "Operations", icon: "activity" },
@@ -64,7 +65,7 @@ const uuid = () =>
   });
 const stamp = (value: string) =>
   new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-const mode = (m: Incident["evidence_mode"]) => (m === "live" ? "Live" : m === "replay" ? "Replay" : "Simulator");
+const mode = (m: Incident["evidence_mode"]) => (m === "live" ? "Live" : m === "replay" ? "Demo" : "Simulator");
 
 export default function Workspace({ onSignout }: { onSignout: () => void }) {
   const [tab, setTab] = useState<Tab>("Home"),
@@ -90,7 +91,9 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     [playing, setPlaying] = useState(false),
     [track, setTrack] = useState<Track | null>(null),
     [video, setVideo] = useState({ seconds: 0, duration: 0 }),
-    [evidenceSvg, setEvidenceSvg] = useState("");
+    [evidenceSvg, setEvidenceSvg] = useState(""),
+    // The live queue/crowding alert, shown on every tab until acknowledged.
+    [crowdAlert, setCrowdAlert] = useState<CrowdAlert | null>(null);
   const insets = useSafeAreaInsets();
   const activeId = useRef(""),
     alive = useRef(true),
@@ -143,6 +146,25 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       if (alive.current) setBusy(false);
     }
   };
+  const loadCrowd = async (id: string) => {
+    try {
+      const body = await request<components["schemas"]["CrowdAlerts"]>(`/v1/sites/${id}/alerts`);
+      const open = body.alerts.find((a) => !a.acknowledged && Date.now() - Date.parse(a.at) < 30 * 60 * 1000) ?? null;
+      if (alive.current && activeId.current === id) setCrowdAlert(open);
+    } catch {
+      // Retried with the next activity.
+    }
+  };
+  useEffect(() => {
+    setCrowdAlert(null);
+    if (site?.id) void loadCrowd(site.id);
+  }, [site?.id]);
+  const dismissCrowd = () => {
+    const alert = crowdAlert;
+    setCrowdAlert(null);
+    if (alert && site) void request(`/v1/sites/${site.id}/alerts/${alert.id}/acknowledge`, "POST").catch(() => undefined);
+  };
+
   // Follow new activity while the app is open, like the web app: new incidents
   // arrive without a manual refresh and drive the live motion waves.
   const eventCursor = useRef(0);
@@ -160,7 +182,8 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           const next = await page();
           eventCursor.current = next.cursor;
           if (stopped) return;
-          if (next.events.some((e) => !e.kind.startsWith("incident"))) await load(id);
+          if (next.events.some((e) => e.kind === "alert.crowding")) void loadCrowd(id);
+          if (next.events.some((e) => !e.kind.startsWith("incident") && !e.kind.startsWith("alert"))) await load(id);
           else if (next.events.length) {
             const latest = await request<components["schemas"]["IncidentPage"]>(`/v1/sites/${id}/incidents`);
             if (!stopped && alive.current && activeId.current === id) {
@@ -292,7 +315,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     );
   };
   const deleteIncident = (incident: Incident) =>
-    Alert.alert("Delete incident?", "This removes the incident and its evidence.", [
+    Alert.alert("Delete visit?", "This removes the visit and its evidence.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -305,17 +328,17 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       },
     ]);
   const cameras = site?.layout.cameras ?? [];
-  const title = selected ? "Incident" : section || tab;
+  const title = selected ? "Visit" : section || tab;
 
   const monitorCard = site && (
     <Card>
       <View style={s.row}>
         <View style={{ flex: 1 }}>
           <Label style={s.strong}>
-            {site.monitoring.enabled ? "Monitoring enabled" : "Monitoring paused"}
+            {site.monitoring.enabled ? "Tracking on" : "Tracking paused"}
           </Label>
           <Label style={[s.muted, { fontSize: 13 }]}>
-            {site.monitoring.camera_ids.length} selected cameras
+            {site.monitoring.camera_ids.length} cameras tracking
           </Label>
         </View>
         <Button
@@ -329,7 +352,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         <Button
           small
           icon="play"
-          title="Run replay"
+          title="Run demo visit"
           disabled={busy || !site.monitoring.enabled || !site.monitoring.camera_ids.length}
           onPress={() =>
             void action(() => request(`/v1/sites/${site.id}/replay`, "POST", { request_id: uuid() }))
@@ -369,7 +392,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
   const cameraList = (withSwitches: boolean) => (
     <Card>
       <CardHeader
-        title="CCTVs"
+        title="Cameras"
         detail={`${cameras.length} devices`}
         action={
           withSwitches ? (
@@ -411,9 +434,9 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
             </View>
             {withSwitches && site && (
               <View style={[s.row, { justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: 1, borderColor: "#e4e2f6" }]}>
-                <Label style={{ fontSize: 13, fontFamily: "SourceSansBold", color: colors.muted }}>Monitor</Label>
+                <Label style={{ fontSize: 13, fontFamily: "SourceSansBold", color: colors.muted }}>Track</Label>
                 <Switch
-                  accessibilityLabel={`Monitor ${camera.name}`}
+                  accessibilityLabel={`Track ${camera.name}`}
                   value={included}
                   disabled={busy}
                   trackColor={{ true: colors.purple, false: "#bfc2d1" }}
@@ -475,7 +498,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       {!incidents.length && (
         <View style={{ alignItems: "center", padding: 24, gap: 6 }}>
           <Icon name="history" size={24} color="#e59a9a" />
-          <Label style={s.strong}>No incidents yet</Label>
+          <Label style={s.strong}>No visits yet</Label>
           <Label style={s.muted}>Activity your cameras record shows up here.</Label>
         </View>
       )}
@@ -483,7 +506,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         <View style={{ padding: 12 }}>
           <Button
             variant="secondary"
-            title="Load older incidents"
+            title="Load older visits"
             disabled={busy}
             onPress={() =>
               void action(async () => {
@@ -506,7 +529,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     <>
       <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={[s.row, { gap: 6, paddingVertical: 4 }]}>
         <Icon name="back" size={18} color={colors.ink} />
-        <Label style={s.strong}>All incidents</Label>
+        <Label style={s.strong}>All visits</Label>
       </Pressable>
       <Card>
         <Label style={s.title}>{selected.classification?.display_label || selected.title}</Label>
@@ -525,7 +548,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
               )
             }
           />
-          <IconButton icon="trash" label="Delete incident" color={colors.danger} onPress={() => deleteIncident(selected)} />
+          <IconButton icon="trash" label="Delete visit" color={colors.danger} onPress={() => deleteIncident(selected)} />
         </View>
       </Card>
       {selected.evidence_mode === "live" && reviewObservation ? (
@@ -549,7 +572,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           <View style={{ height: 200, borderRadius: 12, overflow: "hidden", backgroundColor: "#eef0f9" }}>
             <SvgXml xml={evidenceSvg} width="100%" height="100%" />
           </View>
-          <Label style={[s.muted, { fontSize: 13 }]}>Synthetic replay illustration · {reviewCamera?.name ?? "Unknown camera"}</Label>
+          <Label style={[s.muted, { fontSize: 13 }]}>Demo illustration · {reviewCamera?.name ?? "Unknown camera"}</Label>
         </Card>
       ) : null}
       {site && selected.revision_id === site.revision_id && (
@@ -564,7 +587,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           <Label style={[s.muted, { fontSize: 13 }]}>
             {selected.evidence_mode === "live"
               ? track?.points.length ? "Recorded movement · estimated map positions" : "Camera observations · person position unknown"
-              : "Synthetic replay positions"}
+              : "Demo positions (sample data)"}
           </Label>
         </Card>
       )}
@@ -598,10 +621,10 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           ["Timestamp", reviewObservation ? eventTime(reviewObservation.observed_at) : "Unavailable"],
           ["Camera", reviewCamera?.name ?? "Unknown camera"],
           ["Person", `${selected.classification?.display_label ?? "Unknown"} · identity unconfirmed`],
-          ["Evidence mode", selected.evidence_mode === "live" ? "Live Ring event" : "Synthetic replay"],
+          ["Evidence mode", selected.evidence_mode === "live" ? "Live Ring event" : "Demo (sample data)"],
           ["Trigger", selected.rule],
           ["Certainty", selected.evidence_mode === "live" ? "Camera event. Movement is estimated."
-            : reviewObservation?.location.kind === "unknown" ? "Unknown location \u2014 coverage gap" : "Illustrative replay position"],
+            : reviewObservation?.location.kind === "unknown" ? "Unknown location \u2014 coverage gap" : "Illustrative demo position"],
         ] as const).map(([name, value]) => (
           <View key={name} style={{ paddingVertical: 6, borderTopWidth: 1, borderColor: colors.line }}>
             <Label style={[s.muted, { fontSize: 12 }]}>{name}</Label>
@@ -729,6 +752,36 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         </View>
         <IconButton icon="refresh" label="Refresh" onPress={() => void load()} />
       </View>
+      {crowdAlert && (
+        <View
+          accessibilityRole="alert"
+          style={[s.row, { margin: 12, marginBottom: 0, padding: 12, gap: 10, borderRadius: 14, borderWidth: 1, borderLeftWidth: 4,
+            borderColor: "#f0c6ad", borderLeftColor: "#d9480f", backgroundColor: "#fff8f3" }]}
+        >
+          <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: "#fde6d8" }}>
+            <Icon name={crowdAlert.kind === "queue" ? "users" : "alert"} size={18} color="#b3400b" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Label style={s.strong}>
+              {crowdAlert.kind === "queue" ? `Queue building at ${crowdAlert.zone}` : `${crowdAlert.zone} is getting crowded`}
+            </Label>
+            <Label style={{ color: "#7a4a2e", fontSize: 13 }}>
+              {crowdAlert.count} {crowdAlert.count === 1 ? "person" : "people"} in the last {crowdAlert.window_minutes} min · limit {crowdAlert.limit}
+            </Label>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setSelected(null);
+              setTab("Analytics");
+            }}
+            style={{ paddingHorizontal: 14, minHeight: 36, borderRadius: 18, justifyContent: "center", backgroundColor: "#d9480f" }}
+          >
+            <Label style={{ color: "#fff", fontFamily: "SourceSansBold", fontSize: 14 }}>View</Label>
+          </Pressable>
+          <IconButton icon="close" label="Got it, dismiss alert" color="#7a4a2e" tint="transparent" onPress={dismissCrowd} />
+        </View>
+      )}
       {!!error && (
         <View style={[s.row, { margin: 12, marginBottom: 0, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: "#f3c4c9", backgroundColor: "#fff4f5" }]} accessibilityRole="alert">
           <Label style={{ flex: 1, color: "#7c1d26", fontSize: 14 }}>{error}</Label>
@@ -737,7 +790,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       )}
       {tab === "Analytics" && !selected ? (
         // The dashboard scrolls itself; it replaces the page scroll view.
-        <AnalyticsScreen siteId={site?.id} refreshKey={incidents[0]?.id} />
+        <AnalyticsScreen siteId={site?.id} refreshKey={`${incidents[0]?.id}:${crowdAlert?.id ?? ""}`} />
       ) : (
       <ScrollView
         scrollEnabled={!mapTouch}
@@ -763,7 +816,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
               </Card>
               {device && liveCard}
               {cameraList(false)}
-              {incidentList("Recent incidents")}
+              {incidentList("Recent visits")}
             </>
           ) : (
             <Card style={{ alignItems: "center", paddingVertical: 28 }}>
@@ -786,8 +839,8 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
             )}
             {cameraList(true)}
           </>
-        ) : tab === "Incidents" ? (
-          incidentList("Incident history")
+        ) : tab === "Activity" ? (
+          incidentList("Visit history")
         ) : tab === "Operations" ? (
           <Operations />
         ) : section ? (
