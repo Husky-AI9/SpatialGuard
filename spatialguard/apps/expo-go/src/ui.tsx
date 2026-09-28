@@ -10,7 +10,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 /** Same tokens as the web/Android app (apps/web/src/style.css). */
 export const colors = {
@@ -197,16 +197,29 @@ export function Sheet({ visible, title, subtitle, onClose, children }: React.Pro
   );
 }
 
-export function Mark({ size = 32, color = colors.purple }) {
+/** Pathlight's mark: a "P" drawn as a heatmap grid, from the Pathlight logo. `size` is its height. */
+const LIGHT_CELL = "#E4E2FB";
+const PATHLIGHT_GRID = [
+  ["#F2613F", "#F2613F", "#F2613F", LIGHT_CELL],
+  ["#FF8A4C", LIGHT_CELL, LIGHT_CELL, "#FF8A4C"],
+  ["#FFB547", LIGHT_CELL, LIGHT_CELL, "#FFB547"],
+  ["#FFD27A", "#FFD27A", "#FFD27A", LIGHT_CELL],
+  ["#9E8CF5", LIGHT_CELL, LIGHT_CELL, LIGHT_CELL],
+  ["#6D5DF5", LIGHT_CELL, LIGHT_CELL, LIGHT_CELL],
+];
+export function Mark({ size = 32 }: { size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 32 32">
-      {/* Pathlight's mark: a walking path that ends in a small light. */}
-      <Path d="M5.5 26.5c6 0 6.4-7.4 10.8-7.4s4.6-6.3 8.9-8" fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
-      <Path d="M25.6 2.9v1.8M31.4 8.6h-1.8M29.7 4.6l-1.3 1.3" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-      <Circle cx="25.6" cy="10.2" r="3.1" fill="#d49431" stroke={color} strokeWidth="1.1" />
-      <Circle cx="5.5" cy="26.5" r="1.6" fill={color} />
+    <Svg width={(size * 43.5) / 58} height={size} viewBox="0 0 43.5 58">
+      {PATHLIGHT_GRID.flatMap((row, r) =>
+        row.map((fill, c) => <Rect key={`${r}-${c}`} x={c * 11.5} y={r * 10} width={9} height={8} rx={2.2} fill={fill} />),
+      )}
     </Svg>
   );
+}
+
+/** The Pathlight wordmark, set in Sora like the logo. */
+export function Wordmark({ size = 24, color = "#1E1B4B" }: { size?: number; color?: string }) {
+  return <Text style={{ fontFamily: "Sora", fontSize: size, letterSpacing: -size * 0.035, color }}>Pathlight</Text>;
 }
 
 export const styles = StyleSheet.create({

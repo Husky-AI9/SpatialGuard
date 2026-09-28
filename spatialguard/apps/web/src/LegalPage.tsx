@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import SpatialGuardMark from "./SpatialGuardMark";
+import SpatialGuardMark, { PathlightWordmark } from "./SpatialGuardMark";
 import type { ReactNode } from "react";
 import { native } from "./platform";
 
@@ -45,7 +45,7 @@ export default function LegalPage({ kind }: { kind: LegalKind }) {
   return (
     <main className="legal-page">
       <header>
-        <a className="legal-brand" href={back}><span><SpatialGuardMark size={19} /></span>Pathlight</a>
+        <a className="legal-brand" href={back}><span><SpatialGuardMark size={20} /></span><PathlightWordmark /></a>
         <a href={back}><ArrowLeft size={15} />Back</a>
       </header>
       <article>

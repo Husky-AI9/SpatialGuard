@@ -1,11 +1,29 @@
-/** Pathlight's mark: a walking path that ends in a small light. */
+/**
+ * Pathlight's mark: a "P" drawn as a heatmap grid, hot at the top and cooling
+ * to purple, from the Pathlight logo. Cells are 9 x 8 on an 11.5 x 10 pitch.
+ */
+const LIGHT = "#E4E2FB";
+export const PATHLIGHT_GRID: string[][] = [
+  ["#F2613F", "#F2613F", "#F2613F", LIGHT],
+  ["#FF8A4C", LIGHT, LIGHT, "#FF8A4C"],
+  ["#FFB547", LIGHT, LIGHT, "#FFB547"],
+  ["#FFD27A", "#FFD27A", "#FFD27A", LIGHT],
+  ["#9E8CF5", LIGHT, LIGHT, LIGHT],
+  ["#6D5DF5", LIGHT, LIGHT, LIGHT],
+];
+
+/** The grid mark alone; `size` is its height (it is 3:4 wide). */
 export default function SpatialGuardMark({ size = 24 }: { size?: number }) {
   return (
-    <svg className="sg-brand-symbol" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M5.5 26.5c6 0 6.4-7.4 10.8-7.4s4.6-6.3 8.9-8" />
-      <path d="M25.6 2.9v1.8M31.4 8.6h-1.8M29.7 4.6l-1.3 1.3" />
-      <circle cx="25.6" cy="10.2" r="3.1" />
-      <circle cx="5.5" cy="26.5" r="1.6" />
+    <svg className="pl-mark" width={(size * 43.5) / 58} height={size} viewBox="0 0 43.5 58" aria-hidden="true">
+      {PATHLIGHT_GRID.flatMap((row, r) =>
+        row.map((fill, c) => <rect key={`${r}-${c}`} x={c * 11.5} y={r * 10} width="9" height="8" rx="2.2" fill={fill} />),
+      )}
     </svg>
   );
+}
+
+/** The wordmark, set in Sora like the logo. */
+export function PathlightWordmark({ className = "" }: { className?: string }) {
+  return <span className={`pl-wordmark ${className}`.trim()}>Pathlight</span>;
 }

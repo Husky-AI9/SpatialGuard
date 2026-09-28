@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@fontsource/source-sans-pro/400.css";
 import "@fontsource/source-sans-pro/600.css";
 import "@fontsource/source-sans-pro/700.css";
+import "@fontsource/sora/latin-600.css";
 import App from "./App";
 import Landing from "./Landing";
 import AuthPage from "./AuthPage";

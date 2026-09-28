@@ -13,13 +13,15 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { request, restore, save, ORIGIN } from "./src/api";
-import { Button, Icon, Label, Mark, colors, styles as s } from "./src/ui";
+import { Button, Icon, Label, Mark, Wordmark, colors, styles as s } from "./src/ui";
 import Workspace from "./src/Workspace";
 import WelcomeArt from "./src/WelcomeArt";
 export default function App() {
   const [fonts, fontError] = useFonts({
     SourceSans: require("./assets/fonts/source-sans-3-400.ttf"),
     SourceSansBold: require("./assets/fonts/source-sans-3-700.ttf"),
+    // The Pathlight wordmark's typeface (SIL Open Font License, see assets/fonts).
+    Sora: require("./assets/fonts/sora-600.ttf"),
   });
   const [ready, setReady] = useState(false),
     [signed, setSigned] = useState(false),
@@ -49,8 +51,10 @@ export default function App() {
           <View style={{ flex: 1 }}>
             <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 16, alignItems: "center" }}>
               <View style={[s.row, { gap: 10 }]}>
-                <Mark color="white" size={30} />
-                <Label style={[s.title, { color: "white" }]}>Pathlight</Label>
+                <View style={{ width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" }}>
+                  <Mark size={26} />
+                </View>
+                <Wordmark size={24} color="#fff" />
               </View>
               <View style={{ flex: 1, justifyContent: "center", width: "100%", alignItems: "center" }}>
                 <WelcomeArt />
@@ -160,7 +164,10 @@ function Auth({
           <Icon name="back" size={18} />
           <Label style={s.strong}>Back</Label>
         </Pressable>
-        <Mark size={44} />
+        <View style={[s.row, { gap: 10 }]}>
+          <Mark size={34} />
+          <Wordmark size={26} />
+        </View>
         <Label style={s.title}>
           {mode === "signin"
             ? "Sign in"

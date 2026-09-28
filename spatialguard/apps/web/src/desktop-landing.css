@@ -165,3 +165,7 @@
   .sg-concept .concept-footer { gap:20px; flex-wrap:wrap; padding:24px 32px; height:auto; }
   .sg-concept .concept-demo-controls { flex-direction:column; align-items:start; }
 }
+
+/* Pathlight logo: mark and Sora wordmark, no frame. */
+.sg-concept .concept-brand-mark { width: auto; height: auto; border: 0; border-radius: 0; }
+.sg-concept .concept-brand { gap: 11px; font-size: 25px; }

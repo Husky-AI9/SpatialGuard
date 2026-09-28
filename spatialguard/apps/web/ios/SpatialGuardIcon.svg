@@ -1,7 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" fill="#EFEEFD"/>
-  <path d="M330 512 L820.3 100.6 A640 640 0 0 1 820.3 923.4Z" fill="#5B4FE8" fill-opacity=".6"/>
-  <circle cx="330" cy="512" r="150" fill="#5B4FE8"/>
-  <circle cx="330" cy="512" r="105" fill="#fff"/>
-  <circle cx="330" cy="512" r="46" fill="#5B4FE8"/>
+  <rect width="1024" height="1024" rx="220" fill="#FFFFFF"/>
+  <g transform="translate(287 212) scale(10.345)">
+    <rect x="0" y="0" width="9" height="8" rx="2.2" fill="#F2613F"/>
+    <rect x="11.5" y="0" width="9" height="8" rx="2.2" fill="#F2613F"/>
+    <rect x="23" y="0" width="9" height="8" rx="2.2" fill="#F2613F"/>
+    <rect x="34.5" y="0" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="0" y="10" width="9" height="8" rx="2.2" fill="#FF8A4C"/>
+    <rect x="11.5" y="10" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="23" y="10" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="34.5" y="10" width="9" height="8" rx="2.2" fill="#FF8A4C"/>
+    <rect x="0" y="20" width="9" height="8" rx="2.2" fill="#FFB547"/>
+    <rect x="11.5" y="20" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="23" y="20" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="34.5" y="20" width="9" height="8" rx="2.2" fill="#FFB547"/>
+    <rect x="0" y="30" width="9" height="8" rx="2.2" fill="#FFD27A"/>
+    <rect x="11.5" y="30" width="9" height="8" rx="2.2" fill="#FFD27A"/>
+    <rect x="23" y="30" width="9" height="8" rx="2.2" fill="#FFD27A"/>
+    <rect x="34.5" y="30" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="0" y="40" width="9" height="8" rx="2.2" fill="#9E8CF5"/>
+    <rect x="11.5" y="40" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="23" y="40" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="34.5" y="40" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="0" y="50" width="9" height="8" rx="2.2" fill="#6D5DF5"/>
+    <rect x="11.5" y="50" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="23" y="50" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+    <rect x="34.5" y="50" width="9" height="8" rx="2.2" fill="#E4E2FB"/>
+  </g>
 </svg>

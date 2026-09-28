@@ -1047,3 +1047,22 @@ body.landing-body {
 @media (prefers-reduced-motion: reduce) {
   .sg-auth-floor, .sg-auth-heat { animation: none; }
 }
+
+/* Pathlight logo in the landing and sign-in brand spots ----------------------------
+   Desktop: the mark and wordmark stand alone, like the logo. Phone: the mark sits
+   in a white app-icon tile so its heat colors read on the purple header. */
+.sg-auth-brand > .pl-wordmark,
+.sg-entry-brand .pl-wordmark { width: auto; height: auto; display: inline; border: 0; background: none; box-shadow: none; color: inherit; }
+.sg-auth-brand > span:first-child,
+.sg-entry-brand-mark { width: auto; height: auto; border: 0; background: none; box-shadow: none; }
+.sg-auth-brand { gap: 12px; font-size: 24px; }
+.sg-auth-brand .pl-mark { height: 30px; width: auto; }
+.sg-entry-brand .pl-mark { height: 28px; width: auto; }
+.sg-mobile-brand-mark, .sg-mobile-sheet-icon { background: #fff !important; border-color: #fff !important; }
+.sg-mobile-brand-mark .pl-mark { height: 24px; width: auto; }
+.sg-mobile-sheet-icon .pl-mark { height: 24px; width: auto; }
+@media (max-width: 820px) {
+  .sg-auth-brand > span:first-child { width: 82px; height: 82px; background: #fff; box-shadow: 0 18px 42px rgba(26,20,105,.28); }
+  .sg-auth-brand > span:first-child svg.pl-mark { width: auto; height: 46px; }
+  .sg-auth-brand { font-size: 26px; }
+}

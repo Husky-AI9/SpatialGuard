@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import "./desktop-landing.css";
+import SpatialGuardMark, { PathlightWordmark } from "./SpatialGuardMark";
 
 type Props = {
   hostedWeb: boolean;
@@ -61,8 +62,8 @@ export default function DesktopLanding({hostedWeb, openSignIn, openSignUp, openW
 
 <nav className="concept-nav" aria-label="Landing page">
 <a className="concept-brand" href="#top">
-<span className="concept-brand-mark"><svg width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="#23253F" strokeLinecap="round"><path d="M5.5 26.5c6 0 6.4-7.4 10.8-7.4s4.6-6.3 8.9-8" strokeWidth="2.6"></path><path d="M25.6 2.9v1.8M31.4 8.6h-1.8M29.7 4.6l-1.3 1.3" strokeWidth="1.9"></path><circle cx="25.6" cy="10.2" r="3.2" fill="#d49431" strokeWidth="1.2"></circle><circle cx="5.5" cy="26.5" r="1.7" fill="#23253F" stroke="none"></circle></svg></span>
-<span >Pathlight<sup className="concept-brand-dot">●</sup></span>
+<span className="concept-brand-mark"><SpatialGuardMark size={26} /></span>
+<PathlightWordmark />
 </a>
 <div className="concept-nav-links">
 <a className="concept-nav-home" href="#top">Home</a>

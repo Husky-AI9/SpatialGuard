@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import MapControls from "./MapControls";
-import SpatialGuardMark from "./SpatialGuardMark";
+import SpatialGuardMark, { PathlightWordmark } from "./SpatialGuardMark";
 import { useLiveMotion } from "./liveMotion";
 import { incidentLinks, incidentMarkers } from "./incidentMap";
 import { HeatmapLegend, HeatmapPanel, usePeopleHeatmap, type HeatRange } from "./PeopleHeatmap";
@@ -736,7 +736,7 @@ export default function App() {
     return (
       <main className="welcome">
         <SpatialGuardMark size={36} />
-        <h1>Pathlight</h1>
+        <h1><PathlightWordmark /></h1>
         <p>Opening your workspace…</p>
       </main>
     );
@@ -744,7 +744,7 @@ export default function App() {
     return (
       <main className="welcome">
         <SpatialGuardMark size={36} />
-        <h1>Pathlight</h1>
+        <h1><PathlightWordmark /></h1>
         <p>
           {native && !paired
             ? "Sign in to Pathlight"
@@ -1147,7 +1147,7 @@ export default function App() {
           }}
         >
           <SpatialGuardMark size={28} />
-          <span>Pathlight</span>
+          <PathlightWordmark />
         </a>
         <nav aria-label="Main navigation">
           {tabs.map(({ name, icon: Icon }) => (

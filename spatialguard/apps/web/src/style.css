@@ -4028,3 +4028,12 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
 /* On a phone it sits just above the tab bar. */
 @media (max-width: 760px) { .crowd-banner { right: 12px; bottom: calc(82px + env(safe-area-inset-bottom)); width: calc(100% - 24px); padding: 10px 12px; gap: 10px; } }
 @media (prefers-reduced-motion: reduce) { .crowd-banner { animation: none; } }
+
+/* Pathlight logo: heat-grid mark + Sora wordmark ----------------------------------- */
+.pl-mark { display: block; flex: none; }
+.pl-wordmark { font-family: "Sora", "Source Sans Pro", system-ui, sans-serif; font-weight: 600; letter-spacing: -0.035em; }
+.brand { display: flex; flex-direction: row; align-items: center; }
+.brand svg.pl-mark { width: auto; height: 27px; }
+.brand .pl-wordmark { font-size: 21px; }
+.legal-brand > span:first-child { width: auto; height: auto; background: none; }
+.legal-brand > .pl-wordmark { display: inline; width: auto; height: auto; background: none; color: #1e1b4b; font-size: 18px; }

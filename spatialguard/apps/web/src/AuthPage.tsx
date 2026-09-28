@@ -4,7 +4,7 @@ import type { components } from "./generated";
 import { native, request, storeToken } from "./platform";
 import landingHouse from "./assets/landing-house.png";
 import "./landing.css";
-import SpatialGuardMark from "./SpatialGuardMark";
+import SpatialGuardMark, { PathlightWordmark } from "./SpatialGuardMark";
 
 type Mode = "signin" | "signup" | "forgot" | "reset" | "verify";
 type AuthSession = components["schemas"]["AuthSession"];
@@ -46,7 +46,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
   const title = mode === "verify" ? "Verify your email" : mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : signingUp ? "Create your account" : "Sign in";
   return <main className="sg-auth-page">
     <section className="sg-auth-visual" aria-label="Pathlight foot-traffic heatmap illustration">
-      <a className="sg-auth-brand" href={native ? "/" : "/landing"}><span><SpatialGuardMark size={20} /></span> Pathlight</a>
+      <a className="sg-auth-brand" href={native ? "/" : "/landing"}><span><SpatialGuardMark size={22} /></span><PathlightWordmark /></a>
       <div className="sg-auth-art"><div className="sg-auth-orbit sg-auth-orbit-one" /><div className="sg-auth-orbit sg-auth-orbit-two" /><div className="sg-auth-floor"><img src={landingHouse} alt="Illustrative 3D floor plan with a foot-traffic heatmap" /><span className="sg-auth-heat sg-auth-heat-one" /><span className="sg-auth-heat sg-auth-heat-two" /><span className="sg-auth-heat sg-auth-heat-three" /></div><div className="sg-auth-signal"><span /> Live foot traffic</div><div className="sg-auth-event"><Flame size={15} /><span><strong>Busiest zone</strong><small>Entrance · 12–1 PM</small></span></div></div>
       <div className="sg-auth-visual-copy"><p>Foot traffic, mapped</p><h1>See how people really move through your space.</h1><ul className="sg-auth-points"><li><Flame size={15} />Live heatmaps</li><li><Route size={15} />Visitor paths</li><li><ShieldCheck size={15} />No face recognition</li></ul></div>
     </section>

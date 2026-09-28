@@ -3,14 +3,14 @@ import { ArrowRight, Check, Flame, Footprints, LogIn, Play, Route, TrendingUp, U
 import "./landing.css";
 import DesktopLanding from "./DesktopLanding";
 import { native, localWeb } from "./platform";
-import SpatialGuardMark from "./SpatialGuardMark";
+import SpatialGuardMark, { PathlightWordmark } from "./SpatialGuardMark";
 import CameraMark from "./CameraMark";
 
 function Brand() {
   return (
     <span className="sg-entry-brand">
       <span className="sg-entry-brand-mark"><SpatialGuardMark size={24} /></span>
-      Pathlight
+      <PathlightWordmark />
     </span>
   );
 }
@@ -51,7 +51,7 @@ export default function Landing() {
 
         <header className="sg-mobile-brand">
           <span className="sg-mobile-brand-mark"><SpatialGuardMark size={27} /></span>
-          <span>Pathlight</span>
+          <PathlightWordmark />
         </header>
 
         <div className="sg-mobile-scene" aria-label="A shop whose cameras map foot traffic">
