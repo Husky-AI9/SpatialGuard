@@ -3995,6 +3995,13 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
 @media (max-width: 380px) {
   .heatmap-head strong { display: none; }
 }
+/* Phone app: just the time span, top right, no card behind it. */
+.heatmap-panel.heatmap-panel-compact {
+  top: 8px; right: 8px; bottom: auto; left: auto; max-width: none;
+  padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+}
+.heatmap-panel-compact .heatmap-range { box-shadow: 0 2px 8px rgba(35, 37, 63, .16); }
+.heatmap-panel-compact .heatmap-range button { min-height: 28px; padding: 3px 9px; font-size: 12px; }
 
 /* Motion mode status --------------------------------------------------------- */
 .motion-status {

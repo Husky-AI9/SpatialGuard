@@ -146,6 +146,7 @@ export default function MapEmbed() {
             loading={heat.loading}
             error={heat.error}
             cameraName={cameraName}
+            compact
           />
           {heatGrid && <HeatmapLegend />}
         </>
