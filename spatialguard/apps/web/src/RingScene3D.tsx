@@ -6,7 +6,7 @@ import type { components } from "./generated";
 
 type Device = components["schemas"]["RingDevice"];
 
-// Provider-specific presentation stays in SpatialGuard, outside TwinForge's
+// Provider-specific presentation stays in Pathlight, outside TwinForge's
 // layout contract and the reusable map renderer. This module loads with 3D.
 export default function RingScene3D({ siteId, ...props }: ComponentProps<typeof Scene3D> & { siteId: string }) {
   const [devices, setDevices] = useState<Device[]>([]);

@@ -8,7 +8,6 @@ import {
   useMemo,
 } from "react";
 import {
-  Shield,
   House,
   History,
   Settings,
@@ -29,6 +28,7 @@ import {
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import MapControls from "./MapControls";
+import SpatialGuardMark from "./SpatialGuardMark";
 import { useLiveMotion } from "./liveMotion";
 import { incidentLinks, incidentMarkers } from "./incidentMap";
 import { HeatmapLegend, HeatmapPanel, usePeopleHeatmap, type HeatRange } from "./PeopleHeatmap";
@@ -727,19 +727,19 @@ export default function App() {
   if (!ready)
     return (
       <main className="welcome">
-        <Shield size={36} />
-        <h1>SpatialGuard</h1>
+        <SpatialGuardMark size={36} />
+        <h1>Pathlight</h1>
         <p>Opening your workspace…</p>
       </main>
     );
   if (!paired)
     return (
       <main className="welcome">
-        <Shield size={36} />
-        <h1>SpatialGuard</h1>
+        <SpatialGuardMark size={36} />
+        <h1>Pathlight</h1>
         <p>
           {native && !paired
-            ? "Sign in to SpatialGuard"
+            ? "Sign in to Pathlight"
             : hostedWeb
               ? "Sign in to the hosted workspace"
               : "Local workspace unavailable"}
@@ -747,7 +747,7 @@ export default function App() {
         <p>
           {native || hostedWeb
             ? "Use your email and password to continue."
-            : "Start SpatialGuard on your PC."}
+            : "Start Pathlight on your PC."}
         </p>
         {error && <RecoveryNotice message={error} />}
         {native || hostedWeb ? (
@@ -1138,8 +1138,8 @@ export default function App() {
             nav("Home");
           }}
         >
-          <Shield size={28} />
-          <span>SpatialGuard</span>
+          <SpatialGuardMark size={28} />
+          <span>Pathlight</span>
         </a>
         <nav aria-label="Main navigation">
           {tabs.map(({ name, icon: Icon }) => (
@@ -1215,7 +1215,7 @@ export default function App() {
               ) : (
                 <section className="ring-consent-required">
                   <h3>Allow Ring camera access</h3>
-                  <p>SpatialGuard needs your permission to use your Ring cameras.</p>
+                  <p>Pathlight needs your permission to use your Ring cameras.</p>
                   <button className="primary" disabled={!accountPreferences} onClick={() => accountPreferences && void act(() => saveAccountPreferences({ ...accountPreferences, ring_data_consent: true }))}>Allow Ring access</button>
                 </section>
               )}
@@ -1473,7 +1473,7 @@ export default function App() {
               ) : (
                 <section id="settings-ring">
                   <h2>Ring connection</h2>
-                  <p>SpatialGuard needs your permission to use your Ring cameras.</p>
+                  <p>Pathlight needs your permission to use your Ring cameras.</p>
                   <button className="primary" disabled={!accountPreferences} onClick={() => accountPreferences && void act(() => saveAccountPreferences({ ...accountPreferences, ring_data_consent: true }))}>Allow Ring access</button>
                 </section>
               ))}
@@ -1554,13 +1554,13 @@ export default function App() {
                   <section className="settings-card" id="settings-display">
                     <h2>Your data</h2>
                     <ul className="data-facts">
-                      <li>Live video is never recorded by SpatialGuard.</li>
+                      <li>Live video is never recorded by Pathlight.</li>
                       <li>Replay incidents use sample data, not your cameras.</li>
                     </ul>
                   </section>
                 </div>
               )}
-              <p className="app-version">SpatialGuard version 0.1</p>
+              <p className="app-version">Pathlight version 0.1</p>
               </>}
               {settingsPage === "delete" && currentSession?.email && (
                 <section className="danger-zone">
@@ -1592,7 +1592,7 @@ export default function App() {
           <section {...deleteDialog} className="delete-account-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
             <button className="modal-close" aria-label="Close" onClick={() => setDeleteOpen(false)}><X size={18} /></button>
             <p className="eyebrow">Permanent action</p>
-            <h2 id="delete-account-title">Delete SpatialGuard account?</h2>
+            <h2 id="delete-account-title">Delete Pathlight account?</h2>
             <p>This can’t be undone.</p>
             <label>Current password<input type="password" autoComplete="current-password" value={deletePassword}
               onChange={(event) => setDeletePassword(event.target.value)} /></label>

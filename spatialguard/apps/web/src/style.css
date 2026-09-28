@@ -3188,7 +3188,7 @@ select.site-name:hover {
 /* Shared security workspace -------------------------------------------------
    This is deliberately shared by the browser and the bundled Capacitor app.
    It keeps the information-dense security-camera composition while retaining
-   SpatialGuard's existing purple, blue-gray, and incident-status palette. */
+   Pathlight's existing purple, blue-gray, and incident-status palette. */
 :root {
   --radius: 10px;
   --shadow: 0 2px 8px rgba(35, 37, 63, 0.08);

@@ -34,14 +34,14 @@ export function RingSettings({
         />
         {!consent ? (
           <>
-            <Label style={s.muted}>SpatialGuard needs your permission to use your Ring cameras.</Label>
+            <Label style={s.muted}>Pathlight needs your permission to use your Ring cameras.</Label>
             <Button title="Allow Ring access" onPress={() => void run(enable)} />
           </>
         ) : devices.length ? (
           <Button variant="secondary" icon="refresh" title="Refresh cameras" onPress={() => void run(refresh, "Cameras updated")} />
         ) : (
           <>
-            <Label style={s.muted}>In the Ring app, find SpatialGuard and choose the cameras to share. Then come back here.</Label>
+            <Label style={s.muted}>In the Ring app, find Pathlight and choose the cameras to share. Then come back here.</Label>
             <Button
               title="Get linking code"
               onPress={() =>

@@ -1,14 +1,22 @@
 import React from "react";
-import Svg, { Path, Rect, Circle, Ellipse, G } from "react-native-svg";
-// Same house, cameras and package illustration as the existing mobile landing.
+import Svg, { Path, Rect, Circle, Ellipse, G, Defs, RadialGradient, Stop, Text as SvgText } from "react-native-svg";
+// Same shop, cameras and heat glow as the web mobile landing.
 export default function WelcomeArt() {
   return (
     <Svg
       width="100%"
       height={240}
       viewBox="0 0 320 230"
-      accessibilityLabel="Home, cameras and a delivered package"
+      accessibilityLabel="A shop with two cameras, a visitor path and a heatmap glow at the entrance"
     >
+      <Defs>
+        <RadialGradient id="heat">
+          <Stop offset="0" stopColor="#e5322d" stopOpacity="0.9" />
+          <Stop offset="0.38" stopColor="#ff8a1f" stopOpacity="0.65" />
+          <Stop offset="0.66" stopColor="#ffd640" stopOpacity="0.35" />
+          <Stop offset="1" stopColor="#42aaff" stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
       <Ellipse cx="160" cy="203" rx="132" ry="18" fill="#b2cda0" />
       <Path d="M211 178h31l26 42h-83Z" fill="#e7dcca" />
       <Path
@@ -34,13 +42,21 @@ export default function WelcomeArt() {
         width="80"
         height="75"
         rx="3"
-        fill="#e9eaf5"
-        stroke="#9d9ed0"
+        fill="#dfe8f7"
+        stroke="#3b3f66"
         strokeWidth="2"
       />
+      <Path d="M108 121v74M69 170h78" stroke="#3b3f66" strokeWidth="2" />
+      <Rect x="80" y="132" width="40" height="15" rx="3" fill="#5b4fe8" />
+      <SvgText x="100" y="143.2" textAnchor="middle" fill="white" fontSize="9" fontWeight="700" fontFamily="SourceSansBold">
+        OPEN
+      </SvgText>
+      <Path d="M62 104h196l-7 13H69Z" fill="#e8752a" stroke="#b9541a" strokeWidth="1.2" strokeLinejoin="round" />
       <Path
-        d="M74 139h68M74 157h68M74 175h68M94 121v74M122 121v74"
-        stroke="#c2c3dc"
+        d="M86 104l-3 13M110 104l-2 13M134 104l-1 13M158 104v13M182 104l1 13M206 104l2 13M230 104l3 13"
+        stroke="#fff4ea"
+        strokeWidth="5"
+        opacity={0.75}
       />
       <Rect
         x="160"
@@ -96,16 +112,9 @@ export default function WelcomeArt() {
           <Circle r="4.8" fill="#5b4fe8" />
         </G>
       ))}
-      <G
-        transform="translate(179 164) scale(1.15)"
-        stroke="#fff5df"
-        strokeWidth="1.2"
-      >
-        <Path d="m0 8 14-8 15 8-15 8Z" fill="#e8ad4b" />
-        <Path d="M0 8v18l14 8V16Z" fill="#b9722e" />
-        <Path d="M14 16v18l15-8V8Z" fill="#d88e36" />
-        <Path d="m8 3 15 8v7" fill="none" stroke="#7a4b22" strokeWidth="2.2" />
-      </G>
+      <Circle cx="226" cy="202" r="30" fill="url(#heat)" />
+      <Circle cx="190" cy="206" r="20" fill="url(#heat)" opacity={0.7} />
+      <Circle cx="262" cy="210" r="16" fill="url(#heat)" opacity={0.55} />
     </Svg>
   );
 }

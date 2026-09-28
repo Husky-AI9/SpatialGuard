@@ -2,7 +2,7 @@ import React from "react";
 import Svg, { Circle, G } from "react-native-svg";
 
 /**
- * SpatialGuard's camera mark: a ring with a centre dot, matching the web app,
+ * Pathlight's camera mark: a ring with a centre dot, matching the web app,
  * the floor-plan map markers and the app icon.
  */
 export default function CameraIcon({

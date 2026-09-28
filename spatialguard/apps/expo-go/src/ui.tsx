@@ -67,7 +67,7 @@ export function Icon({ name, size = 20, color = colors.ink, strokeWidth = 2 }: {
   );
 }
 
-/** SpatialGuard's camera mark: a ring with a centre dot. */
+/** Pathlight's camera mark: a ring with a centre dot. */
 export function CameraMark({ size = 20, color = colors.purple }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -197,13 +197,11 @@ export function Sheet({ visible, title, subtitle, onClose, children }: React.Pro
 export function Mark({ size = 32, color = colors.purple }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32">
-      <Path
-        d="M16 2.7 26.2 7v8.1c0 6.6-4 11.6-10.2 14.2C9.8 26.7 5.8 21.7 5.8 15.1V7Z M10.4 11.2h11.2v10.1H10.4zm5.6 0v5.2h5.6M10.4 16.4H16"
-        fill="none"
-        stroke={color}
-        strokeWidth="1.8"
-      />
-      <Circle cx="20.8" cy="20.5" r="2.15" fill={color} />
+      {/* Pathlight's mark: a walking path that ends in a small light. */}
+      <Path d="M5.5 26.5c6 0 6.4-7.4 10.8-7.4s4.6-6.3 8.9-8" fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
+      <Path d="M25.6 2.9v1.8M31.4 8.6h-1.8M29.7 4.6l-1.3 1.3" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+      <Circle cx="25.6" cy="10.2" r="3.1" fill="#d49431" stroke={color} strokeWidth="1.1" />
+      <Circle cx="5.5" cy="26.5" r="1.6" fill={color} />
     </Svg>
   );
 }

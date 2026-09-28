@@ -195,7 +195,7 @@ def test_hosted_link_form_claims_only_valid_signed_ring_account(service, monkeyp
     data = {'code': service.code('owner')['code'], 'nonce': nonce(service, stamp), 'time': stamp}
     form = web.get('/ring/link', params={'nonce': data['nonce'], 'time': stamp})
     assert form.headers['referrer-policy'] == 'strict-origin'
-    assert 'Open SpatialGuard to get a code' in form.text
+    assert 'Open Pathlight to get a code' in form.text
     for bad_origin in ['null', 'http://spatialguard.example', 'https://evil.test']:
         assert web.post('/ring/link', data=data, headers={'origin': bad_origin}).status_code == 403
     assert service.status('owner')['state'] == 'not_connected'

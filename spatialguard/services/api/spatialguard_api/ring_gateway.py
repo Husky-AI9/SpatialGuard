@@ -26,7 +26,7 @@ def audit(event, **details):
 
 def page(body):
     return HTMLResponse('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<title>SpatialGuard · Ring connection</title><style>body{background:#323232;color:#dadada;font:17px system-ui;margin:0;padding:32px}main{max-width:540px;margin:8vh auto}h1{font-size:28px}label{display:block;margin:20px 0 8px}input,button{box-sizing:border-box;font:inherit;padding:12px;width:100%;border:1px solid #aaa;border-radius:4px}input{background:#444243;color:white}button{margin-top:24px;background:#dadada;color:#242424}small{line-height:1.6}a{color:#fff}</style><main><h1>SpatialGuard</h1>'+body+'</main></html>')
+        '<title>Pathlight · Ring connection</title><style>body{background:#323232;color:#dadada;font:17px system-ui;margin:0;padding:32px}main{max-width:540px;margin:8vh auto}h1{font-size:28px}label{display:block;margin:20px 0 8px}input,button{box-sizing:border-box;font:inherit;padding:12px;width:100%;border:1px solid #aaa;border-radius:4px}input{background:#444243;color:white}button{margin-top:24px;background:#dadada;color:#242424}small{line-height:1.6}a{color:#fff}</style><main><h1>Pathlight</h1>'+body+'</main></html>')
 
 
 async def read_body(request, limit=65536):
@@ -54,12 +54,12 @@ def create_gateway(service=None):
 
     @app.get('/ring/home')
     def home():
-        return page('<h2>Ring connection</h2><p>Manage your authorized cameras in SpatialGuard Settings.</p><p><a href="/workspace">Open SpatialGuard</a></p>')
+        return page('<h2>Ring connection</h2><p>Manage your authorized cameras in Pathlight Settings.</p><p><a href="/workspace">Open Pathlight</a></p>')
 
     @app.get('/ring/link')
     def link(request: Request, nonce: str = '', time: str = ''):
         if len(nonce) != 43 or not time.isdigit() or len(time) > 15:
-            return page('<p>Start connecting SpatialGuard from your private app in Ring. Then return here with the Ring link.</p>')
+            return page('<p>Start connecting Pathlight from your private app in Ring. Then return here with the Ring link.</p>')
         session_token = request.cookies.get('spatialguard_session', '')
         with ring.store.connect() as db:
             session = db.execute(
@@ -68,13 +68,13 @@ def create_gateway(service=None):
             ).fetchone() if session_token else None
         if session:
             continuation = ring.continuation(session['owner'], nonce, time)
-            return page('<h2>Connect Ring to SpatialGuard</h2><p>Continue with the signed-in SpatialGuard account <strong>'+html.escape(session['email'])+'</strong>.</p>'
+            return page('<h2>Connect Ring to Pathlight</h2><p>Continue with the signed-in Pathlight account <strong>'+html.escape(session['email'])+'</strong>.</p>'
                 '<form method="post" action="/ring/link"><input type="hidden" name="nonce" value="'+html.escape(nonce, quote=True)+'"><input type="hidden" name="time" value="'+html.escape(time, quote=True)+'">'
                 '<input type="hidden" name="continuation" value="'+html.escape(continuation, quote=True)+'"><button>Continue and connect Ring</button></form>'
-                '<p><small>This one-time continuation expires in 10 minutes. Use the cross-device code fallback only when Ring and SpatialGuard are open on different devices.</small></p>')
-        return page('<h2>Sign in to connect Ring</h2><p>In SpatialGuard, open Settings → Ring connection and create a sign-in code. Enter it below to authorize this account link.</p><p><a href="/workspace" target="_blank" rel="noopener">Open SpatialGuard to get a code</a></p>'
+                '<p><small>This one-time continuation expires in 10 minutes. Use the cross-device code fallback only when Ring and Pathlight are open on different devices.</small></p>')
+        return page('<h2>Sign in to connect Ring</h2><p>In Pathlight, open Settings → Ring connection and create a sign-in code. Enter it below to authorize this account link.</p><p><a href="/workspace" target="_blank" rel="noopener">Open Pathlight to get a code</a></p>'
             '<form method="post" action="/ring/link"><input type="hidden" name="nonce" value="'+html.escape(nonce, quote=True)+'"><input type="hidden" name="time" value="'+html.escape(time, quote=True)+'">'
-            '<label for="code">SpatialGuard sign-in code</label><input id="code" name="code" required minlength="16" maxlength="16" autocomplete="one-time-code"><button>Sign in and connect Ring</button></form><p><small>Use the SpatialGuard code, not your Ring password. The code expires in 10 minutes and works once.</small></p>')
+            '<label for="code">Pathlight sign-in code</label><input id="code" name="code" required minlength="16" maxlength="16" autocomplete="one-time-code"><button>Sign in and connect Ring</button></form><p><small>Use the Pathlight code, not your Ring password. The code expires in 10 minutes and works once.</small></p>')
 
     @app.post('/ring/link')
     async def claim(request: Request):
@@ -101,7 +101,7 @@ def create_gateway(service=None):
             response = page('<h2>Connection not completed</h2><p>'+html.escape(str(e.detail))+'</p><p>Go back to retry, or start a new connection in Ring.</p>')
             response.status_code = e.status_code
             return response
-        return page('<h2>Ring account connected</h2><p>Your authorized camera inventory is ready to refresh. Continue to choose devices and place them on your floor plan.</p><p><a href="/workspace?ring=connected">Continue to SpatialGuard</a></p>')
+        return page('<h2>Ring account connected</h2><p>Your authorized camera inventory is ready to refresh. Continue to choose devices and place them on your floor plan.</p><p><a href="/workspace?ring=connected">Continue to Pathlight</a></p>')
 
     @app.post('/ring/token')
     async def token(request: Request):

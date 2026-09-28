@@ -45,7 +45,7 @@ export default function Onboarding({
   const pages = [
     <div className="onboarding-copy" key="account">
       <span className="onboarding-icon"><Shield size={24} /></span>
-      <h2>Welcome to SpatialGuard</h2>
+      <h2>Welcome to Pathlight</h2>
       <p>See what your cameras saw, and where, on a map of your home.</p>
       <ul>
         <li><Check size={16} />Your Ring password is never shared with us.</li>
@@ -82,7 +82,7 @@ export default function Onboarding({
 
   return (
     <div className="modal-backdrop onboarding-backdrop" role="presentation">
-      <section {...dialog} className="onboarding-dialog" role="dialog" aria-modal="true" aria-label="SpatialGuard setup">
+      <section {...dialog} className="onboarding-dialog" role="dialog" aria-modal="true" aria-label="Pathlight setup">
         <header>
           <span>Setup</span>
           <span>{page + 1} of {pages.length}</span>
@@ -97,7 +97,7 @@ export default function Onboarding({
               <button className="primary" disabled={busy} onClick={() => setPage(page + 1)}>Continue<ArrowRight size={16} /></button>
             ) : (
               <button className="primary" disabled={busy} onClick={() => void finish(draft.ring_data_consent)}>
-                {busy ? "Saving…" : "Open SpatialGuard"}<ArrowRight size={16} />
+                {busy ? "Saving…" : "Open Pathlight"}<ArrowRight size={16} />
               </button>
             )}
           </div>

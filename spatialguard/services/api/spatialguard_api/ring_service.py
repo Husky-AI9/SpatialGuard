@@ -985,7 +985,7 @@ class RingService:
                 delivered = send_mail(
                     'Ring camera offline' if row['kind']=='offline' else 'Ring camera recovered',
                     row['email'],
-                    'SpatialGuard observed a Ring device status change. Open the Operations page for details.\n\n'
+                    'Pathlight observed a Ring device status change. Open the Operations page for details.\n\n'
                     'This is a convenience alert, not a security or life-safety notification.',
                 )
                 if delivered:

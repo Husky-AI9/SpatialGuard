@@ -1,7 +1,7 @@
 import type { SVGProps } from "react";
 
 /**
- * SpatialGuard's camera symbol: a ring with a centre dot, the same mark used
+ * Pathlight's camera symbol: a ring with a centre dot, the same mark used
  * for cameras on the floor-plan map and the app icon. Drop-in for a lucide
  * icon: it takes `size` and draws in `currentColor`.
  */

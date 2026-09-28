@@ -897,13 +897,13 @@ function PairSheet({
   return (
     <Sheet visible={!!target} title={`Pair ${target?.name ?? ""}`} subtitle="Choose the Ring camera at this spot" onClose={onClose}>
       {!consent
-        ? state("link", "Allow Ring camera access", "SpatialGuard needs your permission to use your Ring cameras.",
+        ? state("link", "Allow Ring camera access", "Pathlight needs your permission to use your Ring cameras.",
             <Button title="Allow and continue" disabled={busy} onPress={() => void onAllow()} />)
         : ringState !== "connected"
-          ? state("link", "Link your Ring account", "Authorize SpatialGuard in Ring once, then pair cameras here.",
+          ? state("link", "Link your Ring account", "Authorize Pathlight in Ring once, then pair cameras here.",
               <Button title="Link Ring account" onPress={onLink} />)
           : !devices.length
-            ? state("camera", "No Ring cameras found", "Share cameras with SpatialGuard in the Ring app, then refresh.",
+            ? state("camera", "No Ring cameras found", "Share cameras with Pathlight in the Ring app, then refresh.",
                 <Button variant="secondary" title="Close" onPress={onClose} />)
             : (
               <ScrollView style={{ maxHeight: 360 }} contentContainerStyle={{ gap: 8 }}>

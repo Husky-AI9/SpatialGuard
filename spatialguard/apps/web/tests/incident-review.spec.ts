@@ -22,7 +22,7 @@ test.beforeAll(async () => {
           evidence_mode:'replay',status:reviewed?'reviewed':'needs_review',revision_id:'revision_test_448e0d',
           rule:'Activity in a monitored zone',observations,classification:null,associations:[{
             from_observation_id:'event-0',to_observation_id:'event-2',unobserved_gap_seconds:6,reason:'Adjacent cameras; identity unconfirmed.'}]};
-        return <div className="app-shell"><aside className="sidebar">SpatialGuard</aside><div className="workspace">
+        return <div className="app-shell"><aside className="sidebar">Pathlight</aside><div className="workspace">
           <header className="topbar">Home</header><main className="content"><div className="monitor-bar">Monitoring enabled</div>
           {open?<IncidentReview incident={incident} cameras={layout.cameras} step={step} onSelect={setStep}
             onClose={()=>setOpen(false)} onReview={()=>setReviewed(true)} onAnalyze={()=>{}} onMovement={()=>{}}

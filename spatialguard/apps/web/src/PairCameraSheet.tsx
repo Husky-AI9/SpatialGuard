@@ -84,7 +84,7 @@ export default function PairCameraSheet({
             <div className="pair-sheet-state">
               <Link2 size={22} />
               <strong>Allow Ring camera access</strong>
-              <span>SpatialGuard needs your permission to use your Ring cameras.</span>
+              <span>Pathlight needs your permission to use your Ring cameras.</span>
               <button className="primary" disabled={busy} onClick={() => void act(onAllowRing)}>Allow and continue</button>
             </div>
           ) : !status ? (
@@ -93,14 +93,14 @@ export default function PairCameraSheet({
             <div className="pair-sheet-state">
               <Link2 size={22} />
               <strong>Link your Ring account</strong>
-              <span>Authorize SpatialGuard in Ring once, then pair cameras here.</span>
+              <span>Authorize Pathlight in Ring once, then pair cameras here.</span>
               <button className="primary" onClick={onConnectRing}>Link Ring account</button>
             </div>
           ) : !devices.length ? (
             <div className="pair-sheet-state">
               <CameraMark size={22} />
               <strong>No Ring cameras found</strong>
-              <span>Authorize cameras for SpatialGuard in the Ring app, then refresh.</span>
+              <span>Authorize cameras for Pathlight in the Ring app, then refresh.</span>
               <button disabled={busy} onClick={() => void act(() => load(true))}><RefreshCw size={16} /> Refresh</button>
             </div>
           ) : (

@@ -101,7 +101,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         if (os.environ.get("SPATIALGUARD_MAINTENANCE_MODE", "").lower() in {"1", "true", "yes", "on"}
                 and request.url.path not in {"/health", "/status", "/privacy", "/terms", "/support"}):
             return Response(
-                content=json.dumps({"detail": "SpatialGuard is temporarily unavailable for maintenance. Retry shortly."}),
+                content=json.dumps({"detail": "Pathlight is temporarily unavailable for maintenance. Retry shortly."}),
                 status_code=503,
                 media_type="application/json",
                 headers={"Retry-After": "300", "X-Request-ID": request_id},
@@ -147,7 +147,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         if not origin.startswith("https://"):
             raise HTTPException(403, "Hosted browser sessions are not configured")
         if request.headers.get("origin") != origin:
-            raise HTTPException(403, "Use the configured SpatialGuard site")
+            raise HTTPException(403, "Use the configured Pathlight site")
         if request.headers.get("sec-fetch-site", "same-origin") not in {"same-origin", "none"}:
             raise HTTPException(403, "Same-origin browser required")
 
@@ -343,7 +343,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             audit(db, owner, "account.created", owner)
         try:
             send_mail(
-                "Verify your SpatialGuard email", email,
+                "Verify your Pathlight email", email,
                 "Verify this address within 24 hours:\n\n" + configured_origin() + "/verify-email?token=" + verification_token,
             )
         except Exception:
@@ -402,7 +402,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             token = create_auth_token(db, p["owner"], "email_verification", 86400)
             audit(db, p["owner"], "email_verification.requested", "account")
         try:
-            delivered = send_mail("Verify your SpatialGuard email", account["email"],
+            delivered = send_mail("Verify your Pathlight email", account["email"],
                 "Verify this address within 24 hours:\n\n" + configured_origin() + "/verify-email?token=" + token)
         except Exception:
             delivered = False
@@ -421,7 +421,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             db.execute("UPDATE accounts SET email_verified=1 WHERE id=?", (row["owner"],))
             db.execute("UPDATE auth_tokens SET used_at=? WHERE digest=?", (now(), row["digest"]))
             audit(db, row["owner"], "email.verified", "account")
-        return {"message": "Email verified. You can return to SpatialGuard."}
+        return {"message": "Email verified. You can return to Pathlight."}
 
     @app.post("/v1/auth/password/request", response_model=m.AuthMessage)
     def request_password_reset(body: m.PasswordRequest, request: Request):
@@ -445,7 +445,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         if owner and reset_url:
             try:
                 delivered = send_mail(
-                    "Reset your SpatialGuard password", email,
+                    "Reset your Pathlight password", email,
                     "Use this single-use link within 30 minutes:\n\n" + reset_url,
                 )
             except Exception:
@@ -513,8 +513,8 @@ def create_app(db_path=None, engine=None, ring_service=None):
             audit(db, p["owner"], "password.changed", "account")
             email = account["email"]
         try:
-            delivered = send_mail("Your SpatialGuard password changed", email,
-                "Your SpatialGuard password was changed. If this was not you, reset it and contact support.")
+            delivered = send_mail("Your Pathlight password changed", email,
+                "Your Pathlight password was changed. If this was not you, reset it and contact support.")
         except Exception:
             delivered = False
         with store.connect() as db:
@@ -659,7 +659,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
     def redeem(body: m.PairInput, request: Request):
         kind = request.headers.get("x-spatialguard-client", "").lower()
         if kind not in {"android", "ios"}:
-            raise HTTPException(400, "Open this link in the SpatialGuard mobile app")
+            raise HTTPException(400, "Open this link in the Pathlight mobile app")
         peer = request.client.host
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -734,7 +734,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         except Exception:
             raise HTTPException(
                 503,
-                "Ring could not be disconnected. Retry, or remove SpatialGuard in Ring before deleting the account.",
+                "Ring could not be disconnected. Retry, or remove Pathlight in Ring before deleting the account.",
             ) from None
 
         # The provider grant is now gone. Remove the matching local provider

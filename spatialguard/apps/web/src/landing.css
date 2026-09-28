@@ -253,7 +253,7 @@ body.landing-body { padding: 0; background: var(--surface); }
   .lp-comparison td { display: block; padding: 16px; border-top: 0; }
   .lp-comparison td::before { display: block; font-size: 12px; font-weight: 600; margin-bottom: 8px; }
   .lp-comparison td:nth-child(2)::before { content: "Ring offers"; }
-  .lp-comparison td:nth-child(3)::before { content: "SpatialGuard adds"; color: var(--accent); }
+  .lp-comparison td:nth-child(3)::before { content: "Pathlight adds"; color: var(--accent); }
 }
 @media(min-width:1700px) { .lp-hero { height: 850px; } }
 @media(max-width:1100px) {
@@ -305,7 +305,7 @@ body.landing-body { padding: 0; background: var(--surface); }
 }
 
 /* Mobile landing surfaces use restrained translucency over the existing
-   SpatialGuard palette. Text and controls remain opaque for contrast. */
+   Pathlight palette. Text and controls remain opaque for contrast. */
 @media(max-width:760px) {
   .landing-body { background: #e9ebf3; }
 
@@ -447,7 +447,7 @@ body.landing-body {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.sg-brand-symbol path:first-child { stroke-width: 2.15; }
+.sg-brand-symbol path:first-child { stroke-width: 2.6; }
 .sg-brand-symbol circle { fill: #d49431; stroke: currentColor; stroke-width: 1.1; }
 
 .sg-entry {
@@ -1004,3 +1004,46 @@ body.landing-body {
 
 
 .lp-privacy .lp-section-number { color: #c5c7df; }
+
+/* Pathlight shop scene (phone welcome) ---------------------------------------- */
+.sg-brand-symbol circle:last-child { fill: currentColor; stroke: none; }
+.sg-mobile-shopfront rect:first-child { fill: #dfe8f7; stroke: #3b3f66; stroke-width: 2; }
+.sg-mobile-shopfront path { fill: none; stroke: #3b3f66; stroke-width: 2; }
+.sg-mobile-shopfront .sg-mobile-open { fill: #5b4fe8; stroke: none; }
+.sg-mobile-shopfront text { fill: #fff; font: 700 9px "Source Sans 3", "Source Sans Pro", sans-serif; letter-spacing: .08em; }
+.sg-mobile-awning { fill: #e8752a; stroke: #b9541a; stroke-width: 1.2; stroke-linejoin: round; }
+.sg-mobile-awning-stripes { fill: none; stroke: #fff4ea; stroke-width: 5; opacity: .75; }
+.sg-mobile-heat circle:first-child { animation: sg-heat-pulse 3.6s ease-in-out infinite; transform-origin: 226px 202px; }
+.sg-entry-heat circle:first-child { animation: sg-heat-pulse 4.2s ease-in-out infinite; transform-origin: 548px 176px; }
+@keyframes sg-heat-pulse { 50% { opacity: .75; transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) {
+  .sg-mobile-heat circle:first-child, .sg-entry-heat circle:first-child { animation: none; }
+}
+
+/* Pathlight sign-in -------------------------------------------------------------- */
+/* One focus ring on the whole field, not a second box around the bare input. */
+.sg-auth-input input:focus,
+.sg-auth-input input:focus-visible { outline: none !important; box-shadow: none !important; }
+.sg-auth-input:focus-within { border-color: #5b4fe8; box-shadow: 0 0 0 4px #5b4fe826; }
+.sg-auth-input { transition: border-color .15s, box-shadow .15s; }
+.sg-auth-submit { box-shadow: 0 10px 24px #5b4fe833; transition: background .15s, transform .15s; }
+.sg-auth-submit:not(:disabled):active { transform: translateY(1px); }
+.sg-auth-floor { position: relative; z-index: 1; width: min(760px, 102%); animation: sg-auth-float 8s ease-in-out infinite; }
+.sg-auth-floor img { width: 100%; animation: none; }
+.sg-auth-heat { position: absolute; z-index: 2; border-radius: 50%; pointer-events: none; mix-blend-mode: multiply;
+  background: radial-gradient(circle, #e5322dd9 0%, #ff8a1fa8 30%, #ffd6406b 55%, #42aaff00 75%); animation: sg-auth-heat 4.5s ease-in-out infinite; }
+.sg-auth-heat-one { left: 50%; top: 52%; width: 22%; aspect-ratio: 1; }
+.sg-auth-heat-two { left: 30%; top: 40%; width: 16%; aspect-ratio: 1; animation-delay: -1.5s; }
+.sg-auth-heat-three { left: 62%; top: 30%; width: 13%; aspect-ratio: 1; animation-delay: -3s; }
+@keyframes sg-auth-heat { 50% { opacity: .72; transform: scale(1.1); } }
+.sg-auth-points { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+.sg-auth-points li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid #ffffff2e; border-radius: 999px; color: #e4e3fb; background: #ffffff12; font-size: 13px; font-weight: 600; }
+.sg-auth-points svg { color: #f0ba62; }
+@media (max-width: 820px) {
+  /* The form panel fills the screen on a phone; no dark band below it. */
+  .sg-auth-page { background: #f8f8fc; }
+  .sg-auth-panel { min-height: calc(71svh + 14px); align-items: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sg-auth-floor, .sg-auth-heat { animation: none; }
+}

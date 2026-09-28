@@ -907,8 +907,8 @@ test("setup guide explains consent, maps, and evidence on a phone", async ({ pag
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Open setup guide" }).click();
-  const guide = page.getByRole("dialog", { name: "SpatialGuard setup" });
-  await expect(guide.getByRole("heading", { name: "Welcome to SpatialGuard" })).toBeVisible();
+  const guide = page.getByRole("dialog", { name: "Pathlight setup" });
+  await expect(guide.getByRole("heading", { name: "Welcome to Pathlight" })).toBeVisible();
   await guide.getByRole("button", { name: "Continue" }).click();
   await expect(guide.getByText("Ring cameras", { exact: true })).toBeVisible();
   await expect(guide.getByText(/sent to OpenAI/)).toBeVisible();
@@ -925,7 +925,7 @@ test("dialogs trap keyboard focus and close without stranding focus", async ({ p
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("button", { name: "Account", exact: true }).click();
   await page.getByRole("button", { name: "Open setup guide" }).click();
-  const dialog = page.getByRole("dialog", { name: "SpatialGuard setup" });
+  const dialog = page.getByRole("dialog", { name: "Pathlight setup" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Skip setup" })).toBeFocused();
   await page.keyboard.press("Shift+Tab");
@@ -956,7 +956,7 @@ test("recoverable failures explain the cause, effect, and next action", async ({
   });
   await page.goto("/workspace");
   const notice = page.getByRole("alert");
-  await expect(notice.getByText("SpatialGuard could not reach the service")).toBeVisible();
+  await expect(notice.getByText("Pathlight could not reach the service")).toBeVisible();
   await expect(notice.getByText("Check your connection and try again.")).toBeVisible();
   await notice.getByRole("button", { name: "Try again" }).click();
   await expect(notice).toHaveCount(0);

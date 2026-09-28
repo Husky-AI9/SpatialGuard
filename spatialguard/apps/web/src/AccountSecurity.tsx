@@ -127,7 +127,7 @@ export default function AccountSecurity({ onSessionsChanged, ringDataConsent }: 
     <section className="settings-card">
       <h2><ShieldCheck size={19} /> Your data</h2>
       <ul className="data-facts">
-        <li>Live video is never recorded by SpatialGuard.</li>
+        <li>Live video is never recorded by Pathlight.</li>
         <li>Snapshots used for activity labels aren’t stored.</li>
         <li>You can download or delete your data anytime.</li>
       </ul>

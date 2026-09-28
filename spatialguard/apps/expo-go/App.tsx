@@ -50,7 +50,7 @@ export default function App() {
             <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 16, alignItems: "center" }}>
               <View style={[s.row, { gap: 10 }]}>
                 <Mark color="white" size={30} />
-                <Label style={[s.title, { color: "white" }]}>SpatialGuard</Label>
+                <Label style={[s.title, { color: "white" }]}>Pathlight</Label>
               </View>
               <View style={{ flex: 1, justifyContent: "center", width: "100%", alignItems: "center" }}>
                 <WelcomeArt />
@@ -58,16 +58,16 @@ export default function App() {
             </View>
             <View style={{ backgroundColor: colors.page, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 36, gap: 12 }}>
               <Label style={{ textAlign: "center", color: colors.muted, fontFamily: "SourceSansBold", fontSize: 12, letterSpacing: 1.2 }}>
-                WELCOME TO SPATIALGUARD
+                WELCOME TO PATHLIGHT
               </Label>
               <Label style={{ fontSize: 30, lineHeight: 34, fontFamily: "SourceSansBold", textAlign: "center", color: colors.ink }}>
-                See what happened.{"\n"}
-                <Label style={{ fontSize: 30, fontFamily: "SourceSansBold", color: colors.purple }}>Know where.</Label>
+                See where people go.{"\n"}
+                <Label style={{ fontSize: 30, fontFamily: "SourceSansBold", color: colors.purple }}>Know what works.</Label>
               </Label>
               <Label style={{ color: colors.muted, textAlign: "center", fontSize: 15 }}>
-                Your cameras, movement, and evidence in one clear home view.
+                Heatmaps and visitor paths from the Ring cameras you already have.
               </Label>
-              <Button icon="play" title={signed ? "Open SpatialGuard" : "Try it out"} onPress={() => setPage(signed ? "workspace" : "signin")} style={{ marginTop: 6 }} />
+              <Button icon="play" title={signed ? "Open Pathlight" : "Try it out"} onPress={() => setPage(signed ? "workspace" : "signin")} style={{ marginTop: 6 }} />
               {!signed && (
                 <View style={s.row}>
                   <Button variant="secondary" title="Sign in" onPress={() => setPage("signin")} style={{ flex: 1 }} />

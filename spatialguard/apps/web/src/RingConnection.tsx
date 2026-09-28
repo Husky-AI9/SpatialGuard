@@ -311,7 +311,7 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
         {error && <RecoveryNotice message={error} onRetry={() => void act(() => load(true))} retryLabel="Retry Ring" />}
         {!connected && (
           <ol className="ring-steps">
-            <li>Open the Ring app store and choose SpatialGuard.</li>
+            <li>Open the Ring app store and choose Pathlight.</li>
             <li>Pick the cameras to share, then come back here.</li>
           </ol>
         )}
@@ -321,7 +321,7 @@ export default function RingConnection({ sites, refreshOnReturn = false }: { sit
               <strong>
                 {status.subscription.state === "active_paid" ? "Ring plan active" :
                   status.subscription.state === "active_trial" ? "Ring trial active" :
-                    status.subscription.required ? "Ring plan required" : "No SpatialGuard plan required"}
+                    status.subscription.required ? "Ring plan required" : "No Pathlight plan required"}
               </strong>
               <small>
                 {status.subscription.eligible ? "All features are available." : "Your Ring plan ended. Renew it to use cameras here."}

@@ -9,20 +9,20 @@ test("desktop landing matches the concept and its replay controls work", async (
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/landing");
 
-  await expect(page.getByRole("heading", { level: 1 }).first()).toHaveText("See what happened. Know where.");
-  await expect(page.getByRole("img", { name: /Bird's-eye map/ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Try SpatialGuard" }).first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Follow one delivery, start to finish" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 }).first()).toHaveText("See where people go. Know what works.");
+  await expect(page.getByRole("img", { name: /Bird's-eye store map/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Try Pathlight" }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Follow one visitor, start to finish" })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   expect(await page.locator(".sg-concept").evaluate(element => getComputedStyle(element).fontFamily)).toContain("Source Sans 3");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBeTruthy();
 
-  await page.getByRole("button", { name: /Leaves the package/ }).click();
-  await expect(page.getByRole("button", { name: /Leaves the package/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: /Walks in/ }).click();
+  await expect(page.getByRole("button", { name: /Walks in/ })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".concept-replay-map polyline")).toHaveAttribute("points", /300,396$/);
   await expect(page.locator(".concept-replay-map")).toContainText("2:02:31 PM");
-  await page.getByRole("button", { name: /Heads back to the van/ }).click();
+  await page.getByRole("button", { name: /Heads back to the car/ }).click();
   await expect(page.locator(".concept-replay-map polyline")).toHaveAttribute("points", /470,590$/);
   await page.getByRole("button", { name: "Pause animation" }).click();
   expect(await page.locator(".concept-hero-map > svg").evaluate(svg => (svg as SVGSVGElement).animationsPaused())).toBeTruthy();
@@ -34,7 +34,7 @@ test("desktop landing matches the concept and its replay controls work", async (
   await page.getByRole("link", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/signin$/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-  await page.getByRole("link", { name: "Back to SpatialGuard" }).click();
+  await page.getByRole("link", { name: "Back to Pathlight" }).click();
   await page.getByRole("link", { name: "FAQ", exact: true }).first().click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "Create account" }).click();
@@ -48,7 +48,7 @@ test("concept reflows on smaller desktops and respects reduced motion", async ({
   for (const width of [1280, 1024, 768, 600]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/landing");
-    await expect(page.getByRole("img", { name: /Bird's-eye map/ })).toBeVisible();
+    await expect(page.getByRole("img", { name: /Bird's-eye store map/ })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
     await expect(page.getByRole("button", { name: "Play animation" })).toBeVisible();
   }
@@ -66,13 +66,13 @@ test("landing fits a phone and preserves glass contrast", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Try it out" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Sign up" })).toBeVisible();
-  await expect(page.getByRole("img", { name: /Detailed protected home/ })).toBeVisible();
+  await expect(page.getByRole("img", { name: /A shop with two cameras/ })).toBeVisible();
   expect(await page.locator(".sg-mobile-scene").evaluate((element) => getComputedStyle(element).backdropFilter)).not.toBe("none");
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/signin$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await expect(page.getByLabel("Email")).toBeVisible();
-  await expect(page.getByText("Open your SpatialGuard workspace", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("Open your Pathlight workspace", { exact: false })).toHaveCount(0);
   await expect(page.getByText("Passwords are stored as salted verifiers", { exact: false })).toHaveCount(0);
   await expect(page.getByAltText(/3D home protected/)).toBeHidden();
   await page.screenshot({ path: path.join(output, "landing-phone-one-screen.png") });
@@ -80,7 +80,7 @@ test("landing fits a phone and preserves glass contrast", async ({ page }) => {
 
 test("try it out opens the local workspace", async ({ page }) => {
   await page.goto("/landing");
-  await page.getByRole("link", { name: "Try SpatialGuard" }).first().click();
+  await page.getByRole("link", { name: "Try Pathlight" }).first().click();
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.locator(".lp-desktop")).toHaveCount(0);
 });

@@ -16,7 +16,7 @@ export function recoveryCopy(message: string) {
     };
   if (/timeout|timed out|network|fetch|reach|connect/.test(value))
     return {
-      cause: "SpatialGuard could not reach the service",
+      cause: "Pathlight could not reach the service",
       effect: "What you see may be out of date.",
       action: "Check your connection and try again.",
     };

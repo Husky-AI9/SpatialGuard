@@ -1,9 +1,11 @@
+/** Pathlight's mark: a walking path that ends in a small light. */
 export default function SpatialGuardMark({ size = 24 }: { size?: number }) {
   return (
     <svg className="sg-brand-symbol" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M16 2.7 26.2 7v8.1c0 6.6-4 11.6-10.2 14.2C9.8 26.7 5.8 21.7 5.8 15.1V7Z" />
-      <path d="M10.4 11.2h11.2v10.1H10.4zm5.6 0v5.2h5.6M10.4 16.4H16" />
-      <circle cx="20.8" cy="20.5" r="2.15" />
+      <path d="M5.5 26.5c6 0 6.4-7.4 10.8-7.4s4.6-6.3 8.9-8" />
+      <path d="M25.6 2.9v1.8M31.4 8.6h-1.8M29.7 4.6l-1.3 1.3" />
+      <circle cx="25.6" cy="10.2" r="3.1" />
+      <circle cx="5.5" cy="26.5" r="1.6" />
     </svg>
   );
 }
