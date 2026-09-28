@@ -30,6 +30,7 @@ import {
 import Map2D from "@twinforge/spatial-view/Map2D";
 import MapControls from "./MapControls";
 import { useLiveMotion } from "./liveMotion";
+import { incidentLinks, incidentMarkers } from "./incidentMap";
 import { HeatmapLegend, HeatmapPanel, usePeopleHeatmap, type HeatRange } from "./PeopleHeatmap";
 import type { EvidenceLink, Marker } from "@twinforge/spatial-view/Map2D";
 import type { CameraChange } from "@twinforge/spatial-view/cameraGlyph";
@@ -704,48 +705,10 @@ export default function App() {
     });
   }, []);
   const markers = useMemo<Marker[]>(() => {
-    // An observation with no coordinate is a gap, not a position. Carry that
-    // forward so the map can draw the unobserved leg instead of a clean line.
-    let unobserved = false;
-    const incidentMarkers = (
-      selected?.observations.flatMap((o, i) => {
-        if (o.location.kind === "unknown" && selected.evidence_mode === "live") {
-          const camera = site?.layout.cameras.find((item) => item.id === o.source_id);
-          if (!camera) return [];
-          return [{
-            id: o.observation_id,
-            xy: [camera.position_m[0], camera.position_m[1]] as [number, number],
-            selected: i === step,
-            evidenceNode: true,
-            label: `Activity observed by ${camera.name}; person position unknown`,
-          } satisfies Marker];
-        }
-        if (o.location.kind !== "floor_point") {
-          unobserved = true;
-          return [];
-        }
-        const marker: Marker = {
-          id: o.observation_id,
-          xy: o.location.xy_m as [number, number],
-          selected: i === step,
-          gapBefore: unobserved,
-        };
-        unobserved = false;
-        return [marker];
-      }) ?? []
-    );
-    return selected ? [...incidentMarkers, ...incidentTrail] : testPackage ? [...testTrail, testPackage] : testTrail;
+    const incidentPoints = selected ? incidentMarkers(selected, (site?.layout.cameras ?? []) as PlacedCamera[], step) : [];
+    return selected ? [...incidentPoints, ...incidentTrail] : testPackage ? [...testTrail, testPackage] : testTrail;
   }, [selected, selected?.observations, site?.layout.cameras, step, testTrail, testPackage, incidentTrail]);
-  const evidenceLinks = useMemo<EvidenceLink[]>(() => {
-    if (!selected || selected.evidence_mode !== "live") return [];
-    return selected.associations.map((association, index) => ({
-      id: `evidence-link-${index}-${association.to_observation_id}`,
-      fromMarkerId: association.from_observation_id,
-      toMarkerId: association.to_observation_id,
-      gapSeconds: association.unobserved_gap_seconds,
-      label: association.reason,
-    }));
-  }, [selected]);
+  const evidenceLinks = useMemo<EvidenceLink[]>(() => (selected ? incidentLinks(selected) : []), [selected]);
   const nav = (name: Tab) => {
     setRingSetupOpen(false);
     if (name === "Settings") setSettingsPage("menu");

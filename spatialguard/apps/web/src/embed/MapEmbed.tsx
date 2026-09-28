@@ -6,12 +6,18 @@
  * the native app fetches everything and pushes it in with `window.sgMap(state)`,
  * and the page reports taps back through `ReactNativeWebView.postMessage`.
  */
-import { useEffect, useRef, useState } from "react";
-import Map2D, { type Marker } from "@twinforge/spatial-view/Map2D";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Map2D from "@twinforge/spatial-view/Map2D";
 import Scene3D from "@twinforge/spatial-view/Scene3D";
 import type { Layout } from "../../../../../packages/sdk-typescript";
 import MapControls from "../MapControls";
 import { HeatmapLegend, HeatmapPanel, type Heatmap } from "../HeatmapView";
+import { incidentLinks, incidentMarkers } from "../incidentMap";
+import { incidentMovement } from "../incidentMovement";
+import type { components } from "../generated";
+
+type Incident = components["schemas"]["Incident"];
+type Track = components["schemas"]["TestVideoTrack"];
 
 export type EmbedState = {
   view: "2D" | "3D";
@@ -19,9 +25,12 @@ export type EmbedState = {
   /** Floor-plan drawing as a data URI, or "" when there is none. */
   planImage: string;
   selected: string;
-  markers: Marker[];
-  /** An incident is shown: its evidence replaces the map modes. */
-  incident: boolean;
+  /**
+   * An incident under review: its evidence replaces the map modes. `track` is
+   * the person detected in the selected event's recording, followed to `at`
+   * seconds of playback, exactly as the web review does.
+   */
+  review: { incident: Incident; step: number; track: Track | null; at: number } | null;
   /** Cameras pulsing now: live detections, or the step being replayed. */
   motionCameras: string[];
   heat: { on: boolean; preset: "1h" | "12h" | "24h"; data: Heatmap | null; loading: boolean; error: string };
@@ -37,7 +46,8 @@ export type EmbedMessage =
 
 declare global {
   interface Window {
-    sgMap?: (state: EmbedState) => void;
+    /** Replace the state, or merge a partial update into it. */
+    sgMap?: (state: Partial<EmbedState>) => void;
     ReactNativeWebView?: { postMessage: (message: string) => void };
   }
 }
@@ -52,15 +62,26 @@ export default function MapEmbed() {
   const capturing = useRef(false);
 
   useEffect(() => {
-    window.sgMap = (next) => setState(next);
+    window.sgMap = (next) =>
+      setState((previous) => (previous ? { ...previous, ...next } : "layout" in next ? (next as EmbedState) : null));
     post({ type: "ready" });
     return () => {
       window.sgMap = undefined;
     };
   }, []);
 
+  const evidence = useMemo(() => {
+    if (!state?.review) return { markers: [], links: [] };
+    const { incident: data, step, track, at } = state.review;
+    const cameras = state.layout.cameras;
+    const camera = cameras.find((c) => c.id === data.observations[step]?.source_id);
+    const trail = track && camera ? incidentMovement(track, camera, at, data.classification ?? null) : [];
+    return { markers: [...incidentMarkers(data, cameras, step), ...trail], links: incidentLinks(data) };
+  }, [state?.review, state?.layout]);
+
   if (!state) return null;
-  const { view, layout, heat, incident } = state;
+  const { view, layout, heat, review } = state;
+  const incident = !!review;
   const heatGrid = heat.on && !incident && heat.data?.values.length ? heat.data : null;
   const cameraName = (id: string) => layout.cameras.find((c) => c.id === id)?.name ?? "Camera";
 
@@ -89,7 +110,8 @@ export default function MapEmbed() {
           layout={layout}
           selected={state.selected}
           onSelect={(id) => post({ type: "select", id })}
-          markers={state.markers}
+          markers={evidence.markers}
+          evidenceLinks={evidence.links}
           heatmap={heatGrid}
           zoom={zoom}
           onZoomChange={setZoom}
@@ -104,7 +126,8 @@ export default function MapEmbed() {
           layout={layout}
           selected={state.selected}
           onSelect={(id) => post({ type: "select", id })}
-          markers={state.markers}
+          markers={evidence.markers}
+          evidenceLinks={evidence.links}
           heatmap={heatGrid}
         />
       )}

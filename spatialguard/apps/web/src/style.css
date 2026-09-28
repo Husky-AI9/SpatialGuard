@@ -3975,9 +3975,22 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
 .heatmap-legend-bar { width: 10px; height: 120px; border-radius: 6px; }
 .people-heatmap { mix-blend-mode: multiply; }
 @media (max-width: 760px) {
-  .heatmap-panel { left: 8px; top: 8px; max-width: calc(100% - 70px); padding: 8px 10px; }
-  .heatmap-legend { left: 8px; bottom: 8px; }
-  .heatmap-legend-bar { height: 84px; }
+  /* On a phone the panel sits along the bottom so the map stays visible;
+     the scale moves to the top corner. */
+  .heatmap-panel {
+    top: auto; bottom: 8px; left: 8px; right: 62px; max-width: none;
+    gap: 4px; padding: 6px 8px; border-radius: 12px;
+  }
+  .heatmap-head { flex-wrap: nowrap; gap: 6px; }
+  .heatmap-head strong { font-size: 13px; white-space: nowrap; }
+  .heatmap-range button { min-height: 28px; padding: 3px 8px; font-size: 12px; }
+  .heatmap-summary { font-size: 12px; }
+  .heatmap-note { font-size: 11px; }
+  .heatmap-legend { left: 8px; top: 8px; bottom: auto; padding: 6px 4px; gap: 4px; }
+  .heatmap-legend-bar { height: 64px; width: 8px; }
+}
+@media (max-width: 380px) {
+  .heatmap-head strong { display: none; }
 }
 
 /* Motion mode status --------------------------------------------------------- */

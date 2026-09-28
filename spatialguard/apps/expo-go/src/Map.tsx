@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { MotionTracker } from "../../../../packages/spatial-view/liveMotion";
-import { ORIGIN, authHeaders, request, type Incident, type Site } from "./api";
+import { ORIGIN, authHeaders, request, type Incident, type Site, type Track } from "./api";
 import { Label, colors, styles } from "./ui";
 import mapEmbedHtml from "./mapEmbedHtml";
 
@@ -30,8 +30,11 @@ type Props = {
   site: Site;
   /** Recent incidents, for live motion and heatmap refreshes. */
   incidents?: Incident[];
-  /** An incident whose positions are drawn instead of the map modes. */
-  incident?: Incident | null;
+  /**
+   * An incident under review, drawn instead of the map modes: its evidence at
+   * `step`, and the person detected in that event's recording at `at` seconds.
+   */
+  review?: { incident: Incident; step: number; track: Track | null; at: number } | null;
   selected?: string;
   onCamera: (id: string) => void;
   /** True while the map is using a touch (pan, pinch, orbit), so the page must not scroll. */
@@ -55,25 +58,6 @@ function useLiveMotion(incidents: Incident[], siteId: string) {
     return () => clearTimeout(timer);
   }, [incidents, tick]);
   return active;
-}
-
-/**
- * While an incident is open, replay it on the map: pulse each observing camera
- * in turn, in the order the observations happened.
- */
-function useReplayPulse(incident: Incident | null | undefined) {
-  const order = (incident?.observations ?? [])
-    .filter((o) => o.category !== "coverage_gap")
-    .map((o) => o.source_id);
-  const key = order.join();
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    setStep(0);
-    if (order.length < 2) return;
-    const timer = setInterval(() => setStep((n) => n + 1), 2400);
-    return () => clearInterval(timer);
-  }, [incident?.id, key]);
-  return order.length ? [order[step % order.length]] : [];
 }
 
 /** The site's floor-plan drawing as a data URI (the page cannot fetch it itself). */
@@ -130,7 +114,8 @@ function useHeatmap(siteId: string, enabled: boolean, preset: Preset, refreshKey
   return { data, loading, error };
 }
 
-export default function FloorMap({ site, incidents = [], incident, selected = "", onCamera, onCapture }: Props) {
+export default function FloorMap({ site, incidents = [], review = null, selected = "", onCamera, onCapture }: Props) {
+  const incident = review?.incident;
   const [view, setView] = useState<"2D" | "3D">("2D");
   const [heatOn, setHeatOn] = useState(false);
   const [preset, setPreset] = useState<Preset>("24h");
@@ -138,7 +123,9 @@ export default function FloorMap({ site, incidents = [], incident, selected = ""
   const web = useRef<WebView>(null);
   const planImage = usePlanImage(site);
   const moving = useLiveMotion(incidents, site.id);
-  const replaying = useReplayPulse(incident);
+  // While reviewing, the camera of the selected step pulses, as on the web.
+  const current = review ? review.incident.observations[review.step] : undefined;
+  const replaying = current && current.category !== "coverage_gap" ? [current.source_id] : [];
   const heat = useHeatmap(site.id, heatOn && !incident, preset, incidents[0]?.id);
 
   const layout = {
@@ -149,25 +136,26 @@ export default function FloorMap({ site, incidents = [], incident, selected = ""
     cameras: site.layout.cameras ?? [],
     floors: site.layout.floors ?? [],
   };
-  const markers = (incident?.observations ?? []).flatMap((o) =>
-    o.location.kind === "floor_point"
-      ? [{ id: o.observation_id, xy: [o.location.xy_m[0], o.location.xy_m[1]] }]
-      : [],
-  );
+  // The review changes with the video playhead, so it is sent on its own and
+  // the (large) layout and drawing only when they change.
   const state = {
     view,
     layout,
     planImage,
     selected,
-    markers,
-    incident: !!incident,
     motionCameras: incident ? replaying : moving,
     heat: { on: heatOn, preset, data: heat.data, loading: heat.loading, error: heat.error },
   };
   const payload = JSON.stringify(state);
+  const reviewPayload = JSON.stringify({
+    review: review && { ...review, at: Math.round(review.at * 5) / 5 },
+  });
   useEffect(() => {
     if (ready) web.current?.injectJavaScript(`window.sgMap && window.sgMap(${payload}); true;`);
   }, [ready, payload]);
+  useEffect(() => {
+    if (ready) web.current?.injectJavaScript(`window.sgMap && window.sgMap(${reviewPayload}); true;`);
+  }, [ready, reviewPayload, payload]);
 
   const capture = useRef(false);
   const setCapture = useCallback(

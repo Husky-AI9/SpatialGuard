@@ -5,6 +5,7 @@ export type Site = components["schemas"]["Site"];
 export type Incident = components["schemas"]["Incident"];
 export type Device = components["schemas"]["RingDevice"];
 export type Session = components["schemas"]["Session"];
+export type Track = components["schemas"]["TestVideoTrack"];
 export const ORIGIN = "https://spatialguard-production.up.railway.app";
 let token = "";
 export class ApiError extends Error {
@@ -35,10 +36,11 @@ export async function request<T>(
   path: string,
   method = "GET",
   body?: unknown,
+  timeoutMs = 25000,
 ): Promise<T> {
   if (!path.startsWith("/v1/")) throw new Error("Invalid API path");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(ORIGIN + path, {
       method,

@@ -14,12 +14,14 @@ import {
 import {
   ApiError,
   ORIGIN,
+  authHeaders,
   forget,
   request,
   type Device,
   type Incident,
   type Session,
   type Site,
+  type Track,
 } from "./api";
 import {
   Button,
@@ -37,7 +39,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FloorMap from "./Map";
 import LivePlayer from "./LivePlayer";
-import { Snapshot, Recording } from "./Media";
+import { Snapshot, EventRecording } from "./Media";
+import Timeline, { eventTime } from "./Timeline";
+import { SvgXml } from "react-native-svg";
 import { Operations, RingSettings } from "./Settings";
 import type { components } from "../../web/src/generated";
 type Preferences = components["schemas"]["AccountPreferences"];
@@ -77,7 +81,14 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     [pairFor, setPairFor] = useState<{ id: string; name: string } | null>(null),
     [ringState, setRingState] = useState(""),
     // The map is using a touch (pan, pinch, orbit): the page must not scroll.
-    [mapTouch, setMapTouch] = useState(false);
+    [mapTouch, setMapTouch] = useState(false),
+    // Incident review: selected event, timeline playback, and the person
+    // detected in that event's recording followed to the video playhead.
+    [step, setStep] = useState(0),
+    [playing, setPlaying] = useState(false),
+    [track, setTrack] = useState<Track | null>(null),
+    [video, setVideo] = useState({ seconds: 0, duration: 0 }),
+    [evidenceSvg, setEvidenceSvg] = useState("");
   const insets = useSafeAreaInsets();
   const activeId = useRef(""),
     alive = useRef(true),
@@ -191,6 +202,54 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       listener.remove();
     };
   }, []);
+  useEffect(() => {
+    setStep(0);
+    setPlaying(false);
+  }, [selected?.id]);
+  useEffect(() => {
+    setTrack(null);
+    setVideo({ seconds: 0, duration: 0 });
+  }, [selected?.id, step]);
+  // Replays have no video, so playback steps through the events on a timer.
+  // Live events advance when their recording finishes (see EventRecording).
+  useEffect(() => {
+    if (!playing || !selected || selected.evidence_mode === "live") return;
+    const timer = setTimeout(() => {
+      if (step < selected.observations.length - 1) setStep(step + 1);
+      else setPlaying(false);
+    }, 2400);
+    return () => clearTimeout(timer);
+  }, [playing, selected, step]);
+  const reviewObservation = selected?.observations[step];
+  const evidenceId = selected?.evidence_ids.find((id) => id === "evidence_" + reviewObservation?.observation_id);
+  useEffect(() => {
+    let live = true;
+    setEvidenceSvg("");
+    if (!evidenceId) return;
+    fetch(`${ORIGIN}/v1/evidence/${encodeURIComponent(evidenceId)}/image`, { headers: authHeaders() })
+      .then((r) => (r.ok ? r.text() : ""))
+      .then((text) => {
+        if (live && text.includes("<svg")) setEvidenceSvg(text);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [evidenceId]);
+  const removeCamera = (camera: { id: string; name: string }) =>
+    Alert.alert(`Remove ${camera.name}?`, "It will be taken off your map and unpaired from Ring.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () =>
+          void action(async () => {
+            if (!site) return;
+            await request(`/v1/sites/${site.id}/cameras/${encodeURIComponent(camera.id)}`, "DELETE");
+            if (device?.camera_id === camera.id) setDevice(null);
+          }),
+      },
+    ]);
   const action = async (fn: () => Promise<unknown>, refresh = true) => {
     setBusy(true);
     try {
@@ -346,6 +405,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
                 </View>
               </Pressable>
               {!ring && <Button small title="Pair" onPress={() => setPairFor({ id: camera.id, name: camera.name })} />}
+              <IconButton icon="trash" label={`Remove ${camera.name}`} color={colors.muted} tint="transparent" onPress={() => removeCamera(camera)} />
             </View>
             {withSwitches && site && (
               <View style={[s.row, { justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: 1, borderColor: "#e4e2f6" }]}>
@@ -438,6 +498,8 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     </Card>
   );
 
+  const cameraName = (id: string) => cameras.find((c) => c.id === id)?.name ?? "Camera";
+  const reviewCamera = cameras.find((c) => c.id === reviewObservation?.source_id);
   const incidentDetail = selected && (
     <>
       <Pressable accessibilityRole="button" onPress={() => setSelected(null)} style={[s.row, { gap: 6, paddingVertical: 4 }]}>
@@ -446,7 +508,9 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       </Pressable>
       <Card>
         <Label style={s.title}>{selected.classification?.display_label || selected.title}</Label>
-        <Label style={s.muted}>{stamp(selected.started_at)} · {mode(selected.evidence_mode)}</Label>
+        <Label style={s.muted}>
+          {eventTime(reviewObservation?.observed_at ?? selected.created_at)} · {reviewCamera?.name ?? "Camera unavailable"} · {mode(selected.evidence_mode)}
+        </Label>
         <View style={s.row}>
           <Button
             style={{ flex: 1 }}
@@ -462,11 +526,63 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           <IconButton icon="trash" label="Delete incident" color={colors.danger} onPress={() => deleteIncident(selected)} />
         </View>
       </Card>
+      {selected.evidence_mode === "live" && reviewObservation ? (
+        <Card>
+          <EventRecording
+            key={reviewObservation.observation_id}
+            incident={selected.id}
+            observation={reviewObservation.observation_id}
+            hasCamera={!!reviewCamera}
+            onTime={(seconds, duration) => setVideo({ seconds, duration })}
+            onTrack={setTrack}
+            onEnded={() => {
+              if (!playing) return;
+              if (step < selected.observations.length - 1) setStep(step + 1);
+              else setPlaying(false);
+            }}
+          />
+        </Card>
+      ) : evidenceSvg ? (
+        <Card style={{ gap: 6 }}>
+          <View style={{ height: 200, borderRadius: 12, overflow: "hidden", backgroundColor: "#eef0f9" }}>
+            <SvgXml xml={evidenceSvg} width="100%" height="100%" />
+          </View>
+          <Label style={[s.muted, { fontSize: 13 }]}>Synthetic replay illustration · {reviewCamera?.name ?? "Unknown camera"}</Label>
+        </Card>
+      ) : null}
       {site && selected.revision_id === site.revision_id && (
         <Card>
-          <FloorMap site={site} incidents={incidents} incident={selected} onCamera={pick} onCapture={setMapTouch} />
+          <FloorMap
+            site={site}
+            incidents={incidents}
+            review={{ incident: selected, step, track, at: video.seconds }}
+            onCamera={pick}
+            onCapture={setMapTouch}
+          />
+          <Label style={[s.muted, { fontSize: 13 }]}>
+            {selected.evidence_mode === "live"
+              ? track?.points.length ? "Recorded movement · estimated map positions" : "Camera observations · person position unknown"
+              : "Synthetic replay positions"}
+          </Label>
         </Card>
       )}
+      <Card>
+        <Timeline
+          incident={selected}
+          cameraName={cameraName}
+          step={step}
+          onSelect={(index) => {
+            setPlaying(false);
+            setStep(index);
+          }}
+          playing={playing}
+          onPlay={() => {
+            if (!playing && step >= selected.observations.length - 1) setStep(0);
+            setPlaying(!playing);
+          }}
+          video={video}
+        />
+      </Card>
       {selected.classification && (
         <Card>
           <Label style={s.heading}>{selected.classification.display_label}</Label>
@@ -474,18 +590,23 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           <Chip text="AI label · please review" tone="muted" />
         </Card>
       )}
-      {selected.observations.map((o) => (
-        <Card key={o.observation_id}>
-          <CardHeader
-            title={site?.layout.cameras?.find((c) => c.id === o.source_id)?.name || "Camera event"}
-            detail={`${new Date(o.observed_at).toLocaleTimeString()} · ${o.category}`}
-          />
-          <Label style={[s.muted, { fontSize: 13 }]}>
-            {o.location.kind === "unknown" ? "Location unknown" : o.location.kind === "room" ? "Seen in a room" : "Estimated position"}
-          </Label>
-          {selected.evidence_mode === "live" && <Recording incident={selected.id} observation={o.observation_id} />}
-        </Card>
-      ))}
+      <Card>
+        <Label style={s.heading}>Evidence details</Label>
+        {([
+          ["Timestamp", reviewObservation ? eventTime(reviewObservation.observed_at) : "Unavailable"],
+          ["Camera", reviewCamera?.name ?? "Unknown camera"],
+          ["Person", `${selected.classification?.display_label ?? "Unknown"} · identity unconfirmed`],
+          ["Evidence mode", selected.evidence_mode === "live" ? "Live Ring event" : "Synthetic replay"],
+          ["Trigger", selected.rule],
+          ["Certainty", selected.evidence_mode === "live" ? "Camera event. Movement is estimated."
+            : reviewObservation?.location.kind === "unknown" ? "Unknown location \u2014 coverage gap" : "Illustrative replay position"],
+        ] as const).map(([name, value]) => (
+          <View key={name} style={{ paddingVertical: 6, borderTopWidth: 1, borderColor: colors.line }}>
+            <Label style={[s.muted, { fontSize: 12 }]}>{name}</Label>
+            <Label style={{ fontSize: 14 }}>{value}</Label>
+          </View>
+        ))}
+      </Card>
     </>
   );
 
