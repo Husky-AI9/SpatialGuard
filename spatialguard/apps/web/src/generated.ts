@@ -1308,7 +1308,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Incident Track */
+        /**
+         * Incident Track
+         * @description The person detected in an event's recording.
+         *
+         *     With `clip_digest`, the analysis is checked against the exact clip the
+         *     caller is playing. Without it (phones that do not hash large clips) the
+         *     server analyzes the same authorized recording it serves for playback.
+         *     A path already found by automatic analysis is returned straight away.
+         */
         get: operations["incident_track_v1_incidents__incident_id__observations__observation_id__track_get"];
         put?: never;
         post?: never;
@@ -5227,8 +5235,8 @@ export interface operations {
     };
     incident_track_v1_incidents__incident_id__observations__observation_id__track_get: {
         parameters: {
-            query: {
-                clip_digest: string;
+            query?: {
+                clip_digest?: string | null;
             };
             header?: never;
             path: {

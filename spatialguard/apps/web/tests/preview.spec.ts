@@ -309,11 +309,14 @@ test("live multi-camera evidence shows camera nodes and an unknown gap, not a pe
   await expect(page.locator(".map-actor")).toHaveCount(0);
   const inspector = page.getByLabel("Selected evidence details");
   await expect(inspector.getByText("Live Ring event")).toBeVisible();
-  await expect(inspector.getByText("Event metadata only", { exact: false })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "The same event, two review methods" })).toBeVisible();
-  await expect(page.getByText("Camera-by-camera", { exact: true })).toBeVisible();
-  await page.getByText("Why is this only a possible continuation?").click();
-  await expect(page.getByText("no camera observation establishes the route", { exact: false })).toBeVisible();
+  // A live event has no calibrated position, so the map only estimates movement.
+  await expect(inspector.getByText("Movement is estimated", { exact: false })).toBeVisible();
+  // The timeline lists each camera's sighting and never claims the route between them.
+  const timeline = page.getByRole("region", { name: "Event timeline" });
+  await expect(timeline.getByRole("button", { name: /Observed · Front camera/ })).toBeVisible();
+  await expect(timeline.getByRole("button", { name: /Observed · Hallway camera/ })).toBeVisible();
+  await timeline.getByText("About possible continuations").click();
+  await expect(timeline.getByText("The route and identity remain unconfirmed", { exact: false })).toBeVisible();
   await page.screenshot({ path: path.join(output, "spatial-evidence-graph.png"), fullPage: true });
   await page.getByRole("button", { name: "3D", exact: true }).click();
   await expect(page.locator('.spatial-scene[data-evidence-links="1"] canvas')).toBeVisible();
@@ -411,7 +414,8 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   await expect(page.locator(".test-video-status-routine")).toContainText("Routine activity");
   await page.getByLabel("Delivery test · daylight").evaluate((element: HTMLVideoElement) => element.play());
   await expect(page.locator(".map-actor-delivery")).toBeVisible();
-  await expect(page.getByText("Delivery worker", { exact: true })).toBeVisible();
+  // The map label; the marker also carries the same words as its SVG title.
+  await expect(page.locator("svg text", { hasText: /^Delivery worker$/ })).toBeVisible();
   await page.screenshot({ path: `${output}/person-icon-delivery.png`, fullPage: true });
   await day.evaluate((element: HTMLVideoElement) => { element.pause(); element.currentTime = 15; });
   await expect(page.locator(".map-actor")).toHaveCount(0);
@@ -427,7 +431,7 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   }));
   await expect(page.locator(".map-actor-weapon")).toBeVisible();
   await threatVideo.evaluate((element: HTMLVideoElement) => element.play());
-  await expect(page.getByText("Possible weapon", { exact: true })).toBeVisible();
+  await expect(page.locator("svg text", { hasText: /^Possible weapon$/ })).toBeVisible();
   await page.screenshot({ path: `${output}/person-icon-threat.png`, fullPage: true });
   await page.getByRole("button", { name: "3D", exact: true }).click();
   await expect(page.locator(".spatial-scene")).toHaveAttribute(
@@ -889,7 +893,8 @@ test("with no place, only the map card is empty", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Add camera" })).toHaveCount(0);
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("button", { name: "Security & data" }).click();
-  await expect(page.getByText("no place selected")).toBeVisible();
+  // The data summary still opens without a place.
+  await expect(page.getByRole("heading", { name: "Your data" })).toBeVisible();
   await page.getByRole("button", { name: "Home", exact: true }).click();
   await page.getByRole("button", { name: "Upload floor plan" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();

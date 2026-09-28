@@ -3,6 +3,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import secrets
 import shutil
@@ -966,8 +967,9 @@ class RingService:
                 inside = (row['start_hour'] <= hour < row['end_hour']) if row['start_hour'] < row['end_hour'] else (
                     hour >= row['start_hour'] or hour < row['end_hour'])
                 if inside: self.capture_timelapse(row['owner'], row['id'])
-            except Exception:
-                pass
+            except Exception as error:
+                # One project failing must not stop the others this round.
+                logging.getLogger('spatialguard.timelapse').warning('Time-lapse capture skipped: %s', type(error).__name__)
             with self.store.connect() as db:
                 db.execute('UPDATE timelapse_projects SET next_capture=? WHERE id=?',
                            (time.time() + row['cadence_minutes'] * 60, row['id']))
@@ -991,8 +993,9 @@ class RingService:
                 if delivered:
                     with self.store.connect() as db:
                         db.execute('UPDATE ring_alerts SET emailed=1 WHERE id=?',(row['id'],))
-            except Exception:
-                pass
+            except Exception as error:
+                # Unsent alerts stay unmarked and are retried next round.
+                logging.getLogger('spatialguard.mail').warning('Device alert email not sent: %s', type(error).__name__)
 
     def stream(self, owner, device, sdp):
         if not sdp.startswith('v=0') or 'm=audio' in sdp or 'a=sendrecv' in sdp or 'a=sendonly' in sdp or 'm=video' not in sdp:

@@ -133,12 +133,17 @@ def generate(metrics: dict, timeout: float = 45) -> dict:
         "messages": [{"role": "user", "content": [{"text": "Data:\n" + json.dumps(_facts(metrics))}]}],
         "inferenceConfig": {"maxTokens": 700, "temperature": 0.2},
     }
-    url = (f"https://bedrock-runtime.{settings['AWS_REGION']}.amazonaws.com/model/"
+    region = settings["AWS_REGION"]
+    # The region becomes part of the host name, so only accept a real region code.
+    if not re.fullmatch(r"[a-z]{2}(-[a-z]+)+-\d", region):
+        raise InsightUnavailable("AI insights are not configured on this server.")
+    url = (f"https://bedrock-runtime.{region}.amazonaws.com/model/"
            f"{urllib.parse.quote(model, safe='')}/converse")
     request = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                      headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        # nosec B310: fixed https Bedrock endpoint; the region is validated above.
+        with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310
             reply = json.load(response)
     except urllib.error.HTTPError as error:
         # Never surface provider bodies; they can echo request details.

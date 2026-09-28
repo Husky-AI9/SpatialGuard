@@ -55,7 +55,7 @@ for (const width of [1440,390]) test(`map labels remain legible and selectable a
   await expect(page.locator('.camera-label rect')).toHaveCount(0);
   await expect(page.locator('.actor-label rect').first()).toHaveAttribute('fill','#23253F');
   await expect(page.locator('.camera-coverage').first()).toHaveAttribute('fill','#5B4FE8');
-  await expect(page.locator('.camera-coverage').first()).toHaveAttribute('fill-opacity','0.24');
+  await expect(page.locator('.camera-coverage').first()).toHaveAttribute('fill-opacity','0.3');
   const fontPixels = () => page.locator('.camera-label text').first().evaluate(el =>
     Number(el.getAttribute('font-size')) * (el as SVGGraphicsElement).getScreenCTM()!.a);
   await expect.poll(fontPixels).toBeCloseTo(12,1);

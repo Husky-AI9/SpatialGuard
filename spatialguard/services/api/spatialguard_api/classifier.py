@@ -140,7 +140,7 @@ def classify_images(images: list[bytes], media_type: str) -> IncidentClassificat
         headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
     )
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urllib.request.urlopen(request, timeout=60) as response:  # nosec B310 - fixed https URL
             result = json.load(response)
     except urllib.error.HTTPError as exc:
         messages = {

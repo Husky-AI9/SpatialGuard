@@ -2786,6 +2786,7 @@
     "/v1/incidents/{incident_id}/observations/{observation_id}/track": {
       "get": {
         "summary": "Incident Track",
+        "description": "The person detected in an event's recording.\n\nWith `clip_digest`, the analysis is checked against the exact clip the\ncaller is playing. Without it (phones that do not hash large clips) the\nserver analyzes the same authorized recording it serves for playback.\nA path already found by automatic analysis is returned straight away.",
         "operationId": "incident_track_v1_incidents__incident_id__observations__observation_id__track_get",
         "parameters": [
           {
@@ -2809,10 +2810,17 @@
           {
             "name": "clip_digest",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{64}$",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Clip Digest"
             }
           }

@@ -229,9 +229,13 @@ def test_pause_and_resume_does_not_resurrect_queued_authorization(setup):
     assert not engine.saved
 
 
+# Pairing codes are only redeemed by the mobile apps, which identify themselves.
+APP={'x-spatialguard-client':'android'}
+
+
 def pair(c):
     code=c.post('/v1/pairing').json()['code']
-    r=c.post('/v1/pairing/redeem',json={'code':code,'name':'Test Android'})
+    r=c.post('/v1/pairing/redeem',json={'code':code,'name':'Test Android'},headers=APP)
     assert r.status_code==200
     return code,r.json()
 
@@ -240,7 +244,7 @@ def test_pairing_single_use_renewal_revocation(setup):
     app,c,store,engine=setup;code,data=pair(c)
     device=TestClient(app,headers={'Authorization':'Bearer '+data['token']})
     assert device.get('/v1/me').status_code==200
-    assert c.post('/v1/pairing/redeem',json={'code':code}).status_code==401
+    assert c.post('/v1/pairing/redeem',json={'code':code},headers=APP).status_code==401
     assert device.post('/v1/pairing').status_code==403
     renewed=device.post('/v1/sessions/renew').json()
     assert device.get('/v1/me').status_code==401
@@ -253,9 +257,10 @@ def test_pairing_single_use_renewal_revocation(setup):
 def test_pairing_expiry_rate_limit_and_auth_boundaries(setup):
     app,c,store,engine=setup;code=c.post('/v1/pairing').json()['code']
     with store.connect() as db: db.execute('UPDATE pairing SET expires=0')
-    assert c.post('/v1/pairing/redeem',json={'code':code}).status_code==401
-    for _ in range(9): c.post('/v1/pairing/redeem',json={'code':'000000000000'})
-    assert c.post('/v1/pairing/redeem',json={'code':'000000000000'}).status_code==429
+    assert c.post('/v1/pairing/redeem',json={'code':code}).status_code==400
+    assert c.post('/v1/pairing/redeem',json={'code':code},headers=APP).status_code==401
+    for _ in range(9): c.post('/v1/pairing/redeem',json={'code':'000000000000'},headers=APP)
+    assert c.post('/v1/pairing/redeem',json={'code':'000000000000'},headers=APP).status_code==429
     outsider=TestClient(app)
     assert outsider.get('/v1/sites').status_code==401
     assert outsider.post('/v1/local-session').status_code==403

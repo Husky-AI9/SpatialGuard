@@ -251,7 +251,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         """Move the authenticated preview workspace to its new email account."""
         for table in ("sites", "plans", "audit", "ring_accounts", "ring_streams", "ring_alerts", "timelapse_projects"):
             if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
-                db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))
+                db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))  # nosec B608 - table from a fixed list; values are bound
         old_privacy = db.execute(
             "SELECT 1 FROM account_preferences WHERE owner=?", (old_owner,)
         ).fetchone()
@@ -260,7 +260,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             db.execute("UPDATE account_preferences SET owner=? WHERE owner=?", (new_owner, old_owner))
         for table in ("ring_ops_preferences", "ring_camera_wall"):
             if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone():
-                db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))
+                db.execute(f"UPDATE {table} SET owner=? WHERE owner=?", (new_owner, old_owner))  # nosec B608 - table from a fixed list; values are bound
         old_key, new_key = "active_site:" + old_owner, "active_site:" + new_owner
         preference = db.execute("SELECT value FROM settings WHERE key=?", (old_key,)).fetchone()
         if preference:
@@ -347,8 +347,9 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 "Verify your Pathlight email", email,
                 "Verify this address within 24 hours:\n\n" + configured_origin() + "/verify-email?token=" + verification_token,
             )
-        except Exception:
-            pass
+        except Exception as error:
+            # The account exists either way; the owner can ask for a new email.
+            logging.getLogger("spatialguard.mail").warning("Verification email not sent: %s", type(error).__name__)
         return auth_result(result, kind, response)
 
     @app.post("/v1/auth/signin", response_model=m.AuthSession)
@@ -745,14 +746,14 @@ def create_app(db_path=None, engine=None, ring_service=None):
             db.execute("BEGIN IMMEDIATE")
             for account_id in ring_accounts:
                 for table in ("ring_devices", "ring_inbox", "ring_health"):
-                    db.execute(f"DELETE FROM {table} WHERE account=?", (account_id,))
+                    db.execute(f"DELETE FROM {table} WHERE account=?", (account_id,))  # nosec B608 - table from a fixed list; values are bound
                 db.execute("DELETE FROM ring_streams WHERE account=?", (account_id,))
                 db.execute("DELETE FROM ring_accounts WHERE account=?", (account_id,))
             for project_id in projects:
                 db.execute("DELETE FROM timelapse_frames WHERE project=?", (project_id,))
             db.execute("DELETE FROM timelapse_projects WHERE owner=?", (p["owner"],))
             for table in ("ring_codes", "ring_streams", "ring_alerts", "ring_ops_preferences", "ring_camera_wall"):
-                db.execute(f"DELETE FROM {table} WHERE owner=?", (p["owner"],))
+                db.execute(f"DELETE FROM {table} WHERE owner=?", (p["owner"],))  # nosec B608 - table from a fixed list; values are bound
         data_root = DATA.resolve()
         for value in frame_paths:
             try:
@@ -771,7 +772,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 db.execute("BEGIN IMMEDIATE")
                 for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights",
                           "site_alerts", "site_alert_settings"):
-                    db.execute(f"DELETE FROM {table} WHERE site_id=?", (engine_site,))
+                    db.execute(f"DELETE FROM {table} WHERE site_id=?", (engine_site,))  # nosec B608 - table from a fixed list; values are bound
                 db.execute("DELETE FROM sites WHERE id=? AND owner=?", (engine_site, p["owner"]))
                 db.execute("DELETE FROM plans WHERE engine_site=? AND owner=?", (engine_site, p["owner"]))
                 db.execute("DELETE FROM settings WHERE key=? AND value=?", ("active_site:" + p["owner"], engine_site))
@@ -782,12 +783,12 @@ def create_app(db_path=None, engine=None, ring_service=None):
             for site_id in site_ids:
                 for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights",
                           "site_alerts", "site_alert_settings"):
-                    db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
+                    db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))  # nosec B608 - table from a fixed list; values are bound
             for table in (
                 "sites", "plans", "sessions", "pairing", "audit", "account_preferences",
                 "auth_tokens", "data_access_log", "notification_preferences", "notification_history",
             ):
-                db.execute(f"DELETE FROM {table} WHERE owner=?", (p["owner"],))
+                db.execute(f"DELETE FROM {table} WHERE owner=?", (p["owner"],))  # nosec B608 - table from a fixed list; values are bound
             db.execute("DELETE FROM settings WHERE key=?", ("active_site:" + p["owner"],))
             db.execute("DELETE FROM accounts WHERE id=?", (p["owner"],))
             completed_at = now()
@@ -900,7 +901,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             db.execute("BEGIN IMMEDIATE")
             for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights",
                           "site_alerts", "site_alert_settings"):
-                db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
+                db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))  # nosec B608 - table from a fixed list; values are bound
             db.execute("DELETE FROM sites WHERE id=? AND owner=?", (site_id, p["owner"]))
             db.execute("DELETE FROM settings WHERE key=? AND value=?", (active_key(p), site_id))
             db.execute("DELETE FROM settings WHERE key=?", ("demo_bundle:" + site_id,))
@@ -1111,8 +1112,9 @@ def create_app(db_path=None, engine=None, ring_service=None):
             row = plan_row(db, job_id, p)
         try:
             (engine or client()).request(f"/v1/jobs/{job_id}/cancel", "POST", {})
-        except Exception:
-            pass  # A finished or unreachable job still leaves nothing published.
+        except Exception as error:
+            # A finished or unreachable job still leaves nothing published.
+            logging.getLogger("spatialguard.plans").info("Plan job cancel skipped: %s", type(error).__name__)
         # Discarding must take the uploaded drawing with it, not leave it stored.
         engine_call(tf.delete_site, row["engine_site"])
         with store.connect() as db:
@@ -1443,6 +1445,10 @@ def create_app(db_path=None, engine=None, ring_service=None):
         @app.get("/icon.svg", include_in_schema=False)
         def icon():
             return FileResponse(dist / "icon.svg")
+
+        @app.get("/favicon.svg", include_in_schema=False)
+        def favicon():
+            return FileResponse(dist / "favicon.svg")
 
     # Railway exposes one public port, so Ring's account-linking callbacks
     # share the hosted SpatialGuard process. Keep this mount last: owner API
