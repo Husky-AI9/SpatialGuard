@@ -89,12 +89,16 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     // detected in that event's recording followed to the video playhead.
     [step, setStep] = useState(0),
     [playing, setPlaying] = useState(false),
+    // Timeline playback of Ring clips: Play restarts the clip, Pause holds it.
+    [playToken, setPlayToken] = useState(0),
+    [heldByTimeline, setHeldByTimeline] = useState(false),
     [track, setTrack] = useState<Track | null>(null),
     [video, setVideo] = useState({ seconds: 0, duration: 0 }),
     [evidenceSvg, setEvidenceSvg] = useState(""),
     // The live queue/crowding alert, shown on every tab until acknowledged.
     [crowdAlert, setCrowdAlert] = useState<CrowdAlert | null>(null);
   const insets = useSafeAreaInsets();
+  const scroller = useRef<ScrollView>(null);
   const activeId = useRef(""),
     alive = useRef(true),
     loading = useRef(false);
@@ -558,6 +562,8 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
             incident={selected.id}
             observation={reviewObservation.observation_id}
             hasCamera={!!reviewCamera}
+            playToken={playToken}
+            paused={heldByTimeline}
             onTime={(seconds, duration) => setVideo({ seconds, duration })}
             onTrack={setTrack}
             onEnded={() => {
@@ -598,12 +604,25 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           step={step}
           onSelect={(index) => {
             setPlaying(false);
+            setHeldByTimeline(false);
             setStep(index);
+            if (selected.evidence_mode === "live") scroller.current?.scrollTo({ y: 0, animated: true });
           }}
           playing={playing}
           onPlay={() => {
-            if (!playing && step >= selected.observations.length - 1) setStep(0);
-            setPlaying(!playing);
+            if (playing) {
+              setPlaying(false);
+              setHeldByTimeline(true);
+              return;
+            }
+            setHeldByTimeline(false);
+            if (step >= selected.observations.length - 1 && selected.observations.length > 1) setStep(0);
+            setPlaying(true);
+            if (selected.evidence_mode === "live") {
+              // Replay the Ring clip from the start, and bring the video into view.
+              setPlayToken((n) => n + 1);
+              scroller.current?.scrollTo({ y: 0, animated: true });
+            }
           }}
           video={video}
         />
@@ -800,6 +819,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         />
       ) : (
       <ScrollView
+        ref={scroller}
         scrollEnabled={!mapTouch}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={busy} onRefresh={() => void load()} tintColor={colors.purple} />}

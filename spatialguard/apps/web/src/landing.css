@@ -1066,3 +1066,52 @@ body.landing-body {
   .sg-auth-brand > span:first-child svg.pl-mark { width: auto; height: 46px; }
   .sg-auth-brand { font-size: 26px; }
 }
+
+/* Sign-in, sign-up and recovery ---------------------------------------------------
+   A conventional account page: logo top left, one centered card, quiet footer. */
+.pl-auth {
+  min-height: 100svh; display: flex; flex-direction: column; align-items: center;
+  padding: 0 20px 28px; color: #23253f; font-family: "Source Sans Pro", sans-serif;
+  background: radial-gradient(900px 420px at 50% -120px, #ecebfd 0%, rgba(236, 235, 253, 0) 70%), #f6f6fb;
+}
+.pl-auth-top { width: 100%; max-width: 1120px; display: flex; align-items: center; justify-content: space-between; padding: 22px 4px; }
+.pl-auth-logo { display: inline-flex; align-items: center; gap: 10px; color: #1e1b4b; text-decoration: none; }
+.pl-auth-logo .pl-mark { height: 26px; width: auto; }
+.pl-auth-logo .pl-wordmark { font-size: 22px; }
+.pl-auth-back { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 10px;
+  color: #4b5070; font-size: 14px; font-weight: 600; text-decoration: none; }
+.pl-auth-back:hover { background: #ecebfd; color: #3a34a8; }
+
+.pl-auth-card {
+  width: min(420px, 100%); margin-top: clamp(20px, 8vh, 88px); padding: 36px 32px 30px;
+  border: 1px solid #e4e5f0; border-radius: 16px; background: #fff;
+  box-shadow: 0 1px 2px rgba(35, 37, 63, .04), 0 12px 32px rgba(35, 37, 63, .07);
+}
+.pl-auth-card h1 { margin: 0; font-size: 26px; line-height: 1.2; letter-spacing: -0.4px; }
+.pl-auth-intro { margin: 8px 0 24px; color: #5b607f; font-size: 15px; line-height: 1.5; }
+.pl-auth .sg-auth-form { display: grid; gap: 6px; }
+.pl-auth .sg-auth-form > label, .pl-auth-label-row label { margin-top: 10px; color: #3e425a; font-size: 14px; font-weight: 600; }
+.pl-auth-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pl-auth-label-row a { color: #4c42c8; font-size: 13px; font-weight: 600; text-decoration: none; }
+.pl-auth-label-row a:hover { text-decoration: underline; }
+.pl-auth .sg-auth-input { min-height: 46px; border-radius: 10px; border-color: #d3d5e6; }
+.pl-auth .sg-auth-submit { width: 100%; min-height: 46px; margin-top: 18px; border-radius: 10px; font-size: 15px; box-shadow: none; }
+.pl-auth .sg-auth-submit:disabled { opacity: 1; color: #fff; background: #a8a3f0; border-color: #a8a3f0; }
+.pl-auth .sg-auth-error { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: #fdecee; color: #8f1f2a; }
+.pl-auth .sg-auth-success { margin: 8px 0 0; }
+.pl-auth-legal { margin: 16px 0 0; color: #5b607f; font-size: 13px; line-height: 1.5; text-align: center; }
+.pl-auth-legal a, .pl-auth-switch a { color: #4c42c8; font-weight: 700; text-decoration: none; }
+.pl-auth-legal a:hover, .pl-auth-switch a:hover { text-decoration: underline; }
+.pl-auth-switch { margin: 20px 0 0; color: #4b5070; font-size: 15px; }
+.pl-auth-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 18px; margin-top: auto; padding-top: 40px;
+  color: #6a6f8c; font-size: 13px; }
+.pl-auth-footer a { color: #4b5070; text-decoration: none; }
+.pl-auth-footer a:hover { text-decoration: underline; }
+.pl-auth-secure { display: inline-flex; align-items: center; gap: 5px; }
+@media (max-width: 520px) {
+  .pl-auth { padding: 0 14px 22px; }
+  .pl-auth-top { padding: 16px 0; }
+  .pl-auth-back span, .pl-auth-back { font-size: 13px; }
+  .pl-auth-card { margin-top: 12px; padding: 28px 20px 24px; }
+  .pl-auth-card h1 { font-size: 24px; }
+}
