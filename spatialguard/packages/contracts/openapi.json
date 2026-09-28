@@ -6448,6 +6448,17 @@
             "type": "array",
             "title": "Week Grid"
           },
+          "week_grid_previous": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Week Grid Previous",
+            "default": []
+          },
           "zones": {
             "items": {
               "$ref": "#/components/schemas/AnalyticsZone"

@@ -2705,6 +2705,11 @@ export interface components {
             hourly: components["schemas"]["AnalyticsHour"][];
             /** Week Grid */
             week_grid: number[][];
+            /**
+             * Week Grid Previous
+             * @default []
+             */
+            week_grid_previous: number[][];
             /** Zones */
             zones: components["schemas"]["AnalyticsZone"][];
             /** Entrances */

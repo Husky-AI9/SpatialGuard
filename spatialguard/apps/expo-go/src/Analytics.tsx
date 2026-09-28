@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { Share, View } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import type { components } from "../../web/src/generated";
 import { request } from "./api";
@@ -17,7 +17,9 @@ type Message =
   | { type: "insight" }
   | { type: "retry" }
   | { type: "alertSettings"; settings: AlertSettingsInput }
-  | { type: "acknowledge"; id: number };
+  | { type: "acknowledge"; id: number }
+  | { type: "export"; name: string; csv: string }
+  | { type: "pair" };
 
 const timeZone = () => {
   try {
@@ -32,7 +34,7 @@ const timeZone = () => {
  * this screen. The page never sees the session token; data is fetched here and
  * pushed in, and the page asks for a site switch or a new insight by message.
  */
-export default function AnalyticsScreen({ siteId: initial, refreshKey }: { siteId?: string; refreshKey?: unknown }) {
+export default function AnalyticsScreen({ siteId: initial, refreshKey, onPair }: { siteId?: string; refreshKey?: unknown; onPair?: () => void }) {
   const tz = timeZone();
   const web = useRef<WebView>(null);
   const [ready, setReady] = useState(false);
@@ -139,6 +141,11 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey }: { siteI
       setSiteId(message.id);
     } else if (message.type === "insight") void writeInsight();
     else if (message.type === "retry") setAttempt((n) => n + 1);
+    else if (message.type === "pair") onPair?.();
+    else if (message.type === "export" && typeof message.csv === "string") {
+      // The iOS share sheet: save to Files, AirDrop, mail or a spreadsheet app.
+      void Share.share({ title: `${message.name} analytics`, message: message.csv.slice(0, 200000) }).catch(() => undefined);
+    }
     else if (message.type === "alertSettings" && siteId && message.settings) {
       setAlertsBusy(true);
       request<CrowdAlerts["settings"]>(`/v1/sites/${siteId}/alerts/settings`, "PUT", message.settings)

@@ -740,6 +740,8 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.page }}>
+      {/* Analytics draws its own header (title, export and filters), as in its design. */}
+      {!(tab === "Analytics" && !selected) && (
       <View style={[s.row, { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderColor: colors.line }]}>
         {section && !selected ? (
           <IconButton icon="back" label="Back to Settings" onPress={() => setSection("")} />
@@ -752,6 +754,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         </View>
         <IconButton icon="refresh" label="Refresh" onPress={() => void load()} />
       </View>
+      )}
       {crowdAlert && (
         <View
           accessibilityRole="alert"
@@ -790,7 +793,11 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       )}
       {tab === "Analytics" && !selected ? (
         // The dashboard scrolls itself; it replaces the page scroll view.
-        <AnalyticsScreen siteId={site?.id} refreshKey={`${incidents[0]?.id}:${crowdAlert?.id ?? ""}`} />
+        <AnalyticsScreen
+          siteId={site?.id}
+          refreshKey={`${incidents[0]?.id}:${crowdAlert?.id ?? ""}`}
+          onPair={() => setTab("Cameras")}
+        />
       ) : (
       <ScrollView
         scrollEnabled={!mapTouch}

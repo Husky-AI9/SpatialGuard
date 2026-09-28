@@ -433,6 +433,8 @@ class SiteAnalytics(Model):
     daily: list[AnalyticsDay]
     hourly: list[AnalyticsHour]
     week_grid: list[list[int]]
+    # The previous period's grid, aligned by weekday with week_grid.
+    week_grid_previous: list[list[int]] = []
     zones: list[AnalyticsZone]
     entrances: list[AnalyticsEntrance]
     quality: AnalyticsQuality

@@ -178,10 +178,14 @@ def build(site: dict, incidents: list[dict], tracks: dict, tz_name: str | None =
             daily_now[index] += 1
             grid[index][local.hour] += 1
     daily_before = defaultdict(int)
+    # Same day-and-hour layout for the previous period, aligned by weekday.
+    grid_before = [[0] * 24 for _ in days]
     for visit in previous:
-        index = (visit["start"].astimezone(tz).date() - (first_day - timedelta(days=PERIOD_DAYS))).days
+        local = visit["start"].astimezone(tz)
+        index = (local.date() - (first_day - timedelta(days=PERIOD_DAYS))).days
         if 0 <= index < PERIOD_DAYS:
             daily_before[index] += 1
+            grid_before[index][local.hour] += 1
 
     names = list(dict.fromkeys([*areas, *this["zone_visits"], *last["zone_visits"]]))
     zones = [{
@@ -240,6 +244,7 @@ def build(site: dict, incidents: list[dict], tracks: dict, tz_name: str | None =
         } for i, day in enumerate(days)],
         "hourly": [{"hour": h, "visits": this["hourly"][h], "previous": last["hourly"][h]} for h in range(24)],
         "week_grid": grid,
+        "week_grid_previous": grid_before,
         "zones": zones,
         "entrances": entrances,
         "quality": {"tracked": quality["tracked"], "positioned": quality["positioned"], "estimated": quality["estimated"]},

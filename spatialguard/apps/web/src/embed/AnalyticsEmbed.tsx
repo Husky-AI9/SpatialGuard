@@ -5,7 +5,8 @@
  * and reports taps through `ReactNativeWebView.postMessage`.
  */
 import { useEffect, useState } from "react";
-import AnalyticsView, { type AnalyticsViewProps } from "../analytics/AnalyticsView";
+import { type AnalyticsViewProps, type SiteAnalytics } from "../analytics/AnalyticsView";
+import PhoneAnalytics from "../analytics/PhoneAnalytics";
 import type { AlertSettingsInput } from "../analytics/AlertsCard";
 
 export type AnalyticsEmbedState = Omit<AnalyticsViewProps, "onSite" | "onInsight" | "onRetry" | "onAlertSettings" | "onAcknowledge">;
@@ -15,7 +16,9 @@ export type AnalyticsEmbedMessage =
   | { type: "insight" }
   | { type: "retry" }
   | { type: "alertSettings"; settings: AlertSettingsInput }
-  | { type: "acknowledge"; id: number };
+  | { type: "acknowledge"; id: number }
+  | { type: "export"; name: string; csv: string }
+  | { type: "pair" };
 
 declare global {
   interface Window {
@@ -24,6 +27,30 @@ declare global {
 }
 
 const post = (message: AnalyticsEmbedMessage) => window.ReactNativeWebView?.postMessage(JSON.stringify(message));
+
+/** The week's numbers as CSV, for the share sheet. */
+function csv(data: SiteAnalytics) {
+  const cell = (value: string | number | null | undefined) => {
+    const text = value == null ? "" : String(value);
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  const rows: (string | number | null)[][] = [
+    ["Pathlight Site Analytics", data.site_name],
+    ["Period", `${data.daily[0].date} to ${data.daily[data.daily.length - 1].date}`, "Time zone", data.time_zone],
+    ["Visits", data.totals.visits, "Previous 7 days", data.totals.previous],
+    [],
+    ["Day", "Visits", "Same day last week"], ...data.daily.map((d) => [d.date, d.visits, d.previous]),
+    [],
+    ["Hour", "Visits", "Last week"], ...data.hourly.map((h) => [`${String(h.hour).padStart(2, "0")}:00`, h.visits, h.previous]),
+    [],
+    ["Zone", "Visits", "Last week", "Avg. seconds"], ...data.zones.map((z) => [z.name, z.visits, z.previous, z.dwell_s]),
+    [],
+    ["Entrance camera", "Visits", "Last week"], ...data.entrances.map((e) => [e.name, e.visits, e.previous]),
+    [],
+    ["Tracked", data.quality.tracked, "Positioned", data.quality.positioned, "Estimated", data.quality.estimated],
+  ];
+  return rows.map((row) => row.map(cell).join(",")).join("\n");
+}
 
 export default function AnalyticsEmbed() {
   const [state, setState] = useState<AnalyticsEmbedState>({
@@ -40,8 +67,10 @@ export default function AnalyticsEmbed() {
   }, []);
   return (
     <main className="embed-analytics-page">
-      <AnalyticsView
+      <PhoneAnalytics
         {...state}
+        onExport={() => state.data && post({ type: "export", name: state.data.site_name, csv: csv(state.data) })}
+        onPair={() => post({ type: "pair" })}
         onSite={(id) => post({ type: "site", id })}
         onInsight={() => post({ type: "insight" })}
         onRetry={() => post({ type: "retry" })}
