@@ -4055,3 +4055,16 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
 .demo-message { color: #1f6b3a; font-weight: 600; }
 .sim-chip { color: #8a5a00; }
 .scene-camera-pin-sim { font-weight: 800; color: #8a5a00; }
+
+/* Simulated (demo-mode) camera view: a still frame with a camera-style overlay. */
+.sim-camera { position: relative; overflow: hidden; background: #1c1d22; border-radius: 12px; aspect-ratio: 16 / 9; width: 100%; }
+.sim-camera img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sim-camera-name, .sim-camera-clock { position: absolute; left: 12px; color: #fff; font: 600 13px/1.2 "Source Sans 3", sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .75); font-variant-numeric: tabular-nums; }
+.sim-camera-name { top: 10px; }
+.sim-camera-clock { bottom: 10px; }
+.sim-camera-tag { position: absolute; top: 8px; right: 8px; padding: 2px 6px; border-radius: 6px;
+  background: rgba(20, 20, 24, .6); color: #f1d38a; font: 800 10px/1.3 "Source Sans 3", sans-serif; letter-spacing: .5px; }
+.sim-camera-compact { aspect-ratio: auto; border-radius: 10px; }
+.sim-camera-compact .sim-camera-tag { top: 3px; right: 3px; padding: 1px 4px; font-size: 8px; }
+.sim-camera.home-camera-thumb { width: 40px; height: 40px; flex: none; }

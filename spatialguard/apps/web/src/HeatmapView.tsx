@@ -91,11 +91,6 @@ export function HeatmapPanel({
           {data.estimated_cameras.length === 1 ? "is" : "are"} looking.
         </p>
       )}
-      {!!data?.simulated && (
-        <p className="heatmap-note heatmap-estimate">
-          Includes {data.simulated} simulated {data.simulated === 1 ? "visit" : "visits"} from demo mode.
-        </p>
-      )}
       {missing > 0 && (
         <p className="heatmap-note">
           {missing} {missing === 1 ? "event" : "events"} from{" "}

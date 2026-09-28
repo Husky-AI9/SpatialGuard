@@ -44,6 +44,7 @@ import Timeline, { eventTime } from "./Timeline";
 import { SvgXml } from "react-native-svg";
 import { DemoSettings, Operations, RingSettings } from "./Settings";
 import AnalyticsScreen from "./Analytics";
+import SimulatedCamera from "./SimulatedCamera";
 import type { components } from "../../web/src/generated";
 type Preferences = components["schemas"]["AccountPreferences"];
 type CrowdAlert = components["schemas"]["CrowdAlert"];
@@ -83,6 +84,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [pairFor, setPairFor] = useState<{ id: string; name: string } | null>(null),
+    [simView, setSimView] = useState<{ id: string; name: string } | null>(null),
     [ringState, setRingState] = useState(""),
     // The map is using a touch (pan, pinch, orbit): the page must not scroll.
     [mapTouch, setMapTouch] = useState(false),
@@ -419,11 +421,13 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
                 accessibilityLabel={`Open ${camera.name}`}
                 style={[s.row, { flex: 1 }]}
                 onPress={() => (ring ? setDevice(ring) : simulated
-                  ? Alert.alert("Simulated camera", "This camera exists only on the map. Its visitors are simulated for the demo.")
+                  ? setSimView({ id: camera.id, name: camera.name })
                   : setPairFor({ id: camera.id, name: camera.name }))}
               >
                 {ring ? (
                   <Snapshot device={ring} />
+                ) : simulated ? (
+                  <SimulatedCamera name={camera.name} compact />
                 ) : (
                   <View style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: "#e6e6f3", alignItems: "center", justifyContent: "center" }}>
                     <Icon name="camera" size={20} color="#39406b" />
@@ -923,6 +927,9 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           );
         })}
       </View>
+      <Sheet visible={!!simView} title={simView?.name ?? ""} subtitle="Simulated camera · demo mode" onClose={() => setSimView(null)}>
+        {simView && <SimulatedCamera name={simView.name} />}
+      </Sheet>
       <PairSheet
         target={pairFor}
         site={site}

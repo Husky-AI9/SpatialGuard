@@ -7,6 +7,7 @@ import TestVideoReplay, { type TestTrack } from "./TestVideoReplay";
 import type { components } from "./generated";
 import { request } from "./platform";
 import CameraMark from "./CameraMark";
+import SimulatedCamera from "./SimulatedCamera";
 
 type Device = components["schemas"]["RingDevice"];
 type RingStatus = components["schemas"]["RingStatus"];
@@ -113,7 +114,9 @@ export default function HomeCctv({
           </button>
         </div>
         <div className="home-cctv-stage">
-          {source === "test" ? (
+          {simulated && source === "live" ? (
+            <SimulatedCamera name={selected.name} />
+          ) : source === "test" ? (
             <TestVideoReplay
               camera={selected}
               classificationEnabled={classificationEnabled}
@@ -168,14 +171,18 @@ export default function HomeCctv({
                 onClick={() => onSelect(camera.id)}
                 aria-label={`Open ${camera.name} feed and select it on map`}
               >
-                <CameraThumbnail
-                  className="home-camera-thumb"
-                  siteId={siteId}
-                  cameraId={camera.id}
-                  name={camera.name}
-                  available={!!ring}
-                  iconSize={19}
-                />
+                {simulated ? (
+                  <SimulatedCamera name={camera.name} compact className="home-camera-thumb" />
+                ) : (
+                  <CameraThumbnail
+                    className="home-camera-thumb"
+                    siteId={siteId}
+                    cameraId={camera.id}
+                    name={camera.name}
+                    available={!!ring}
+                    iconSize={19}
+                  />
+                )}
                 <span>
                   <strong>{camera.name}</strong>
                   <small>{ring ? "Ring camera" : simulated ? "Simulated camera" : "Floor-plan camera"}</small>

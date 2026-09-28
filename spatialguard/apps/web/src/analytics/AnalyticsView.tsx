@@ -49,7 +49,7 @@ export function simulatedNote(data: SiteAnalytics | null, mode: AnalyticsMode = 
   const count = data?.simulated_visits ?? 0;
   if (mode === "live")
     return `Live only: visits seen by your Ring cameras.${count ? ` ${plural(count, "simulated visit")} hidden.` : ""}`;
-  return count ? `Includes ${plural(count, "simulated visit")} from demo mode, not seen by any camera.` : null;
+  return null;
 }
 
 /** All data / Live only, shown when the week has simulated visits (or live is already chosen). */
