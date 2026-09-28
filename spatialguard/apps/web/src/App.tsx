@@ -12,6 +12,7 @@ import {
   History,
   Settings,
   Activity,
+  ChartColumnBig,
   Play,
   ArrowLeft,
   ArrowUpRight,
@@ -45,6 +46,7 @@ import CameraWall from "./CameraWall";
 import HomeCctv from "./HomeCctv";
 import IncidentReview from "./IncidentReview";
 import Operations from "./Operations";
+import SiteAnalytics from "./SiteAnalytics";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
 import AccountSecurity from "./AccountSecurity";
 import { useDialogFocus } from "./useDialogFocus";
@@ -83,6 +85,7 @@ const tabs = [
   { name: "Home", icon: House },
   { name: "Incidents", icon: History },
   { name: "Cameras", icon: CameraMark },
+  { name: "Analytics", icon: ChartColumnBig },
   { name: "Operations", icon: Activity },
   { name: "Settings", icon: Settings },
 ] as const;
@@ -1335,6 +1338,7 @@ export default function App() {
               ringVersion={ringVersion}
             />
           )}
+          {tab === "Analytics" && <SiteAnalytics siteId={site?.id} refreshKey={incidents[0]?.id} />}
           {tab === "Operations" && <Operations features={features} />}
           {tab === "Settings" && (
             <div className="settings-page">

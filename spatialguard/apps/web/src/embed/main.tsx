@@ -5,5 +5,13 @@ import "@fontsource/source-sans-pro/latin-700.css";
 import "../style.css";
 import "./embed.css";
 import MapEmbed from "./MapEmbed";
+import AnalyticsEmbed from "./AnalyticsEmbed";
 
-createRoot(document.getElementById("root")!).render(<MapEmbed />);
+declare global {
+  interface Window {
+    /** Set by the native app before the page loads: which view this WebView shows. */
+    __sgKind?: "map" | "analytics";
+  }
+}
+
+createRoot(document.getElementById("root")!).render(window.__sgKind === "analytics" ? <AnalyticsEmbed /> : <MapEmbed />);

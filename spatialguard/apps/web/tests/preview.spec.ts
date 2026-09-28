@@ -136,6 +136,25 @@ test("motion waves play only when a camera reports motion, and during a replay",
   await expect(page.locator(".motion-waves > g")).not.toHaveCount(0);
 });
 
+test("Site Analytics shows visits, hours, zones and entrances with table views", async ({ page }) => {
+  await openDemo(page);
+  if (await page.getByRole("button", { name: "Resume monitoring", exact: true }).count())
+    await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
+  await page.locator(".monitor-bar").getByRole("button", { name: "Run replay", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Activity observed near the entry" })).toBeVisible({ timeout: 45000 });
+  await page.getByRole("button", { name: "Analytics", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Site Analytics" })).toBeVisible();
+  const visits = page.locator(".an-hero-value");
+  await expect(visits).not.toHaveText("0");
+  for (const title of ["Visits per day", "Visits by hour", "Busy times", "Zones", "Entrances"])
+    await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  // Every chart can be read as a table, so no value is hover-only.
+  const zones = page.locator("section.an-card").filter({ has: page.getByRole("heading", { name: "Zones", exact: true }) });
+  await zones.getByRole("button", { name: "Table" }).click();
+  await expect(zones.getByRole("columnheader", { name: "Avg. time" })).toBeVisible();
+  await expect(page.getByText(/Weekly insight/)).toBeVisible();
+});
+
 test("home keeps CCTV and incidents in one right rail beside a full green 2D map", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openDemo(page);

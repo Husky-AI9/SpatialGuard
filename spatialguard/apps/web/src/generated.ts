@@ -787,6 +787,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sites/{site_id}/heatmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Heatmap
+         * @description People heatmap for a preset window, or an explicit since/until range.
+         */
+        get: operations["heatmap_v1_sites__site_id__heatmap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sites/{site_id}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analytics For Site
+         * @description Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone.
+         */
+        get: operations["analytics_for_site_v1_sites__site_id__analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/analytics/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analytics Overview
+         * @description One summary row per site the owner has, for the site switcher and future portfolio views.
+         */
+        get: operations["analytics_overview_v1_analytics_sites_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sites/{site_id}/analytics/insight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Site Insight */
+        get: operations["site_insight_v1_sites__site_id__analytics_insight_get"];
+        put?: never;
+        /**
+         * Create Site Insight
+         * @description Write this week's AI summary on Amazon Bedrock from the aggregate numbers only.
+         */
+        post: operations["create_site_insight_v1_sites__site_id__analytics_insight_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/incidents/{incident_id}": {
         parameters: {
             query?: never;
@@ -1410,6 +1491,93 @@ export interface components {
             /** Consent Updated At */
             consent_updated_at?: string | null;
         };
+        /** AnalyticsDay */
+        AnalyticsDay: {
+            /** Date */
+            date: string;
+            /** Visits */
+            visits: number;
+            /** Previous */
+            previous: number;
+        };
+        /** AnalyticsEntrance */
+        AnalyticsEntrance: {
+            /** Camera Id */
+            camera_id: string;
+            /** Name */
+            name: string;
+            /** Visits */
+            visits: number;
+            /** Previous */
+            previous: number;
+        };
+        /** AnalyticsHour */
+        AnalyticsHour: {
+            /** Hour */
+            hour: number;
+            /** Visits */
+            visits: number;
+            /** Previous */
+            previous: number;
+        };
+        /** AnalyticsPeriod */
+        AnalyticsPeriod: {
+            /** Since */
+            since: string;
+            /** Until */
+            until: string;
+            /** Previous Since */
+            previous_since: string;
+            /** Days */
+            days: number;
+        };
+        /** AnalyticsQuality */
+        AnalyticsQuality: {
+            /** Tracked */
+            tracked: number;
+            /** Positioned */
+            positioned: number;
+            /** Estimated */
+            estimated: number;
+        };
+        /** AnalyticsTotals */
+        AnalyticsTotals: {
+            /** Visits */
+            visits: number;
+            /** Previous */
+            previous: number;
+            /** Change Pct */
+            change_pct: number | null;
+            /** Avg Visit S */
+            avg_visit_s: number | null;
+            /** Avg Visit Previous S */
+            avg_visit_previous_s: number | null;
+            /** Peak Hour */
+            peak_hour: number | null;
+            /** Peak Hour Visits */
+            peak_hour_visits: number;
+            /** Busiest Zone */
+            busiest_zone: string | null;
+            /** Quietest Zone */
+            quietest_zone: string | null;
+            /** First Hour */
+            first_hour: number | null;
+            /** Last Hour */
+            last_hour: number | null;
+        };
+        /** AnalyticsZone */
+        AnalyticsZone: {
+            /** Name */
+            name: string;
+            /** Visits */
+            visits: number;
+            /** Previous */
+            previous: number;
+            /** Dwell S */
+            dwell_s: number | null;
+            /** Dwell Previous S */
+            dwell_previous_s: number | null;
+        };
         /** Association */
         Association: {
             /** From Observation Id */
@@ -1663,6 +1831,57 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * Heatmap
+         * @description Normalised people density on a site grid; row-major from the minimum y.
+         */
+        Heatmap: {
+            /** Site Id */
+            site_id: string;
+            /** Since */
+            since: string;
+            /** Until */
+            until: string;
+            /** Samples */
+            samples: number;
+            /**
+             * Tracked
+             * @default 0
+             */
+            tracked: number;
+            /**
+             * Estimated
+             * @default 0
+             */
+            estimated: number;
+            /**
+             * Estimated Cameras
+             * @default []
+             */
+            estimated_cameras: components["schemas"]["HeatmapUnpositioned"][];
+            /** Cell M */
+            cell_m: number;
+            /** Origin Xy M */
+            origin_xy_m: [
+                number,
+                number
+            ];
+            /** Columns */
+            columns: number;
+            /** Rows */
+            rows: number;
+            /** Values */
+            values: number[];
+            /** Unpositioned */
+            unpositioned: components["schemas"]["HeatmapUnpositioned"][];
+        };
+        /** HeatmapUnpositioned */
+        HeatmapUnpositioned: {
+            /** Camera Id */
+            camera_id: string;
+            /** Events */
+            events: number;
+        };
         /** Incident */
         Incident: {
             /** Id */
@@ -1747,6 +1966,23 @@ export interface components {
             incidents: components["schemas"]["Incident"][];
             /** Next Cursor */
             next_cursor?: number | null;
+        };
+        /** InsightHighlight */
+        InsightHighlight: {
+            /** Title */
+            title: string;
+            /** Detail */
+            detail: string;
+            /**
+             * Trend
+             * @enum {string}
+             */
+            trend: "up" | "down" | "flat" | "info";
+        };
+        /** InsightRequest */
+        InsightRequest: {
+            /** Tz */
+            tz?: string | null;
         };
         /** Layout */
         Layout: {
@@ -2149,13 +2385,9 @@ export interface components {
             /** Name */
             name: string;
             /** Status */
-            status: {
-                [key: string]: unknown;
-            };
+            status: Record<string, never>;
             /** Capabilities */
-            capabilities: {
-                [key: string]: unknown;
-            };
+            capabilities: Record<string, never>;
             /** Checked At */
             checked_at: string;
             /** Site Id */
@@ -2169,9 +2401,7 @@ export interface components {
                 [key: string]: boolean;
             };
             /** Configuration */
-            configuration?: {
-                [key: string]: unknown;
-            };
+            configuration?: Record<string, never>;
             /** Guidance */
             guidance?: string[];
         };
@@ -2317,6 +2547,91 @@ export interface components {
              * @constant
              */
             ring_status: "not_connected";
+        };
+        /**
+         * SiteAnalytics
+         * @description Foot traffic for one site: the last 7 local days against the 7 before.
+         */
+        SiteAnalytics: {
+            /** Site Id */
+            site_id: string;
+            /** Site Name */
+            site_name: string;
+            /** Time Zone */
+            time_zone: string;
+            /** Generated At */
+            generated_at: string;
+            period: components["schemas"]["AnalyticsPeriod"];
+            totals: components["schemas"]["AnalyticsTotals"];
+            /** Daily */
+            daily: components["schemas"]["AnalyticsDay"][];
+            /** Hourly */
+            hourly: components["schemas"]["AnalyticsHour"][];
+            /** Week Grid */
+            week_grid: number[][];
+            /** Zones */
+            zones: components["schemas"]["AnalyticsZone"][];
+            /** Entrances */
+            entrances: components["schemas"]["AnalyticsEntrance"][];
+            quality: components["schemas"]["AnalyticsQuality"];
+            /** Layout Changes */
+            layout_changes: string[];
+        };
+        /** SiteAnalyticsSummary */
+        SiteAnalyticsSummary: {
+            /** Site Id */
+            site_id: string;
+            /** Name */
+            name: string;
+            /** Visits */
+            visits: number;
+            /** Previous */
+            previous: number;
+            /** Change Pct */
+            change_pct: number | null;
+            /** Peak Hour */
+            peak_hour: number | null;
+            /** Busiest Zone */
+            busiest_zone: string | null;
+        };
+        /**
+         * SiteInsight
+         * @description A weekly AI summary written by Amazon Bedrock from aggregate numbers only.
+         */
+        SiteInsight: {
+            /** Headline */
+            headline: string;
+            /** Summary */
+            summary: string;
+            /** Highlights */
+            highlights: components["schemas"]["InsightHighlight"][];
+            /** Recommendation */
+            recommendation: string;
+            /** Model */
+            model: string;
+            /** Provider */
+            provider: string;
+            /** Generated At */
+            generated_at: string;
+            /** Period Until */
+            period_until: string;
+            /** Visits */
+            visits: number;
+        };
+        /** SiteInsightState */
+        SiteInsightState: {
+            /** Available */
+            available: boolean;
+            /** Provider */
+            provider: string;
+            /** Model */
+            model: string;
+            insight?: components["schemas"]["SiteInsight"] | null;
+            /**
+             * Stale
+             * @default true
+             */
+            stale: boolean;
         };
         /** StreamAnswer */
         StreamAnswer: {
@@ -3826,6 +4141,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncidentPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    heatmap_v1_sites__site_id__heatmap_get: {
+        parameters: {
+            query?: {
+                window?: string;
+                since?: string | null;
+                until?: string | null;
+            };
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Heatmap"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analytics_for_site_v1_sites__site_id__analytics_get: {
+        parameters: {
+            query?: {
+                tz?: string | null;
+            };
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteAnalytics"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analytics_overview_v1_analytics_sites_get: {
+        parameters: {
+            query?: {
+                tz?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteAnalyticsSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    site_insight_v1_sites__site_id__analytics_insight_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteInsightState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_site_insight_v1_sites__site_id__analytics_insight_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InsightRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteInsightState"];
                 };
             };
             /** @description Validation Error */

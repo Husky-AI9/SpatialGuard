@@ -1,3 +1,4 @@
+import json
 from fastapi import Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import Field
@@ -226,17 +227,16 @@ def install(app, store, principal, service=None):
         require_ring_consent(p['owner'])
         response.headers['Cache-Control'] = 'private, no-store'
         result = tracker.analyze(ring, p['owner'], incident_id, observation_id, clip_digest)
-        if result.points:
-            # Keep only where the person first appeared, to place this event on
-            # the people heatmap; the track itself is not stored.
-            first = result.points[0]
-            with store.connect() as db:
-                row = db.execute('SELECT site_id FROM incidents WHERE id=?', (incident_id,)).fetchone()
-                if row:
-                    db.execute(
-                        'INSERT OR REPLACE INTO observation_footpoints VALUES (?,?,?,?,?,?)',
-                        (incident_id, observation_id, row['site_id'], first.foot_x_norm, first.foot_y_norm, first.confidence),
-                    )
+        # Keep the detected foot points (not the recording) for the heatmap and
+        # Site Analytics, exactly as automatic analysis does.
+        from . import tracks
+        with store.connect() as db:
+            row = db.execute('SELECT data FROM incidents WHERE id=?', (incident_id,)).fetchone()
+            observation = next((o for o in json.loads(row['data'])['observations']
+                                if o['observation_id'] == observation_id), None) if row else None
+            if observation:
+                tracks.save(db, incident_id, observation_id, observation['site_id'], observation['source_id'],
+                            observation['observed_at'], result)
         return result
 
     @app.post('/v1/incidents/{incident_id}/classify', response_model=Incident)

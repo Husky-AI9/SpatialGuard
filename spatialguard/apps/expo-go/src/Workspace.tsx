@@ -43,14 +43,16 @@ import { Snapshot, EventRecording } from "./Media";
 import Timeline, { eventTime } from "./Timeline";
 import { SvgXml } from "react-native-svg";
 import { Operations, RingSettings } from "./Settings";
+import AnalyticsScreen from "./Analytics";
 import type { components } from "../../web/src/generated";
 type Preferences = components["schemas"]["AccountPreferences"];
-type Tab = "Home" | "Incidents" | "Cameras" | "Operations" | "Settings";
+type Tab = "Home" | "Incidents" | "Cameras" | "Analytics" | "Operations" | "Settings";
 type Section = "" | "Account" | "Places & floor plans" | "Privacy" | "Ring cameras" | "Delete account";
 const tabs: { name: Tab; icon: IconName }[] = [
   { name: "Home", icon: "house" },
   { name: "Incidents", icon: "history" },
   { name: "Cameras", icon: "camera" },
+  { name: "Analytics", icon: "chart" },
   { name: "Operations", icon: "activity" },
   { name: "Settings", icon: "settings" },
 ];
@@ -733,6 +735,10 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           <Button small variant="secondary" title="Retry" onPress={() => void load()} />
         </View>
       )}
+      {tab === "Analytics" && !selected ? (
+        // The dashboard scrolls itself; it replaces the page scroll view.
+        <AnalyticsScreen siteId={site?.id} refreshKey={incidents[0]?.id} />
+      ) : (
       <ScrollView
         scrollEnabled={!mapTouch}
         keyboardShouldPersistTaps="handled"
@@ -805,6 +811,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           </Card>
         )}
       </ScrollView>
+      )}
       <View style={{ flexDirection: "row", backgroundColor: colors.card, borderTopWidth: 1, borderColor: colors.line, paddingBottom: insets.bottom }}>
         {tabs.map((t) => {
           const active = tab === t.name;

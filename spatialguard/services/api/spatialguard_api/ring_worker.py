@@ -8,6 +8,7 @@ from twinforge.models import Observation
 from .store import account_preferences, digest, event, now
 from .classifier import classify_images
 from .release import capabilities
+from . import tracks
 
 LIVE_INCIDENT_WINDOW_SECONDS = 5 * 60
 CLASSIFICATION_CAPTURE_WINDOW_SECONDS = 5.5
@@ -262,6 +263,7 @@ def process_one(service, engine, classifier=classify_images):
                     )
                     db.execute('UPDATE incidents SET data=? WHERE id=?',
                                (merged.model_dump_json(), existing_id))
+                    tracks.enqueue(db, existing_id, obs.observation_id, incident.site_id, obs.source_id, row['at'])
                     event(db, incident.site_id, 'incident.updated', existing_id)
                 else:
                     inserted = db.execute('INSERT OR IGNORE INTO incidents(id,site_id,run_id,data) VALUES (?,?,?,?)',
@@ -269,6 +271,8 @@ def process_one(service, engine, classifier=classify_images):
                     if inserted:
                         db.execute('INSERT INTO live_incident_accounts VALUES (?,?)',
                                    (incident.id, digest(row['account'])))
+                        # Find where the person walked, in the background.
+                        tracks.enqueue(db, incident.id, obs.observation_id, incident.site_id, obs.source_id, row['at'])
                         event(db, incident.site_id, 'incident.created', incident.id)
             db.execute("UPDATE ring_inbox SET state='succeeded',processed=?,error=NULL WHERE id=?", (now(), row['id']))
             service._metric(db, row['account'], 'incident_ready_ms', max(

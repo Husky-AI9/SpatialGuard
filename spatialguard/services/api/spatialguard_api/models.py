@@ -354,7 +354,9 @@ class Heatmap(Model):
     since: str
     until: str
     samples: int
-    # Camera events with no position, spread across that camera's view (an estimate).
+    # Camera events whose recording showed where the person walked (projected path).
+    tracked: int = 0
+    # Camera events with no analyzed recording yet: one estimated dot each.
     estimated: int = 0
     estimated_cameras: list[HeatmapUnpositioned] = []
     cell_m: float
@@ -363,6 +365,121 @@ class Heatmap(Model):
     rows: int
     values: list[float]
     unpositioned: list[HeatmapUnpositioned]
+
+
+class AnalyticsPeriod(Model):
+    since: str
+    until: str
+    previous_since: str
+    days: int
+
+
+class AnalyticsTotals(Model):
+    visits: int
+    previous: int
+    change_pct: float | None
+    avg_visit_s: float | None
+    avg_visit_previous_s: float | None
+    peak_hour: int | None
+    peak_hour_visits: int
+    busiest_zone: str | None
+    quietest_zone: str | None
+    first_hour: int | None
+    last_hour: int | None
+
+
+class AnalyticsDay(Model):
+    date: str
+    visits: int
+    previous: int
+
+
+class AnalyticsHour(Model):
+    hour: int
+    visits: int
+    previous: int
+
+
+class AnalyticsZone(Model):
+    name: str
+    visits: int
+    previous: int
+    dwell_s: float | None
+    dwell_previous_s: float | None
+
+
+class AnalyticsEntrance(Model):
+    camera_id: str
+    name: str
+    visits: int
+    previous: int
+
+
+class AnalyticsQuality(Model):
+    tracked: int
+    positioned: int
+    estimated: int
+
+
+class SiteAnalytics(Model):
+    """Foot traffic for one site: the last 7 local days against the 7 before."""
+
+    site_id: str
+    site_name: str
+    time_zone: str
+    generated_at: str
+    period: AnalyticsPeriod
+    totals: AnalyticsTotals
+    daily: list[AnalyticsDay]
+    hourly: list[AnalyticsHour]
+    week_grid: list[list[int]]
+    zones: list[AnalyticsZone]
+    entrances: list[AnalyticsEntrance]
+    quality: AnalyticsQuality
+    layout_changes: list[str]
+
+
+class SiteAnalyticsSummary(Model):
+    site_id: str
+    name: str
+    visits: int
+    previous: int
+    change_pct: float | None
+    peak_hour: int | None
+    busiest_zone: str | None
+
+
+class InsightHighlight(Model):
+    title: str
+    detail: str
+    trend: Literal["up", "down", "flat", "info"]
+
+
+class SiteInsight(Model):
+    """A weekly AI summary written by Amazon Bedrock from aggregate numbers only."""
+
+    headline: str
+    summary: str
+    highlights: list[InsightHighlight]
+    recommendation: str
+    model: str
+    provider: str
+    generated_at: str
+    period_until: str
+    visits: int
+
+
+class SiteInsightState(Model):
+    available: bool
+    provider: str
+    model: str
+    insight: SiteInsight | None = None
+    # No insight yet, or the latest is over a week old.
+    stale: bool = True
+
+
+class InsightRequest(Model):
+    tz: str | None = Field(default=None, max_length=64)
 
 
 class IncidentPage(Model):

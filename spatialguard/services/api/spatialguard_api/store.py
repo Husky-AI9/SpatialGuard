@@ -119,7 +119,7 @@ def cleanup_retention(store):
                         if belongs:
                             db.execute("DELETE FROM evidence WHERE id=?", (evidence_row["id"],))
                     db.execute("DELETE FROM events WHERE site_id=? AND resource=?", (site_id, row["id"]))
-                    db.execute("DELETE FROM observation_footpoints WHERE incident_id=?", (row["id"],))
+                    db.execute("DELETE FROM observation_tracks WHERE incident_id=?", (row["id"],))
                     db.execute("DELETE FROM incidents WHERE id=?", (row["id"],))
                     db.execute("DELETE FROM runs WHERE id=? AND site_id=?", (row["run_id"], site_id))
                     removed_incidents += 1
@@ -188,13 +188,24 @@ class Store:
                 weekly_summary INTEGER NOT NULL DEFAULT 0,
                 marketing INTEGER NOT NULL DEFAULT 0
             );
-            -- First detected foot point of an analyzed recording, in image coordinates
-            -- (0..1). Used only to place estimated sightings on the people heatmap.
-            CREATE TABLE IF NOT EXISTS observation_footpoints (
+            -- Person path detected in a live event's recording (see tracks.py):
+            -- the analysis queue and its result. Points are [t, foot_x, foot_y,
+            -- confidence] in image coordinates; the recording is never kept.
+            CREATE TABLE IF NOT EXISTS observation_tracks (
                 incident_id TEXT NOT NULL, observation_id TEXT NOT NULL, site_id TEXT NOT NULL,
-                foot_x REAL NOT NULL, foot_y REAL NOT NULL, confidence REAL NOT NULL,
+                camera_id TEXT NOT NULL, observed_at TEXT NOT NULL,
+                state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, not_before REAL NOT NULL DEFAULT 0,
+                lease REAL, points TEXT, detector TEXT, updated TEXT,
                 PRIMARY KEY (incident_id, observation_id)
             );
+            CREATE INDEX IF NOT EXISTS observation_tracks_due ON observation_tracks(state, not_before);
+            CREATE INDEX IF NOT EXISTS observation_tracks_site ON observation_tracks(site_id);
+            -- Weekly AI summary of a site's analytics (Amazon Bedrock); aggregate numbers only.
+            CREATE TABLE IF NOT EXISTS site_insights (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, site_id TEXT NOT NULL,
+                created TEXT NOT NULL, data TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS site_insights_site ON site_insights(site_id, id);
             CREATE TABLE IF NOT EXISTS notification_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL,
                 category TEXT NOT NULL, channel TEXT NOT NULL, state TEXT NOT NULL,

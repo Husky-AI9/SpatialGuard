@@ -88,6 +88,12 @@ def main():
     from .ring_worker import process_one as ring_process, recover_bundled_events
     ring = RingService(store)
     recover_bundled_events(store)
+    # Person detection on event recordings runs beside event processing, so a
+    # slow clip never delays new incidents. It has its own Ring client.
+    import threading
+    from . import tracks
+    threading.Thread(target=tracks.run_forever, args=(RingService(store), store), daemon=True,
+                     name="person-analysis").start()
     cleanup_at = 0
     retention_at = 0
     while True:

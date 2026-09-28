@@ -910,13 +910,16 @@ def test_recording_route_requires_session_and_does_not_cache(service, monkeypatc
     assert client.get(track_path, headers={'Authorization':'Bearer clip-token'}).status_code == 404
 
 
-def test_analyzed_recording_keeps_only_the_first_foot_point_for_the_heatmap(service, monkeypatch):
+def test_analyzed_recording_keeps_the_detected_path_not_the_video(service, monkeypatch):
     mapped(service)
     service.webhook(*delivery(service))
     process_one(service, Engine())
     with service.store.connect() as db:
         data=json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
         db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',('clip-test','owner',digest('clip-token'),'test','android',time.time()+600))
+        # The live event was queued for automatic analysis when its incident was recorded.
+        queued=db.execute('SELECT state FROM observation_tracks').fetchall()
+    assert [r['state'] for r in queued]==['queued']
     observation=data['observations'][0]['observation_id']
     path=f"/v1/incidents/{data['id']}/observations/{observation}/clip"
     client=TestClient(create_app(service.store.path,ring_service=service))
@@ -931,8 +934,48 @@ def test_analyzed_recording_keeps_only_the_first_foot_point_for_the_heatmap(serv
     tracked=client.get(path.removesuffix('/clip')+'/track?clip_digest='+clip_digest, headers=auth)
     assert tracked.status_code==200 and len(tracked.json()['points'])==2
     with service.store.connect() as db:
-        rows=[tuple(r) for r in db.execute('SELECT incident_id,observation_id,site_id,foot_x,foot_y FROM observation_footpoints')]
-    assert rows==[(data['id'], observation, 'site_demo', .3, .8)]
+        row=db.execute('SELECT state,site_id,points FROM observation_tracks').fetchone()
+    assert row['state']=='done' and row['site_id']=='site_demo'
+    assert json.loads(row['points'])==[[0,.3,.8,.9],[1,.6,.8,.9]]
     assert client.delete(f"/v1/incidents/{data['id']}", headers=auth).status_code==204
     with service.store.connect() as db:
-        assert db.execute('SELECT COUNT(*) FROM observation_footpoints').fetchone()[0]==0
+        assert db.execute('SELECT COUNT(*) FROM observation_tracks').fetchone()[0]==0
+
+
+def test_every_live_event_is_analyzed_automatically(service, monkeypatch):
+    from spatialguard_api import tracks
+    from spatialguard_api.models import TestTrackPoint, TestVideoTrack
+    mapped(service)
+    service.webhook(*delivery(service))
+    process_one(service, Engine())
+    with service.store.connect() as db:
+        db.execute('UPDATE observation_tracks SET not_before=0')
+    fetched=[]
+    service.provider.clip=lambda *args:(fetched.append(1) or b'\x00\x00\x00\x18ftypisomvideo',{})
+    monkeypatch.setattr(tracks, 'MODEL', type('M', (), {'is_file': lambda self: True})())
+    walk=[TestTrackPoint(t_seconds=t/10, foot_x_norm=.5, foot_y_norm=.9, confidence=.8) for t in range(30)]
+    monkeypatch.setattr(tracks, 'track_video', lambda identity, path: TestVideoTrack(video_id=identity, detector='yolo', points=walk))
+    assert tracks.process_one(service, service.store) is True
+    assert tracks.process_one(service, service.store) is False
+    with service.store.connect() as db:
+        row=db.execute('SELECT state,points FROM observation_tracks').fetchone()
+    # Thinned to a steady rate; the recording itself is not stored anywhere.
+    assert fetched and row['state']=='done' and len(json.loads(row['points']))==10
+    assert not any((tracks.DATA / 'transient-recordings').glob('**/*.mp4'))
+
+
+def test_automatic_analysis_retries_until_the_recording_is_ready(service, monkeypatch):
+    from spatialguard_api import tracks
+    mapped(service)
+    service.webhook(*delivery(service))
+    process_one(service, Engine())
+    with service.store.connect() as db:
+        db.execute('UPDATE observation_tracks SET not_before=0')
+    monkeypatch.setattr(tracks, 'MODEL', type('M', (), {'is_file': lambda self: True})())
+    def not_ready(*args):
+        raise OSError('not ready')
+    service.provider.clip=not_ready
+    assert tracks.process_one(service, service.store) is True
+    with service.store.connect() as db:
+        row=db.execute('SELECT state,attempts,not_before FROM observation_tracks').fetchone()
+    assert row['state']=='queued' and row['attempts']==1 and row['not_before']>time.time()+60

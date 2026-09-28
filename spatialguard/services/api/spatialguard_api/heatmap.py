@@ -6,18 +6,21 @@ Two kinds of sighting feed the map:
   follows their stated position uncertainty, so vague positions spread out and
   precise ones stay sharp.
 * Camera events with no position (live Ring motion, which only says which
-  camera fired) become one estimated dot each inside that camera's view: where
-  the person first appeared in the recording when that recording has been
-  analyzed, otherwise a stable estimated spot for that event. Events from
-  cameras that are not on the map stay counted in ``unpositioned``.
+  camera fired) use the person path detected in the event's recording (see
+  tracks.py): every point where the person walked is projected into that
+  camera's view on the map. Until the recording has been analyzed, the event is
+  one stable estimated dot in the camera's view; if the detector found nobody
+  (a car, an animal, a shadow) the event is left out. Events from cameras that
+  are not on the map stay counted in ``unpositioned``.
 
 Values use a saturating contour scale rather than a share of the busiest spot:
 one sighting's core reads orange-red with a blue rim, and overlapping sightings
 merge into solid red. A single visit therefore stays a visible dot however busy
 the rest of the map is.
 
-The response counts the two separately (``samples`` and ``estimated``) so the
-client can say how much of the map is an estimate. The grid is returned normalised to 0..1 together with its geometry, so a
+The response counts each kind (``samples`` positioned, ``tracked`` walked
+paths, ``estimated`` dots) so the client can say how much of the map is an
+estimate. The grid is returned normalised to 0..1 together with its geometry, so a
 client can draw it in 2D or 3D at any zoom.
 
 Time windows are presets today (1 h, 12 h, 24 h) but the builder takes an
@@ -133,16 +136,33 @@ def estimated_foot(observation_id: str) -> tuple[float, float]:
     return 0.15 + 0.7 * u, 0.55 + 0.42 * v
 
 
+def event_points(incident: dict, observation: dict, camera: dict, tracks: dict) -> tuple[str, list[tuple[float, float, float]]]:
+    """Where a camera event's person was on the floor, as (seconds after the event, x, y).
+
+    Returns ("tracked", path), ("estimated", [one dot]) or ("none", []) when the
+    detector found no person in the recording.
+    """
+    key = (incident.get("id", ""), observation.get("observation_id", ""))
+    track = tracks.get(key)
+    if track and track["state"] == "no_person":
+        return "none", []
+    if track and track["state"] == "done" and track["points"]:
+        return "tracked", [(t, *project_foot(camera, fx, fy)) for t, fx, fy, *_ in track["points"]]
+    return "estimated", [(0.0, *project_foot(camera, *estimated_foot("/".join(key))))]
+
+
 def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: datetime,
-                  feet: dict[tuple[str, str], tuple[float, float, float]] | None = None) -> dict:
-    """``feet`` maps (incident id, observation id) to a detected (foot x, foot y, confidence)."""
-    feet = feet or {}
+                  tracks: dict[tuple[str, str], dict] | None = None) -> dict:
+    """``tracks`` maps (incident id, observation id) to a detected path (tracks.load)."""
+    tracks = tracks or {}
     layout = site["layout"]
     bounds = layout_bounds(layout)
     floor_ids = {floor["id"] for floor in layout.get("floors", [])}
     cameras = {camera["id"]: camera for camera in layout.get("cameras", []) if camera.get("id")}
     points: list[tuple[float, float, float]] = []
     guesses: list[tuple[float, float, float]] = []
+    walked: list[tuple[float, float, float]] = []
+    tracked = 0
     estimated: dict[str, int] = {}
     unpositioned: dict[str, int] = {}
     for incident in incidents:
@@ -158,12 +178,13 @@ def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: dat
             elif observation.get("category") != "coverage_gap":
                 source = observation.get("source_id") or "unknown"
                 if source in cameras:
-                    estimated[source] = estimated.get(source, 0) + 1
-                    key = (incident.get("id", ""), observation.get("observation_id", ""))
-                    detected = feet.get(key)
-                    foot = detected[:2] if detected else estimated_foot("/".join(key))
-                    x, y = project_foot(cameras[source], *foot)
-                    guesses.append((x, y, ESTIMATE_SIGMA_M))
+                    kind, path = event_points(incident, observation, cameras[source], tracks)
+                    if kind == "tracked":
+                        tracked += 1
+                        walked.extend((x, y, ESTIMATE_SIGMA_M) for _, x, y in path)
+                    elif kind == "estimated":
+                        estimated[source] = estimated.get(source, 0) + 1
+                        guesses.extend((x, y, ESTIMATE_SIGMA_M) for _, x, y in path)
                 else:
                     unpositioned[source] = unpositioned.get(source, 0) + 1
 
@@ -172,6 +193,7 @@ def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: dat
         "since": since.isoformat().replace("+00:00", "Z"),
         "until": until.isoformat().replace("+00:00", "Z"),
         "samples": 0,
+        "tracked": 0,
         "estimated": 0,
         "estimated_cameras": [{"camera_id": k, "events": v} for k, v in sorted(estimated.items())],
         "cell_m": CELL_M,
@@ -208,11 +230,13 @@ def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: dat
 
     kept = splat(points)
     guessed = splat(guesses)
-    peak = float(grid.max()) if kept or guessed else 0.0
+    walked_points = splat(walked)
+    peak = float(grid.max()) if kept or guessed or walked_points else 0.0
     if peak > 0:
         grid = 1 - np.exp(-CONTOUR_GAIN * grid)
     result.update(
         samples=kept,
+        tracked=tracked if walked_points else 0,
         estimated=guessed,
         cell_m=round(cell, 4),
         origin_xy_m=[round(x0, 4), round(y0, 4)],

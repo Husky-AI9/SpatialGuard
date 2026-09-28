@@ -133,16 +133,33 @@ def test_estimated_dots_stay_put_between_refreshes():
     assert first["values"] == again["values"]
 
 
-def test_a_detected_first_foot_point_places_the_dot():
+def track(*points, state="done"):
+    return {"state": state, "points": [[t, x, y, 0.9] for t, x, y in points]}
+
+
+def test_a_detected_path_draws_where_the_person_walked():
     event = dict(motion("front"), observation_id="obs_a")
     record = {**incident(NOW, [event]), "id": "inc_a"}
     window = (NOW - timedelta(hours=1), NOW + timedelta(seconds=1))
     # Feet at the bottom centre of the image: just in front of the camera.
-    near = hm.build_heatmap(CAMERA_SITE, [record], *window, {("inc_a", "obs_a"): (0.5, 1.0, 0.9)})
+    near = hm.build_heatmap(CAMERA_SITE, [record], *window, {("inc_a", "obs_a"): track((0, 0.5, 1.0))})
     # Feet high in the image: far away, straight ahead at the camera's range.
-    far = hm.build_heatmap(CAMERA_SITE, [record], *window, {("inc_a", "obs_a"): (0.5, 0.35, 0.9)})
+    far = hm.build_heatmap(CAMERA_SITE, [record], *window, {("inc_a", "obs_a"): track((0, 0.5, 0.35))})
+    assert near["tracked"] == 1 and near["estimated"] == 0
     assert cell_of(near, 1.75, 4) > 0.7 and cell_of(near, 6, 4) < 0.05
     assert cell_of(far, 6, 4) > 0.7 and cell_of(far, 1.75, 4) < 0.05
+    # A walk from near to far lights the whole route, not just its first point.
+    walk = hm.build_heatmap(CAMERA_SITE, [record], *window,
+                            {("inc_a", "obs_a"): track(*[(i * 0.5, 0.5, 1.0 - i * 0.065) for i in range(11)])})
+    assert cell_of(walk, 1.75, 4) > 0.7 and cell_of(walk, 6, 4) > 0.7 and cell_of(walk, 4, 4) > 0.5
+
+
+def test_events_with_no_person_detected_are_left_out():
+    event = dict(motion("front"), observation_id="obs_a")
+    record = {**incident(NOW, [event]), "id": "inc_a"}
+    result = hm.build_heatmap(CAMERA_SITE, [record], NOW - timedelta(hours=1), NOW + timedelta(seconds=1),
+                              {("inc_a", "obs_a"): track(state="no_person")})
+    assert result["tracked"] == 0 and result["estimated"] == 0 and result["values"] == []
 
 
 def test_project_foot_matches_the_web_movement_estimate():

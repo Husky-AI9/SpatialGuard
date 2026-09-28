@@ -18,3 +18,16 @@ body {
   height: 100%;
   border-radius: 0;
 }
+
+/* Analytics mode: a normal scrolling page on the app's page color. */
+html.embed-analytics,
+html.embed-analytics body {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+  background: #f3f4f9;
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+html.embed-analytics #root { height: auto; }
+.embed-analytics-page { padding: 14px 12px 28px; }

@@ -4,6 +4,7 @@ import secrets
 import sqlite3
 import time
 import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -768,7 +769,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             engine_call(tf.delete_site, engine_site)
             with store.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
-                for table in ("incidents", "evidence", "runs", "events", "observation_footpoints"):
+                for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights"):
                     db.execute(f"DELETE FROM {table} WHERE site_id=?", (engine_site,))
                 db.execute("DELETE FROM sites WHERE id=? AND owner=?", (engine_site, p["owner"]))
                 db.execute("DELETE FROM plans WHERE engine_site=? AND owner=?", (engine_site, p["owner"]))
@@ -778,7 +779,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             for site_id in site_ids:
-                for table in ("incidents", "evidence", "runs", "events", "observation_footpoints"):
+                for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights"):
                     db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             for table in (
                 "sites", "plans", "sessions", "pairing", "audit", "account_preferences",
@@ -895,7 +896,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             engine_call(tf.delete_site, site_id)
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            for table in ("incidents", "evidence", "runs", "events", "observation_footpoints"):
+            for table in ("incidents", "evidence", "runs", "events", "observation_tracks", "site_insights"):
                 db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             db.execute("DELETE FROM sites WHERE id=? AND owner=?", (site_id, p["owner"]))
             db.execute("DELETE FROM settings WHERE key=? AND value=?", (active_key(p), site_id))
@@ -1195,6 +1196,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 p=Depends(principal)):
         """People heatmap for a preset window, or an explicit since/until range."""
         from . import heatmap as hm
+        from . import tracks
         try:
             start, end = hm.resolve_range(window, since, until)
         except ValueError as exc:
@@ -1202,9 +1204,83 @@ def create_app(db_path=None, engine=None, ring_service=None):
         with store.connect() as db:
             site = owned(db, site_id, p)
             rows = db.execute("SELECT data FROM incidents WHERE site_id=?", (site_id,)).fetchall()
-            feet = {(r["incident_id"], r["observation_id"]): (r["foot_x"], r["foot_y"], r["confidence"])
-                    for r in db.execute("SELECT * FROM observation_footpoints WHERE site_id=?", (site_id,))}
-        return hm.build_heatmap(site, [json.loads(r["data"]) for r in rows], start, end, feet)
+            paths = tracks.load(db, site_id)
+        return hm.build_heatmap(site, [json.loads(r["data"]) for r in rows], start, end, paths)
+
+    def site_analytics(db, site, tz):
+        from . import analytics, tracks
+        rows = db.execute("SELECT data FROM incidents WHERE site_id=?", (site["id"],)).fetchall()
+        since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+        changes = [r["at"] for r in db.execute(
+            "SELECT at FROM audit WHERE owner=? AND action='layout.changed' AND at>=? ORDER BY at", (site["owner_id"], since))]
+        return analytics.build(site, [json.loads(r["data"]) for r in rows], tracks.load(db, site["id"]), tz,
+                               layout_changes=changes)
+
+    def owned_for_analytics(db, site_id, p):
+        site = owned(db, site_id, p)
+        return {**site, "owner_id": p["owner"]}
+
+    @app.get("/v1/sites/{site_id}/analytics", response_model=m.SiteAnalytics)
+    def analytics_for_site(site_id: str, tz: str | None = Query(None, max_length=64), p=Depends(principal)):
+        """Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone."""
+        with store.connect() as db:
+            return site_analytics(db, owned_for_analytics(db, site_id, p), tz)
+
+    @app.get("/v1/analytics/sites", response_model=list[m.SiteAnalyticsSummary])
+    def analytics_overview(tz: str | None = Query(None, max_length=64), p=Depends(principal)):
+        """One summary row per site the owner has, for the site switcher and future portfolio views."""
+        from . import analytics
+        with store.connect() as db:
+            sites = [json.loads(r["data"]) for r in db.execute("SELECT data FROM sites WHERE owner=?", (p["owner"],))]
+            summaries = [site_analytics(db, {**site, "owner_id": p["owner"]}, tz) for site in sites]
+        return analytics.overview(summaries)
+
+    def latest_insight(db, site_id):
+        row = db.execute("SELECT data FROM site_insights WHERE site_id=? ORDER BY id DESC LIMIT 1", (site_id,)).fetchone()
+        return json.loads(row["data"]) if row else None
+
+    def insight_state(insight):
+        from . import insights
+        info = insights.status()
+        stale = True
+        if insight:
+            age = datetime.now(timezone.utc) - datetime.fromisoformat(insight["generated_at"].replace("Z", "+00:00"))
+            stale = age > timedelta(days=7)
+        return m.SiteInsightState(available=info["available"], provider=info["provider"], model=info["model"],
+                                  insight=insight, stale=stale)
+
+    @app.get("/v1/sites/{site_id}/analytics/insight", response_model=m.SiteInsightState)
+    def site_insight(site_id: str, p=Depends(principal)):
+        with store.connect() as db:
+            owned(db, site_id, p)
+            return insight_state(latest_insight(db, site_id))
+
+    @app.post("/v1/sites/{site_id}/analytics/insight", response_model=m.SiteInsightState)
+    def create_site_insight(site_id: str, body: m.InsightRequest, p=Depends(principal)):
+        """Write this week's AI summary on Amazon Bedrock from the aggregate numbers only."""
+        from . import insights
+        with store.connect() as db:
+            site = owned_for_analytics(db, site_id, p)
+            latest = latest_insight(db, site_id)
+            if latest:
+                age = datetime.now(timezone.utc) - datetime.fromisoformat(latest["generated_at"].replace("Z", "+00:00"))
+                if age < timedelta(seconds=60):
+                    return insight_state(latest)
+            metrics = site_analytics(db, site, body.tz)
+        try:
+            result = insights.generate(metrics)
+        except insights.InsightUnavailable as exc:
+            raise HTTPException(503, str(exc)) from None
+        insight = {key: result[key] for key in ("headline", "summary", "highlights", "recommendation", "model", "provider")}
+        insight.update(generated_at=now(), period_until=metrics["period"]["until"], visits=metrics["totals"]["visits"])
+        with store.connect() as db:
+            owned(db, site_id, p)
+            db.execute("INSERT INTO site_insights(site_id, created, data) VALUES (?,?,?)", (site_id, now(), dump(insight)))
+            # Keep a short history per site.
+            db.execute("DELETE FROM site_insights WHERE site_id=? AND id NOT IN "
+                       "(SELECT id FROM site_insights WHERE site_id=? ORDER BY id DESC LIMIT 12)", (site_id, site_id))
+            audit(db, p["owner"], "insight.generated", site_id)
+        return insight_state(insight)
 
     def incident_row(db, incident_id, p):
         row = db.execute("SELECT * FROM incidents WHERE id=?", (incident_id,)).fetchone()
@@ -1256,7 +1332,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             # record that the owner took this action.
             db.execute("DELETE FROM events WHERE site_id=? AND resource=?", (row["site_id"], incident_id))
             db.execute("DELETE FROM live_incident_accounts WHERE incident_id=?", (incident_id,))
-            db.execute("DELETE FROM observation_footpoints WHERE incident_id=?", (incident_id,))
+            db.execute("DELETE FROM observation_tracks WHERE incident_id=?", (incident_id,))
             db.execute("DELETE FROM incidents WHERE id=?", (incident_id,))
             db.execute("DELETE FROM runs WHERE id=? AND site_id=?", (row["run_id"], row["site_id"]))
             event(db, row["site_id"], "incident.deleted", incident_id)

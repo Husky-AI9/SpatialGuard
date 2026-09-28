@@ -1601,6 +1601,287 @@
         }
       }
     },
+    "/v1/sites/{site_id}/heatmap": {
+      "get": {
+        "summary": "Heatmap",
+        "description": "People heatmap for a preset window, or an explicit since/until range.",
+        "operationId": "heatmap_v1_sites__site_id__heatmap_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(1h|12h|24h)$",
+              "default": "24h",
+              "title": "Window"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Heatmap"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/analytics": {
+      "get": {
+        "summary": "Analytics For Site",
+        "description": "Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone.",
+        "operationId": "analytics_for_site_v1_sites__site_id__analytics_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          },
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tz"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteAnalytics"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analytics/sites": {
+      "get": {
+        "summary": "Analytics Overview",
+        "description": "One summary row per site the owner has, for the site switcher and future portfolio views.",
+        "operationId": "analytics_overview_v1_analytics_sites_get",
+        "parameters": [
+          {
+            "name": "tz",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tz"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SiteAnalyticsSummary"
+                  },
+                  "title": "Response Analytics Overview V1 Analytics Sites Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sites/{site_id}/analytics/insight": {
+      "get": {
+        "summary": "Site Insight",
+        "operationId": "site_insight_v1_sites__site_id__analytics_insight_get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteInsightState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Site Insight",
+        "description": "Write this week's AI summary on Amazon Bedrock from the aggregate numbers only.",
+        "operationId": "create_site_insight_v1_sites__site_id__analytics_insight_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InsightRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteInsightState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/incidents/{incident_id}": {
       "get": {
         "summary": "Incident",
@@ -2897,6 +3178,304 @@
         "type": "object",
         "title": "AccountPreferences"
       },
+      "AnalyticsDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "previous": {
+            "type": "integer",
+            "title": "Previous"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "visits",
+          "previous"
+        ],
+        "title": "AnalyticsDay"
+      },
+      "AnalyticsEntrance": {
+        "properties": {
+          "camera_id": {
+            "type": "string",
+            "title": "Camera Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "previous": {
+            "type": "integer",
+            "title": "Previous"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "camera_id",
+          "name",
+          "visits",
+          "previous"
+        ],
+        "title": "AnalyticsEntrance"
+      },
+      "AnalyticsHour": {
+        "properties": {
+          "hour": {
+            "type": "integer",
+            "title": "Hour"
+          },
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "previous": {
+            "type": "integer",
+            "title": "Previous"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hour",
+          "visits",
+          "previous"
+        ],
+        "title": "AnalyticsHour"
+      },
+      "AnalyticsPeriod": {
+        "properties": {
+          "since": {
+            "type": "string",
+            "title": "Since"
+          },
+          "until": {
+            "type": "string",
+            "title": "Until"
+          },
+          "previous_since": {
+            "type": "string",
+            "title": "Previous Since"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "since",
+          "until",
+          "previous_since",
+          "days"
+        ],
+        "title": "AnalyticsPeriod"
+      },
+      "AnalyticsQuality": {
+        "properties": {
+          "tracked": {
+            "type": "integer",
+            "title": "Tracked"
+          },
+          "positioned": {
+            "type": "integer",
+            "title": "Positioned"
+          },
+          "estimated": {
+            "type": "integer",
+            "title": "Estimated"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tracked",
+          "positioned",
+          "estimated"
+        ],
+        "title": "AnalyticsQuality"
+      },
+      "AnalyticsTotals": {
+        "properties": {
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "previous": {
+            "type": "integer",
+            "title": "Previous"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "avg_visit_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Visit S"
+          },
+          "avg_visit_previous_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Visit Previous S"
+          },
+          "peak_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak Hour"
+          },
+          "peak_hour_visits": {
+            "type": "integer",
+            "title": "Peak Hour Visits"
+          },
+          "busiest_zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Busiest Zone"
+          },
+          "quietest_zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quietest Zone"
+          },
+          "first_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Hour"
+          },
+          "last_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Hour"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "visits",
+          "previous",
+          "change_pct",
+          "avg_visit_s",
+          "avg_visit_previous_s",
+          "peak_hour",
+          "peak_hour_visits",
+          "busiest_zone",
+          "quietest_zone",
+          "first_hour",
+          "last_hour"
+        ],
+        "title": "AnalyticsTotals"
+      },
+      "AnalyticsZone": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "previous": {
+            "type": "integer",
+            "title": "Previous"
+          },
+          "dwell_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dwell S"
+          },
+          "dwell_previous_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dwell Previous S"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "visits",
+          "previous",
+          "dwell_s",
+          "dwell_previous_s"
+        ],
+        "title": "AnalyticsZone"
+      },
       "Association": {
         "properties": {
           "from_observation_id": {
@@ -3567,6 +4146,119 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "Heatmap": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "since": {
+            "type": "string",
+            "title": "Since"
+          },
+          "until": {
+            "type": "string",
+            "title": "Until"
+          },
+          "samples": {
+            "type": "integer",
+            "title": "Samples"
+          },
+          "tracked": {
+            "type": "integer",
+            "title": "Tracked",
+            "default": 0
+          },
+          "estimated": {
+            "type": "integer",
+            "title": "Estimated",
+            "default": 0
+          },
+          "estimated_cameras": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapUnpositioned"
+            },
+            "type": "array",
+            "title": "Estimated Cameras",
+            "default": []
+          },
+          "cell_m": {
+            "type": "number",
+            "title": "Cell M"
+          },
+          "origin_xy_m": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Origin Xy M"
+          },
+          "columns": {
+            "type": "integer",
+            "title": "Columns"
+          },
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "values": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Values"
+          },
+          "unpositioned": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapUnpositioned"
+            },
+            "type": "array",
+            "title": "Unpositioned"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site_id",
+          "since",
+          "until",
+          "samples",
+          "cell_m",
+          "origin_xy_m",
+          "columns",
+          "rows",
+          "values",
+          "unpositioned"
+        ],
+        "title": "Heatmap",
+        "description": "Normalised people density on a site grid; row-major from the minimum y."
+      },
+      "HeatmapUnpositioned": {
+        "properties": {
+          "camera_id": {
+            "type": "string",
+            "title": "Camera Id"
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "camera_id",
+          "events"
+        ],
+        "title": "HeatmapUnpositioned"
+      },
       "Incident": {
         "properties": {
           "id": {
@@ -3815,6 +4507,55 @@
           "incidents"
         ],
         "title": "IncidentPage"
+      },
+      "InsightHighlight": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "flat",
+              "info"
+            ],
+            "title": "Trend"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "detail",
+          "trend"
+        ],
+        "title": "InsightHighlight"
+      },
+      "InsightRequest": {
+        "properties": {
+          "tz": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "InsightRequest"
       },
       "Layout": {
         "properties": {
@@ -4821,12 +5562,10 @@
             "title": "Name"
           },
           "status": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Status"
           },
           "capabilities": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Capabilities"
           },
@@ -4879,7 +5618,6 @@
             "title": "Support"
           },
           "configuration": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Configuration"
           },
@@ -5311,6 +6049,261 @@
           "monitoring"
         ],
         "title": "Site"
+      },
+      "SiteAnalytics": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "site_name": {
+            "type": "string",
+            "title": "Site Name"
+          },
+          "time_zone": {
+            "type": "string",
+            "title": "Time Zone"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "period": {
+            "$ref": "#/components/schemas/AnalyticsPeriod"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AnalyticsTotals"
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsDay"
+            },
+            "type": "array",
+            "title": "Daily"
+          },
+          "hourly": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsHour"
+            },
+            "type": "array",
+            "title": "Hourly"
+          },
+          "week_grid": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Week Grid"
+          },
+          "zones": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsZone"
+            },
+            "type": "array",
+            "title": "Zones"
+          },
+          "entrances": {
+            "items": {
+              "$ref": "#/components/schemas/AnalyticsEntrance"
+            },
+            "type": "array",
+            "title": "Entrances"
+          },
+          "quality": {
+            "$ref": "#/components/schemas/AnalyticsQuality"
+          },
+          "layout_changes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Layout Changes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site_id",
+          "site_name",
+          "time_zone",
+          "generated_at",
+          "period",
+          "totals",
+          "daily",
+          "hourly",
+          "week_grid",
+          "zones",
+          "entrances",
+          "quality",
+          "layout_changes"
+        ],
+        "title": "SiteAnalytics",
+        "description": "Foot traffic for one site: the last 7 local days against the 7 before."
+      },
+      "SiteAnalyticsSummary": {
+        "properties": {
+          "site_id": {
+            "type": "string",
+            "title": "Site Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          },
+          "previous": {
+            "type": "integer",
+            "title": "Previous"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "peak_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak Hour"
+          },
+          "busiest_zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Busiest Zone"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "site_id",
+          "name",
+          "visits",
+          "previous",
+          "change_pct",
+          "peak_hour",
+          "busiest_zone"
+        ],
+        "title": "SiteAnalyticsSummary"
+      },
+      "SiteInsight": {
+        "properties": {
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "highlights": {
+            "items": {
+              "$ref": "#/components/schemas/InsightHighlight"
+            },
+            "type": "array",
+            "title": "Highlights"
+          },
+          "recommendation": {
+            "type": "string",
+            "title": "Recommendation"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "period_until": {
+            "type": "string",
+            "title": "Period Until"
+          },
+          "visits": {
+            "type": "integer",
+            "title": "Visits"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "headline",
+          "summary",
+          "highlights",
+          "recommendation",
+          "model",
+          "provider",
+          "generated_at",
+          "period_until",
+          "visits"
+        ],
+        "title": "SiteInsight",
+        "description": "A weekly AI summary written by Amazon Bedrock from aggregate numbers only."
+      },
+      "SiteInsightState": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "insight": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiteInsight"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "available",
+          "provider",
+          "model"
+        ],
+        "title": "SiteInsightState"
       },
       "StreamAnswer": {
         "properties": {
