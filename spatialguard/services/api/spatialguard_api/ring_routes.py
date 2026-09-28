@@ -222,14 +222,31 @@ def install(app, store, principal, service=None):
 
     @app.get('/v1/incidents/{incident_id}/observations/{observation_id}/track', response_model=TestVideoTrack)
     def incident_track(incident_id: str, observation_id: str, response: Response,
-                       clip_digest: str = Query(pattern=r'^[0-9a-f]{64}$'), p=Depends(principal)):
+                       clip_digest: str | None = Query(None, pattern=r'^[0-9a-f]{64}$'), p=Depends(principal)):
+        """The person detected in an event's recording.
+
+        With `clip_digest`, the analysis is checked against the exact clip the
+        caller is playing. Without it (phones that do not hash large clips) the
+        server analyzes the same authorized recording it serves for playback.
+        A path already found by automatic analysis is returned straight away.
+        """
         require_feature('classification')
         require_ring_consent(p['owner'])
         response.headers['Cache-Control'] = 'private, no-store'
+        from . import tracks
+        if clip_digest is None:
+            ring.authorize_incident_recording(p['owner'], incident_id, observation_id)
+            with store.connect() as db:
+                saved = db.execute(
+                    "SELECT state, points, detector FROM observation_tracks WHERE incident_id=? AND observation_id=? "
+                    "AND state IN ('done','no_person')", (incident_id, observation_id)).fetchone()
+            if saved:
+                return TestVideoTrack(video_id=observation_id, detector=saved['detector'] or 'automatic', points=[
+                    {'t_seconds': t, 'foot_x_norm': x, 'foot_y_norm': y, 'confidence': c}
+                    for t, x, y, c in json.loads(saved['points'] or '[]')])
         result = tracker.analyze(ring, p['owner'], incident_id, observation_id, clip_digest)
         # Keep the detected foot points (not the recording) for the heatmap and
         # Site Analytics, exactly as automatic analysis does.
-        from . import tracks
         with store.connect() as db:
             row = db.execute('SELECT data FROM incidents WHERE id=?', (incident_id,)).fetchone()
             observation = next((o for o in json.loads(row['data'])['observations']

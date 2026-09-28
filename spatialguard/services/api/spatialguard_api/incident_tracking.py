@@ -16,7 +16,7 @@ class IncidentTracker:
         self._lock = threading.Lock()
         self._tracks = {}
 
-    def analyze(self, ring, owner, incident, observation, clip_digest):
+    def analyze(self, ring, owner, incident, observation, clip_digest=None):
         # Always reauthorize, even a cached result, after unlink/remap/deletion.
         ring.authorize_incident_recording(owner, incident, observation)
         if not self._lock.acquire(blocking=False):
@@ -29,7 +29,8 @@ class IncidentTracker:
             if cached:
                 return cached[1]
             media, _ = ring.incident_clip(owner, incident, observation)
-            if hashlib.sha256(media).hexdigest() != clip_digest:
+            # Without a digest, the analyzed clip is the one this server serves for playback.
+            if clip_digest is not None and hashlib.sha256(media).hexdigest() != clip_digest:
                 raise HTTPException(409, 'The recording changed. Reload the recording to synchronize movement.')
             directory = DATA / 'transient-recordings'
             directory.mkdir(parents=True, exist_ok=True)

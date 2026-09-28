@@ -942,6 +942,34 @@ def test_analyzed_recording_keeps_the_detected_path_not_the_video(service, monke
         assert db.execute('SELECT COUNT(*) FROM observation_tracks').fetchone()[0]==0
 
 
+def test_phones_can_ask_for_movement_without_hashing_the_clip(service, monkeypatch):
+    mapped(service)
+    service.webhook(*delivery(service))
+    process_one(service, Engine())
+    with service.store.connect() as db:
+        data=json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',('clip-test','owner',digest('clip-token'),'test','ios',time.time()+600))
+    observation=data['observations'][0]['observation_id']
+    track_path=f"/v1/incidents/{data['id']}/observations/{observation}/track"
+    client=TestClient(create_app(service.store.path,ring_service=service))
+    auth={'Authorization':'Bearer clip-token'}
+    service.provider.clip=lambda *args:(b'\x00\x00\x00\x18ftypisomvideo',{})
+    from spatialguard_api.models import TestTrackPoint, TestVideoTrack
+    from spatialguard_api import incident_tracking
+    analyzed=[]
+    def detector(identity, path):
+        analyzed.append(identity)
+        return TestVideoTrack(video_id=identity, detector='test', points=[TestTrackPoint(t_seconds=0, foot_x_norm=.4, foot_y_norm=.8, confidence=.9)])
+    monkeypatch.setattr(incident_tracking, 'track_video', detector)
+    # No digest: the server analyzes the recording it serves for playback.
+    first=client.get(track_path, headers=auth)
+    assert first.status_code==200 and first.json()['points'][0]['foot_x_norm']==.4 and analyzed==[observation]
+    # Once a path is saved (by this or by automatic analysis) it comes straight back.
+    again=client.get(track_path, headers=auth)
+    assert again.status_code==200 and again.json()['points'][0]['foot_x_norm']==.4 and analyzed==[observation]
+    assert client.get(track_path).status_code==401
+
+
 def test_every_live_event_is_analyzed_automatically(service, monkeypatch):
     from spatialguard_api import tracks
     from spatialguard_api.models import TestTrackPoint, TestVideoTrack
