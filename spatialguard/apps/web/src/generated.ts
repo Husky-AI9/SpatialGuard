@@ -817,6 +817,8 @@ export interface paths {
         /**
          * Analytics For Site
          * @description Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone.
+         *
+         *     ``mode=live`` counts only visits seen by Ring cameras, leaving out simulated ones.
          */
         get: operations["analytics_for_site_v1_sites__site_id__analytics_get"];
         put?: never;
@@ -1006,6 +1008,123 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/demo/sites/{site_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Demo Status */
+        get: operations["demo_status_v1_demo_sites__site_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/demo/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo New Site
+         * @description Create a separate demo place from a drawing and its geometry, published through TwinForge.
+         */
+        post: operations["demo_new_site_v1_demo_sites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/demo/sites/{site_id}/cafe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Cafe
+         * @description Draw the café's business areas and mark which map cameras are simulated.
+         */
+        post: operations["demo_cafe_v1_demo_sites__site_id__cafe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/demo/sites/{site_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo History
+         * @description Replace the simulated customers with two fresh weeks of them.
+         */
+        post: operations["demo_history_v1_demo_sites__site_id__history_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/demo/sites/{site_id}/rush": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Demo Rush
+         * @description Send simulated customers to the counter now, one every few seconds.
+         */
+        post: operations["demo_rush_v1_demo_sites__site_id__rush_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/demo/sites/{site_id}/simulated": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Demo Clear
+         * @description Remove every simulated customer; real Ring visits are untouched.
+         */
+        delete: operations["demo_clear_v1_demo_sites__site_id__simulated_delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1810,6 +1929,11 @@ export interface components {
             at: string;
             /** Acknowledged */
             acknowledged: boolean;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated: boolean;
         };
         /** CrowdAlertSettings */
         CrowdAlertSettings: {
@@ -1883,6 +2007,123 @@ export interface components {
             categories: string[];
             /** Downstream */
             downstream: string;
+        };
+        /** DemoCafeInput */
+        DemoCafeInput: {
+            /** Name */
+            name?: string | null;
+            /** Zones */
+            zones: components["schemas"]["DemoZone"][];
+            /** Simulated Camera Ids */
+            simulated_camera_ids?: string[];
+        };
+        /** DemoCamera */
+        DemoCamera: {
+            /** Name */
+            name: string;
+            /** Position M */
+            position_m: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Heading Degrees
+             * @default 0
+             */
+            heading_degrees: number;
+            /**
+             * Range M
+             * @default 5
+             */
+            range_m: number;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated: boolean;
+        };
+        /** DemoHistoryInput */
+        DemoHistoryInput: {
+            /** Tz */
+            tz?: string | null;
+            /**
+             * Seed
+             * @default 1
+             */
+            seed: number;
+        };
+        /** DemoRoom */
+        DemoRoom: {
+            /** Name */
+            name: string;
+            /** Polygon Xy M */
+            polygon_xy_m: [
+                number,
+                number
+            ][];
+        };
+        /** DemoRushInput */
+        DemoRushInput: {
+            /**
+             * Customers
+             * @default 6
+             */
+            customers: number;
+            /**
+             * Interval Seconds
+             * @default 12
+             */
+            interval_seconds: number;
+        };
+        /**
+         * DemoSiteInput
+         * @description A new demo place from a drawing and the matching geometry, in map metres.
+         */
+        DemoSiteInput: {
+            /** Name */
+            name: string;
+            /** Drawing Png Base64 */
+            drawing_png_base64: string;
+            /** Drawing Origin Xy M */
+            drawing_origin_xy_m: [
+                number,
+                number
+            ];
+            /** Drawing Width M */
+            drawing_width_m: number;
+            /** Drawing Height M */
+            drawing_height_m: number;
+            /** Rooms */
+            rooms: components["schemas"]["DemoRoom"][];
+            /** Zones */
+            zones: components["schemas"]["DemoZone"][];
+            /** Cameras */
+            cameras: components["schemas"]["DemoCamera"][];
+        };
+        /** DemoStatus */
+        DemoStatus: {
+            /** Simulated Visits */
+            simulated_visits: number;
+            /** Live Visits */
+            live_visits: number;
+            /** Rush Active */
+            rush_active: boolean;
+            /** Simulated Camera Ids */
+            simulated_camera_ids: string[];
+        };
+        /**
+         * DemoZone
+         * @description A named business area drawn for the demo, in map metres.
+         */
+        DemoZone: {
+            /** Name */
+            name: string;
+            /** Polygon Xy M */
+            polygon_xy_m: [
+                number,
+                number
+            ][];
         };
         /** Event */
         Event: {
@@ -1994,6 +2235,11 @@ export interface components {
              */
             tracked: number;
             /**
+             * Simulated
+             * @default 0
+             */
+            simulated: number;
+            /**
              * Estimated
              * @default 0
              */
@@ -2076,6 +2322,11 @@ export interface components {
             classification?: components["schemas"]["IncidentClassification"] | null;
             /** Reviewed At */
             reviewed_at?: string | null;
+            /**
+             * Simulated
+             * @default false
+             */
+            simulated: boolean;
         };
         /** IncidentClassification */
         IncidentClassification: {
@@ -2657,6 +2908,11 @@ export interface components {
             expires_at: number;
             /** Email */
             email?: string | null;
+            /**
+             * Demo Tools
+             * @default false
+             */
+            demo_tools: boolean;
         };
         /** SessionToken */
         SessionToken: {
@@ -2691,6 +2947,11 @@ export interface components {
              * @constant
              */
             ring_status: "not_connected";
+            /**
+             * Simulated Camera Ids
+             * @default []
+             */
+            simulated_camera_ids: string[];
         };
         /**
          * SiteAnalytics
@@ -2725,6 +2986,17 @@ export interface components {
             quality: components["schemas"]["AnalyticsQuality"];
             /** Layout Changes */
             layout_changes: string[];
+            /**
+             * Mode
+             * @default all
+             * @enum {string}
+             */
+            mode: "all" | "live";
+            /**
+             * Simulated Visits
+             * @default 0
+             */
+            simulated_visits: number;
         };
         /** SiteAnalyticsSummary */
         SiteAnalyticsSummary: {
@@ -4342,6 +4614,7 @@ export interface operations {
         parameters: {
             query?: {
                 tz?: string | null;
+                mode?: string;
             };
             header?: never;
             path: {
@@ -4741,6 +5014,206 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_status_v1_demo_sites__site_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_new_site_v1_demo_sites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoSiteInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Site"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_cafe_v1_demo_sites__site_id__cafe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoCafeInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Site"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_history_v1_demo_sites__site_id__history_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoHistoryInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_rush_v1_demo_sites__site_id__rush_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoRushInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_clear_v1_demo_sites__site_id__simulated_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoStatus"];
                 };
             };
             /** @description Validation Error */

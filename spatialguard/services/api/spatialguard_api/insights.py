@@ -74,6 +74,8 @@ SYSTEM = (
     "coincided rather than caused. Percentages must be computed from the given counts. "
     "Positions are estimates from camera views, so talk about zones and times, not exact spots. "
     "If there is little data, say so plainly and suggest what would help. "
+    "simulated_visits counts demo-mode visitors that no camera saw; when it is above zero, the summary must say "
+    "how many of the visits are simulated, and must never describe them as real customers. "
     "Write plainly, in the second person, with no hype, and use the times exactly as given (like 5 PM). "
     "The headline leads with the single most important change in under 80 characters. "
     "The recommendation is ONE specific, low-cost action tied to a named zone, hour or entrance from the data "
@@ -93,6 +95,7 @@ def _facts(metrics: dict) -> dict:
         "period": "last 7 days vs the 7 days before",
         "time_zone": metrics["time_zone"],
         "visits": metrics["totals"]["visits"],
+        "simulated_visits": metrics.get("simulated_visits", 0),
         "visits_previous": metrics["totals"]["previous"],
         "change_pct": metrics["totals"]["change_pct"],
         "average_visit_seconds": metrics["totals"]["avg_visit_s"],

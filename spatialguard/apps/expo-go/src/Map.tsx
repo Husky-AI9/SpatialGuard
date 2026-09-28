@@ -42,7 +42,7 @@ type Props = {
 };
 
 /** Cameras that detected motion in the last few seconds. */
-function useLiveMotion(incidents: Incident[], siteId: string) {
+function useLiveMotion(incidents: Incident[], siteId: string, simulatedCameras: string[]) {
   const tracker = useRef(new MotionTracker());
   const [active, setActive] = useState<string[]>([]);
   const [tick, setTick] = useState(0);
@@ -51,12 +51,13 @@ function useLiveMotion(incidents: Incident[], siteId: string) {
     setActive([]);
   }, [siteId]);
   useEffect(() => {
-    const { active: next, next: wait } = tracker.current.update(incidents);
+    // Simulated (demo-mode) customers only ever animate simulated cameras.
+    const { active: next, next: wait } = tracker.current.update(incidents, Date.now(), simulatedCameras);
     setActive((previous) => (previous.join() === next.join() ? previous : next));
     if (wait === null) return;
     const timer = setTimeout(() => setTick((t) => t + 1), Math.max(250, wait + 50));
     return () => clearTimeout(timer);
-  }, [incidents, tick]);
+  }, [incidents, tick, simulatedCameras.join()]);
   return active;
 }
 
@@ -122,7 +123,8 @@ export default function FloorMap({ site, incidents = [], review = null, selected
   const [ready, setReady] = useState(false);
   const web = useRef<WebView>(null);
   const planImage = usePlanImage(site);
-  const moving = useLiveMotion(incidents, site.id);
+  const simulatedCameras = site.simulated_camera_ids ?? [];
+  const moving = useLiveMotion(incidents, site.id, simulatedCameras);
   // While reviewing, the camera of the selected step pulses, as on the web.
   const current = review ? review.incident.observations[review.step] : undefined;
   const replaying = current && current.category !== "coverage_gap" ? [current.source_id] : [];
@@ -144,6 +146,7 @@ export default function FloorMap({ site, incidents = [], review = null, selected
     planImage,
     selected,
     motionCameras: incident ? replaying : moving,
+    simulatedCameras,
     heat: { on: heatOn, preset, data: heat.data, loading: heat.loading, error: heat.error },
   };
   const payload = JSON.stringify(state);

@@ -22,6 +22,8 @@ class Site(Model):
     monitoring_version: int = 0
     evidence_mode: Literal["replay"] = "replay"
     ring_status: Literal["not_connected"] = "not_connected"
+    # Demo-mode cameras that exist only on the map; their activity is simulated.
+    simulated_camera_ids: list[str] = []
 
 
 Height = Annotated[float, Field(ge=-100, le=100)]
@@ -161,6 +163,8 @@ class Incident(Model):
     classification_status: Literal["not_requested", "completed", "unavailable"] = "not_requested"
     classification: IncidentClassification | None = None
     reviewed_at: str | None = None
+    # A demo-mode customer: generated positions, never seen by a camera.
+    simulated: bool = False
 
 
 class ClassifierStatus(Model):
@@ -315,6 +319,8 @@ class Session(Model):
     kind: Literal["browser", "android", "ios"]
     expires_at: float
     email: str | None = None
+    # Demo recording tools, only for accounts the server operator allowlisted.
+    demo_tools: bool = False
 
 
 class SessionToken(Model):
@@ -356,6 +362,8 @@ class Heatmap(Model):
     samples: int
     # Camera events whose recording showed where the person walked (projected path).
     tracked: int = 0
+    # Visits that are simulated or replayed rather than seen by a Ring camera.
+    simulated: int = 0
     # Camera events with no analyzed recording yet: one estimated dot each.
     estimated: int = 0
     estimated_cameras: list[HeatmapUnpositioned] = []
@@ -439,6 +447,10 @@ class SiteAnalytics(Model):
     entrances: list[AnalyticsEntrance]
     quality: AnalyticsQuality
     layout_changes: list[str]
+    # "live" counts only visits seen by Ring cameras; "all" adds simulated ones.
+    mode: Literal["all", "live"] = "all"
+    # This period's simulated or replayed visits, whichever mode is shown.
+    simulated_visits: int = 0
 
 
 class SiteAnalyticsSummary(Model):
@@ -512,6 +524,8 @@ class CrowdAlert(Model):
     window_minutes: int
     at: str
     acknowledged: bool
+    # Raised while simulated visitors were in the zone.
+    simulated: bool = False
 
 
 class CrowdLiveZone(Model):
@@ -530,3 +544,60 @@ class CrowdAlerts(Model):
 class IncidentPage(Model):
     incidents: list[Incident]
     next_cursor: int | None = None
+
+
+class DemoZone(Model):
+    """A named business area drawn for the demo, in map metres."""
+
+    name: str = Field(min_length=1, max_length=60)
+    polygon_xy_m: list[tuple[float, float]] = Field(min_length=3, max_length=40)
+
+
+class DemoRoom(Model):
+    name: str = Field(min_length=1, max_length=60)
+    polygon_xy_m: list[tuple[float, float]] = Field(min_length=3, max_length=40)
+
+
+class DemoCamera(Model):
+    name: str = Field(min_length=1, max_length=60)
+    position_m: tuple[float, float, float]
+    heading_degrees: float = Field(default=0, ge=-360, le=360)
+    range_m: float = Field(default=5, gt=0, le=30)
+    # Exists only on the map; its visitors are simulated.
+    simulated: bool = False
+
+
+class DemoSiteInput(Model):
+    """A new demo place from a drawing and the matching geometry, in map metres."""
+
+    name: str = Field(min_length=1, max_length=100)
+    drawing_png_base64: str = Field(min_length=100, max_length=8_000_000)
+    drawing_origin_xy_m: tuple[float, float]
+    drawing_width_m: float = Field(gt=0, le=500)
+    drawing_height_m: float = Field(gt=0, le=500)
+    rooms: list[DemoRoom] = Field(min_length=1, max_length=30)
+    zones: list[DemoZone] = Field(min_length=1, max_length=12)
+    cameras: list[DemoCamera] = Field(min_length=1, max_length=8)
+
+
+class DemoCafeInput(Model):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    zones: list[DemoZone] = Field(min_length=1, max_length=12)
+    simulated_camera_ids: list[str] = Field(default_factory=list, max_length=4)
+
+
+class DemoHistoryInput(Model):
+    tz: str | None = Field(default=None, max_length=64)
+    seed: int = Field(default=1, ge=0, le=1_000_000)
+
+
+class DemoRushInput(Model):
+    customers: int = Field(default=6, ge=1, le=12)
+    interval_seconds: float = Field(default=12, ge=0, le=60)
+
+
+class DemoStatus(Model):
+    simulated_visits: int
+    live_visits: int
+    rush_active: bool
+    simulated_camera_ids: list[str]

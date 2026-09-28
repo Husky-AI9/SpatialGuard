@@ -13,6 +13,13 @@
 .pa-chip { height: 38px; flex-shrink: 0; padding: 0 12px; border-radius: 999px; border: 1px solid #D3D4E8; background: #FFFFFF;
   display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #23253F; }
 .pa-chip.is-on { border-color: #5B4FE8; background: #ECEBFD; color: #3A34A8; }
+.pa-mode { flex-shrink: 0; display: flex; gap: 2px; padding: 3px; border: 1px solid #D3D4E8; border-radius: 999px; background: #FFFFFF; }
+.pa-mode button { min-height: 30px; padding: 0 11px; border: 0; border-radius: 999px; background: transparent;
+  color: #5B5E78; font-size: 13.5px; font-weight: 700; }
+.pa-mode button[aria-pressed="true"] { background: #5B4FE8; color: #FFFFFF; }
+.pa-sim-note { margin: 8px 16px 0 20px; padding: 8px 11px; border-radius: 12px; background: #FFF6E5; border: 1px solid #F0D9A8;
+  color: #6B4F16; font-size: 13px; font-weight: 600; line-height: 1.35; }
+.pa-sim-note.is-live { background: #ECEBFD; border-color: #D3CFF8; color: #3A34A8; }
 .pa-chip:disabled { opacity: 1; cursor: default; }
 .pa-menu { margin: 8px 16px 0; padding: 6px; border: 1px solid #E3E4EF; border-radius: 14px; background: #FFFFFF; box-shadow: 0 10px 24px rgba(35, 37, 63, .1); }
 .pa-menu button { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 0; border-radius: 10px;

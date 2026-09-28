@@ -84,6 +84,7 @@ export default function Map2D({
   motion = false,
   motionCameras = [],
   heatmap = null,
+  simulatedCameras = [],
 }: {
   layout: Layout;
   selected: string;
@@ -109,6 +110,8 @@ export default function Map2D({
   motionCameras?: string[];
   /** People heatmap grid to draw over the floor, or null for none. */
   heatmap?: HeatGrid | null;
+  /** Demo-mode cameras that exist only on the map: labelled SIM, view drawn dashed. */
+  simulatedCameras?: string[];
 }) {
   const heatImage = useMemo(() => heatCanvas(heatmap ?? { origin_xy_m: [0, 0], cell_m: 1, columns: 0, rows: 0, values: [] })?.toDataURL() ?? "", [heatmap]);
   const plan = background ? layout.floor_plan : null;
@@ -171,7 +174,8 @@ export default function Map2D({
   const visibleActors = markers.filter(p => !p.evidenceNode && p.actorKind &&
     (!p.approximate || p.selected || p.persistent));
   const labels: MapLabel[] = [
-    ...cameras.map(c => ({id: "camera-" + c.id, name: c.name, kind: "camera" as const,
+    ...cameras.map(c => ({id: "camera-" + c.id, kind: "camera" as const,
+      name: simulatedCameras.includes(c.id) ? `${c.name} · SIM` : c.name,
       x: c.position_m[0], y: -c.position_m[1], selected: selected === c.id,
       preferred: [-Math.cos(c.heading_degrees * Math.PI / 180), Math.sin(c.heading_degrees * Math.PI / 180)] as XY})),
     ...visibleActors.map(p => ({id: "actor-" + p.id, name: p.actorLabel ?? "Person detected",
@@ -457,9 +461,14 @@ export default function Map2D({
         <text x="1" y="-.2" textAnchor="middle" fontSize=".23" fill="#34383a">2 m · map scale</text>
       </g>}
       <g className="map-coverage" pointerEvents="none">
-        {cameras.map(c => <path key={c.id} className="camera-coverage" d={coveragePath(c)}
+        {cameras.map(c => {
+          const simulated = simulatedCameras.includes(c.id);
           // Idle views stay clearly visible on the floor plan; activity and selection deepen them.
-          fill="#5B4FE8" fillOpacity={selected === c.id ? .3 : motion && motionCameras.includes(c.id) ? .24 : .15} />)}
+          const opacity = selected === c.id ? .3 : motion && motionCameras.includes(c.id) ? .24 : .15;
+          return <path key={c.id} className={simulated ? "camera-coverage camera-coverage-simulated" : "camera-coverage"}
+            d={coveragePath(c)} fill="#5B4FE8" fillOpacity={simulated ? opacity * .6 : opacity}
+            stroke={simulated ? "#5B4FE8" : "none"} strokeWidth=".04" strokeDasharray=".16 .12" strokeOpacity=".7" />;
+        })}
       </g>
       {motion && motionCameras.length > 0 && (
         <g className="motion-waves" pointerEvents="none" aria-hidden="true">
@@ -490,7 +499,8 @@ export default function Map2D({
               role="button"
               tabIndex={0}
               aria-label={
-                moveable ? `${c.name}. Drag to move, arrow keys nudge.` : c.name
+                (moveable ? `${c.name}. Drag to move, arrow keys nudge.` : c.name)
+                + (simulatedCameras.includes(c.id) ? " (simulated camera)" : "")
               }
               aria-pressed={active}
               onPointerDown={(e) => startDrag(e, original, "move")}

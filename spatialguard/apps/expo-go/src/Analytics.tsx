@@ -19,7 +19,8 @@ type Message =
   | { type: "alertSettings"; settings: AlertSettingsInput }
   | { type: "acknowledge"; id: number }
   | { type: "export"; name: string; csv: string }
-  | { type: "pair" };
+  | { type: "pair" }
+  | { type: "mode"; mode: "all" | "live" };
 
 const timeZone = () => {
   try {
@@ -49,6 +50,7 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey, onPair }:
   const [attempt, setAttempt] = useState(0);
   const [alerts, setAlerts] = useState<CrowdAlerts | null>(null);
   const [alertsBusy, setAlertsBusy] = useState(false);
+  const [mode, setMode] = useState<"all" | "live">("all");
   const autoWritten = useRef(new Set<string>());
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey, onPair }:
     setLoading(true);
     setError("");
     Promise.all([
-      request<Data>(`/v1/sites/${siteId}/analytics?tz=${encodeURIComponent(tz)}`),
+      request<Data>(`/v1/sites/${siteId}/analytics?tz=${encodeURIComponent(tz)}&mode=${mode}`),
       request<InsightState>(`/v1/sites/${siteId}/analytics/insight`),
       request<CrowdAlerts>(`/v1/sites/${siteId}/alerts`),
     ])
@@ -86,7 +88,7 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey, onPair }:
     return () => {
       live = false;
     };
-  }, [siteId, tz, refreshKey, attempt]);
+  }, [siteId, tz, refreshKey, attempt, mode]);
 
   const writeInsight = useCallback(async () => {
     if (!siteId) return;
@@ -121,6 +123,7 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey, onPair }:
     insightError,
     alerts,
     alertsBusy,
+    mode,
   });
   useEffect(() => {
     if (ready) web.current?.injectJavaScript(`window.sgAnalytics && window.sgAnalytics(${payload}); true;`);
@@ -142,6 +145,10 @@ export default function AnalyticsScreen({ siteId: initial, refreshKey, onPair }:
     } else if (message.type === "insight") void writeInsight();
     else if (message.type === "retry") setAttempt((n) => n + 1);
     else if (message.type === "pair") onPair?.();
+    else if (message.type === "mode" && (message.mode === "all" || message.mode === "live") && message.mode !== mode) {
+      setData(null); // never show the other mode's figures under this label
+      setMode(message.mode);
+    }
     else if (message.type === "export" && typeof message.csv === "string") {
       // The iOS share sheet: save to Files, AirDrop, mail or a spreadsheet app.
       void Share.share({ title: `${message.name} analytics`, message: message.csv.slice(0, 200000) }).catch(() => undefined);

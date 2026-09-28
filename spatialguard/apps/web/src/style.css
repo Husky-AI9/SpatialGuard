@@ -4044,3 +4044,14 @@ button.quiet-danger { color: #b4232c; border-color: #f0c2c7; background: #fff; }
 .brand .pl-wordmark { font-size: 21px; }
 .legal-brand > span:first-child { width: auto; height: auto; background: none; }
 .legal-brand > .pl-wordmark { display: inline; width: auto; height: auto; background: none; color: #1e1b4b; font-size: 18px; }
+
+
+/* Demo mode (allowlisted accounts only) ------------------------------------------ */
+.demo-tools p { margin: 0 0 10px; }
+.demo-status { font-weight: 700; color: var(--ink); }
+.demo-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0 10px; }
+.demo-actions button { display: inline-flex; align-items: center; gap: 7px; }
+.danger-quiet { color: #a12a2a; }
+.demo-message { color: #1f6b3a; font-weight: 600; }
+.sim-chip { color: #8a5a00; }
+.scene-camera-pin-sim { font-weight: 800; color: #8a5a00; }

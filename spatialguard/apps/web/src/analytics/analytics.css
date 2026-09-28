@@ -16,6 +16,16 @@
 .an-site-single { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border: 1px solid #dcd9f7;
   border-radius: 999px; background: #fff; font-weight: 700; font-size: 14px; }
 
+.an-toolbar-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+/* All data / Live only: a two-way switch, shown only when simulated visits exist. */
+.an-mode { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid #dcd9f7; border-radius: 999px; background: #fff; }
+.an-mode button { min-height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent;
+  color: var(--muted, #5b607f); font-size: 14px; font-weight: 700; cursor: pointer; }
+.an-mode button[aria-pressed="true"] { background: var(--accent, #5b4fe8); color: #fff; }
+.an-sim-note { display: flex; align-items: center; gap: 7px; margin: -4px 0 0; padding: 9px 12px; border-radius: 12px;
+  background: #fff6e5; border: 1px solid #f0d9a8; color: #6b4f16; font-size: 13.5px; font-weight: 600; }
+.an-sim-note.is-live { background: #ecebfd; border-color: #d3cff8; color: #3a34a8; }
+.an-sim-note svg { flex: none; }
 .an-body { display: grid; gap: 16px; transition: opacity .2s; }
 .an-body.is-refreshing { opacity: .6; }
 

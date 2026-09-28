@@ -165,6 +165,7 @@ def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: dat
     tracked = 0
     estimated: dict[str, int] = {}
     unpositioned: dict[str, int] = {}
+    simulated: set[str] = set()
     for incident in incidents:
         for observation in incident.get("observations", []):
             when = sample_time(incident, observation)
@@ -172,6 +173,8 @@ def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: dat
                 continue
             location = observation.get("location", {})
             if location.get("kind") == "floor_point" and (not floor_ids or location.get("floor_id") in floor_ids):
+                if incident.get("evidence_mode") != "live":
+                    simulated.add(incident.get("id", ""))
                 x, y = location["xy_m"][:2]
                 sigma = min(MAX_SIGMA_M, max(MIN_SIGMA_M, 0.75 * float(location.get("uncertainty_radius_m", 0))))
                 points.append((float(x), float(y), sigma))
@@ -194,6 +197,7 @@ def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: dat
         "until": until.isoformat().replace("+00:00", "Z"),
         "samples": 0,
         "tracked": 0,
+        "simulated": len(simulated),
         "estimated": 0,
         "estimated_cameras": [{"camera_id": k, "events": v} for k, v in sorted(estimated.items())],
         "cell_m": CELL_M,
@@ -233,6 +237,11 @@ def build_heatmap(site: dict, incidents: list[dict], since: datetime, until: dat
     walked_points = splat(walked)
     peak = float(grid.max()) if kept or guessed or walked_points else 0.0
     if peak > 0:
+        # A busy period would saturate every visited cell. When the typical visited
+        # cell is already heavily covered, scale so it sits mid-scale and only the real
+        # hot spots saturate. A few sightings (the usual case) are left exactly as drawn.
+        visited = grid[grid > 0.05]
+        grid = grid / max(1.0, float(np.median(visited)) / 0.6 if visited.size else 1.0)
         grid = 1 - np.exp(-CONTOUR_GAIN * grid)
     result.update(
         samples=kept,

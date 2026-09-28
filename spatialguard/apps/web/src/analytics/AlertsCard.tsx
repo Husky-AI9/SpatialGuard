@@ -14,8 +14,9 @@ const WINDOWS = [2, 5, 10, 15, 30];
 const time = (value: string) => new Date(value).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
 export const alertTitle = (a: { kind: string; zone: string }) =>
   a.kind === "queue" ? `Queue building at ${a.zone}` : `${a.zone} is getting crowded`;
-export const alertDetail = (a: { count: number; window_minutes: number }) =>
-  `${a.count} ${a.count === 1 ? "person" : "people"} in the last ${a.window_minutes} min`;
+/** Counts people; says so when the count included simulated (demo-mode) customers. */
+export const alertDetail = (a: { count: number; window_minutes: number; simulated?: boolean }) =>
+  `${a.count} ${a.count === 1 ? "person" : "people"} in the last ${a.window_minutes} min${a.simulated ? " · simulated" : ""}`;
 
 export default function AlertsCard({ alerts, busy, onSettings, onAcknowledge }: {
   alerts: CrowdAlerts | null;

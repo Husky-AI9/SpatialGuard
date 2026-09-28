@@ -42,7 +42,8 @@ export default function IncidentReview({ incident, cameras, step, onSelect, onCl
   useEffect(() => { setPlayback({seconds: 0, duration: 0}); }, [incident.id, step]);
   const observation = incident.observations[step];
   const camera = cameras.find(item => item.id === observation?.source_id);
-  const mode = incident.evidence_mode === "live" ? "Live integration" : incident.evidence_mode === "simulator" ? "Official simulator" : "Demo";
+  const mode = incident.simulated ? "Simulated customer · demo mode"
+    : incident.evidence_mode === "live" ? "Live integration" : incident.evidence_mode === "simulator" ? "Official simulator" : "Demo";
   const select = (index: number) => { onSelect(index); scroll.current?.scrollTo({top: 0}); };
   const reviewButton = <button className="primary incident-review-action" disabled={incident.status === "reviewed" || busy || !online} onClick={onReview}>
     <Check size={16} />{incident.status === "reviewed" ? "Reviewed" : "Mark reviewed"}

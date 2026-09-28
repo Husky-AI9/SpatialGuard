@@ -191,3 +191,80 @@ export function Operations() {
     </>
   );
 }
+
+type DemoStatus = { simulated_visits: number; live_visits: number; rush_active: boolean; simulated_camera_ids: string[] };
+
+/** Demo mode: simulated café customers for the product video (allowlisted accounts only). */
+export function DemoSettings({ siteId, siteName }: { siteId?: string; siteName?: string }) {
+  const [status, setStatus] = useState<DemoStatus | null>(null);
+  const [busy, setBusy] = useState("");
+  const [message, setMessage] = useState("");
+  const load = async () => {
+    if (!siteId) return;
+    try {
+      setStatus(await request<DemoStatus>(`/v1/demo/sites/${siteId}`));
+    } catch (e) {
+      setMessage((e as Error).message);
+    }
+  };
+  useEffect(() => {
+    setStatus(null);
+    setMessage("");
+    void load();
+  }, [siteId]);
+  useEffect(() => {
+    if (!status?.rush_active) return;
+    const timer = setInterval(() => void load(), 3000);
+    return () => clearInterval(timer);
+  }, [status?.rush_active, siteId]);
+  const run = async (name: string, action: () => Promise<DemoStatus>, done: (next: DemoStatus) => string) => {
+    setBusy(name);
+    setMessage("");
+    try {
+      const next = await action();
+      setStatus(next);
+      setMessage(done(next));
+    } catch (e) {
+      setMessage((e as Error).message);
+    } finally {
+      setBusy("");
+    }
+  };
+  if (!siteId) return <Card><Label style={s.muted}>Choose a place first.</Label></Card>;
+  const tz = (() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      return undefined;
+    }
+  })();
+  return (
+    <Card>
+      <CardHeader title={`Demo mode · ${siteName ?? "this place"}`} />
+      <Label style={s.muted}>
+        Simulated customers fill the café for the video. They are labelled “Simulated” everywhere, never come from a camera, and
+        Analytics can hide them with Live only. Only this account sees demo mode.
+      </Label>
+      <Label style={s.strong}>
+        {status
+          ? `${status.simulated_visits} simulated · ${status.live_visits} live Ring visits${status.rush_active ? " · rush running" : ""}`
+          : "Loading…"}
+      </Label>
+      <Button icon="history" title={busy === "week" ? "Creating…" : "Create two simulated weeks"} disabled={!!busy}
+        onPress={() => void run("week", () => request<DemoStatus>(`/v1/demo/sites/${siteId}/history`, "POST", { tz, seed: 1 }, 90000),
+          (next) => `Created two weeks of simulated customers (${next.simulated_visits} visits).`)} />
+      <Button variant="secondary" icon="users" title={status?.rush_active ? "Rush running…" : "Start a lunch rush"}
+        disabled={!!busy || !!status?.rush_active}
+        onPress={() => void run("rush", () => request<DemoStatus>(`/v1/demo/sites/${siteId}/rush`, "POST", { customers: 6, interval_seconds: 12 }),
+          () => "Lunch rush started: 6 simulated customers join the counter queue over about a minute.")} />
+      <Button variant="danger" icon="trash" title="Remove simulated data" disabled={!!busy || !status?.simulated_visits}
+        onPress={() => Alert.alert("Remove simulated data?", "Every simulated customer, and the alerts and insight they produced, will be removed. Real Ring visits stay.", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Remove", style: "destructive", onPress: () => void run("clear",
+            () => request<DemoStatus>(`/v1/demo/sites/${siteId}/simulated`, "DELETE", undefined, 60000),
+            () => "Removed the simulated customers. Real Ring visits are untouched.") },
+        ])} />
+      {!!message && <Label style={{ fontSize: 14 }}>{message}</Label>}
+    </Card>
+  );
+}

@@ -16,7 +16,8 @@ does not alert again while an alert from the last 15 minutes is still
 unacknowledged, so a busy lunch hour is one alert, not twenty.
 
 Visitor counts come from the same visits as Site Analytics (analytics.py), so
-positions are estimates and each visitor counts once per zone.
+positions are estimates and each visitor counts once per zone. An alert that
+counted any simulated visitor (demo mode) is marked ``simulated``.
 """
 
 from __future__ import annotations
@@ -67,13 +68,21 @@ def save_settings(db, site: dict, enabled: bool, window_minutes: int, limits: di
 
 def occupancy(site: dict, incidents: list[dict], tracks: dict, window: timedelta, at: datetime) -> dict[str, int]:
     """Distinct visitors seen in each zone during the window ending at ``at``."""
+    return _occupancy(site, incidents, tracks, window, at)[0]
+
+
+def _occupancy(site, incidents, tracks, window, at) -> tuple[dict[str, int], set[str]]:
+    """Visitor counts per zone, and the zones where a counted visitor was simulated."""
     counts: dict[str, int] = {}
+    simulated: set[str] = set()
     since = at - window
     for visit in analytics.visits(site, incidents, tracks):
         zones = {zone for when, zone in visit["samples"] if since <= when <= at}
         for zone in zones:
             counts[zone] = counts.get(zone, 0) + 1
-    return counts
+            if visit["simulated"]:
+                simulated.add(zone)
+    return counts, simulated
 
 
 def _recent_incidents(db, site_id: str, since: datetime) -> list[dict]:
@@ -106,7 +115,7 @@ def evaluate(db, site_id: str, at: datetime | None = None) -> list[dict]:
     incidents = _recent_incidents(db, site_id, at - window - timedelta(minutes=2))
     if not incidents:
         return []
-    counts = occupancy(site, incidents, tracks.load(db, site_id), window, at)
+    counts, simulated = _occupancy(site, incidents, tracks.load(db, site_id), window, at)
     raised = []
     for zone in config["zones"]:
         limit, count = zone["limit"], counts.get(zone["name"], 0)
@@ -118,11 +127,13 @@ def evaluate(db, site_id: str, at: datetime | None = None) -> list[dict]:
         if recent:
             continue
         alert = {"site_id": site_id, "zone": zone["name"], "kind": zone["kind"], "count": count, "limit": limit,
-                 "window_minutes": config["window_minutes"], "at": at.isoformat()}
+                 "window_minutes": config["window_minutes"], "at": at.isoformat(),
+                 "simulated": zone["name"] in simulated}
         cursor = db.execute(
-            "INSERT INTO site_alerts(site_id, zone, kind, count, alert_limit, window_minutes, at, acknowledged) "
-            "VALUES (?,?,?,?,?,?,?,0)",
-            (site_id, zone["name"], zone["kind"], count, limit, config["window_minutes"], alert["at"]))
+            "INSERT INTO site_alerts(site_id, zone, kind, count, alert_limit, window_minutes, at, acknowledged, simulated) "
+            "VALUES (?,?,?,?,?,?,?,0,?)",
+            (site_id, zone["name"], zone["kind"], count, limit, config["window_minutes"], alert["at"],
+             int(alert["simulated"])))
         alert["id"] = cursor.lastrowid
         event(db, site_id, "alert.crowding", str(cursor.lastrowid))
         raised.append(alert)
@@ -141,7 +152,8 @@ def try_evaluate(db, site_id: str) -> list[dict]:
 def recent(db, site_id: str, limit: int = 20) -> list[dict]:
     rows = db.execute("SELECT * FROM site_alerts WHERE site_id=? ORDER BY id DESC LIMIT ?", (site_id, limit)).fetchall()
     return [{"id": r["id"], "zone": r["zone"], "kind": r["kind"], "count": r["count"], "limit": r["alert_limit"],
-             "window_minutes": r["window_minutes"], "at": r["at"], "acknowledged": bool(r["acknowledged"])} for r in rows]
+             "window_minutes": r["window_minutes"], "at": r["at"], "acknowledged": bool(r["acknowledged"]),
+             "simulated": bool(r["simulated"])} for r in rows]
 
 
 def live(db, site: dict) -> list[dict]:

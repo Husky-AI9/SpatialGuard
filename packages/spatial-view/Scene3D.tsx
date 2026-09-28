@@ -335,6 +335,7 @@ export default function Scene3D({
   evidenceLinks = [],
   cameraModelFactory = cameraModel,
   heatmap = null,
+  simulatedCameras = [],
 }: {
   layout: Layout;
   selected: string;
@@ -344,6 +345,8 @@ export default function Scene3D({
   cameraModelFactory?: CameraModelFactory;
   /** People heatmap grid laid on the floor, or null for none. */
   heatmap?: HeatGrid | null;
+  /** Demo-mode cameras that exist only on the map; their pins say SIM. */
+  simulatedCameras?: string[];
 }) {
   const heatLayer = useRef<THREE.Group | null>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -783,12 +786,14 @@ export default function Scene3D({
             className="scene-camera-pin"
             type="button"
             style={{ visibility: "hidden" }}
-            aria-label={`Select ${camera.name} on 3D map`}
+            aria-label={`Select ${camera.name}${simulatedCameras.includes(camera.id) ? " (simulated camera)" : ""} on 3D map`}
             aria-pressed={selected === camera.id}
             title={camera.name}
             onClick={() => onSelect(camera.id)}
           >
-            <span className="scene-camera-pin-name">{camera.name}</span>
+            <span className="scene-camera-pin-name">
+              {camera.name}{simulatedCameras.includes(camera.id) && <span className="scene-camera-pin-sim"> · SIM</span>}
+            </span>
             <span className="scene-camera-pin-face" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 4 7 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2-3Z" />

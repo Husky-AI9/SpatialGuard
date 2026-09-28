@@ -10,7 +10,7 @@
  */
 import { useState } from "react";
 import { Sparkles, TrendingDown, TrendingUp, Minus, Info, RefreshCw } from "lucide-react";
-import type { AnalyticsViewProps } from "./AnalyticsView";
+import { ModeSwitch, simulatedNote, type AnalyticsViewProps } from "./AnalyticsView";
 import AlertsCard from "./AlertsCard";
 import "./phone.css";
 
@@ -74,7 +74,11 @@ export default function PhoneAnalytics(props: PhoneAnalyticsProps) {
           onClick={() => setMenu(menu === "site" ? "" : "site")}>
           Layout: {site?.name ?? data?.site_name ?? "—"}{sites.length > 1 && <Chevron />}
         </button>
+        <ModeSwitch data={data} mode={props.mode} onMode={props.onMode} className="pa-mode" />
       </div>
+      {simulatedNote(data, props.mode) && (
+        <p className={`pa-sim-note${props.mode === "live" ? " is-live" : ""}`} role="note">{simulatedNote(data, props.mode)}</p>
+      )}
       {menu && (
         <div className="pa-menu" role="menu">
           {menu === "period" ? (

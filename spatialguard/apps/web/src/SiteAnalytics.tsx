@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import AnalyticsView, { type InsightState, type SiteAnalytics as Data, type SiteSummary } from "./analytics/AnalyticsView";
+import AnalyticsView, { type AnalyticsMode, type InsightState, type SiteAnalytics as Data, type SiteSummary } from "./analytics/AnalyticsView";
 import type { AlertSettingsInput, CrowdAlerts } from "./analytics/AlertsCard";
 import { request } from "./platform";
 
@@ -29,6 +29,7 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
   const [attempt, setAttempt] = useState(0);
   const [alerts, setAlerts] = useState<CrowdAlerts | null>(null);
   const [alertsBusy, setAlertsBusy] = useState(false);
+  const [mode, setMode] = useState<AnalyticsMode>("all");
   const autoWritten = useRef(new Set<string>());
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
     setLoading(true);
     setError("");
     Promise.all([
-      request<Data>(`/v1/sites/${siteId}/analytics?tz=${encodeURIComponent(tz)}`),
+      request<Data>(`/v1/sites/${siteId}/analytics?tz=${encodeURIComponent(tz)}&mode=${mode}`),
       request<InsightState>(`/v1/sites/${siteId}/analytics/insight`),
       request<CrowdAlerts>(`/v1/sites/${siteId}/alerts`),
     ])
@@ -70,7 +71,7 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
     return () => {
       live = false;
     };
-  }, [siteId, tz, refreshKey, attempt]);
+  }, [siteId, tz, refreshKey, attempt, mode]);
 
   const writeInsight = useCallback(async () => {
     if (!siteId) return;
@@ -131,6 +132,13 @@ export default function SiteAnalytics({ siteId: initial, refreshKey }: { siteId?
       alertsBusy={alertsBusy}
       onAlertSettings={(next) => void saveAlerts(next).catch(() => undefined)}
       onAcknowledge={(id) => void acknowledge(id).catch(() => undefined)}
+      mode={mode}
+      onMode={(next) => {
+        // Never show the other mode's figures under this mode's label, even briefly.
+        if (next === mode) return;
+        setData(null);
+        setMode(next);
+      }}
     />
   );
 }

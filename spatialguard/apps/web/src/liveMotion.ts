@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { MotionTracker, type MotionIncident } from "@twinforge/spatial-view/liveMotion";
 
 /** Cameras that detected motion in the last few seconds (see MotionTracker). */
-export function useLiveMotion(incidents: MotionIncident[], siteId: string | undefined): string[] {
+export function useLiveMotion(
+  incidents: MotionIncident[],
+  siteId: string | undefined,
+  simulatedCameras: string[] = [],
+): string[] {
   const tracker = useRef(new MotionTracker());
   const [active, setActive] = useState<string[]>([]);
   const [tick, setTick] = useState(0);
@@ -13,12 +17,12 @@ export function useLiveMotion(incidents: MotionIncident[], siteId: string | unde
   }, [siteId]);
 
   useEffect(() => {
-    const { active: next, next: wait } = tracker.current.update(incidents);
+    const { active: next, next: wait } = tracker.current.update(incidents, Date.now(), simulatedCameras);
     setActive((previous) => (previous.join() === next.join() ? previous : next));
     if (wait === null) return;
     const timer = setTimeout(() => setTick((t) => t + 1), Math.max(250, wait + 50));
     return () => clearTimeout(timer);
-  }, [incidents, tick]);
+  }, [incidents, tick, simulatedCameras.join()]);
 
   return active;
 }

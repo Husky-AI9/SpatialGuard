@@ -12,6 +12,8 @@ export type MotionIncident = {
   evidence_mode: string;
   created_at: string;
   observations: { source_id: string; observed_at: string; category: string }[];
+  /** A demo-mode customer: only simulated cameras may pulse for it. */
+  simulated?: boolean;
 };
 
 /** How long a camera keeps pulsing after it reports motion. */
@@ -43,8 +45,12 @@ export class MotionTracker {
     this.until.clear();
   }
 
-  /** Active camera ids, and how long until the next one stops (null: none active). */
-  update(incidents: MotionIncident[], now = Date.now()): { active: string[]; next: number | null } {
+  /**
+   * Active camera ids, and how long until the next one stops (null: none active).
+   * A simulated customer never animates a real camera, only `simulatedCameras`.
+   */
+  update(incidents: MotionIncident[], now = Date.now(), simulatedCameras: string[] = []):
+    { active: string[]; next: number | null } {
     const first = this.known === null;
     const seen = this.known ?? new Set<string>();
     for (const incident of incidents) {
@@ -56,6 +62,7 @@ export class MotionTracker {
       const arrived = !first && !seen.has(incident.id) && fresh;
       seen.add(incident.id);
       for (const [camera, at] of sightingTimes(incident)) {
+        if (incident.simulated && !simulatedCameras.includes(camera)) continue;
         const end = Math.max(Number.isFinite(at) ? at + MOTION_HOLD_MS : 0, arrived ? now + MOTION_HOLD_MS : 0);
         if (end > now && end > (this.until.get(camera) ?? 0)) this.until.set(camera, end);
       }

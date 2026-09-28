@@ -1689,7 +1689,7 @@
     "/v1/sites/{site_id}/analytics": {
       "get": {
         "summary": "Analytics For Site",
-        "description": "Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone.",
+        "description": "Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone.\n\n``mode=live`` counts only visits seen by Ring cameras, leaving out simulated ones.",
         "operationId": "analytics_for_site_v1_sites__site_id__analytics_get",
         "parameters": [
           {
@@ -1716,6 +1716,17 @@
                 }
               ],
               "title": "Tz"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(all|live)$",
+              "default": "all",
+              "title": "Mode"
             }
           }
         ],
@@ -2240,6 +2251,274 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EventPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/sites/{site_id}": {
+      "get": {
+        "summary": "Demo Status",
+        "operationId": "demo_status_v1_demo_sites__site_id__get",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/sites": {
+      "post": {
+        "summary": "Demo New Site",
+        "description": "Create a separate demo place from a drawing and its geometry, published through TwinForge.",
+        "operationId": "demo_new_site_v1_demo_sites_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoSiteInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/sites/{site_id}/cafe": {
+      "post": {
+        "summary": "Demo Cafe",
+        "description": "Draw the caf\u00e9's business areas and mark which map cameras are simulated.",
+        "operationId": "demo_cafe_v1_demo_sites__site_id__cafe_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoCafeInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Site"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/sites/{site_id}/history": {
+      "post": {
+        "summary": "Demo History",
+        "description": "Replace the simulated customers with two fresh weeks of them.",
+        "operationId": "demo_history_v1_demo_sites__site_id__history_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoHistoryInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/sites/{site_id}/rush": {
+      "post": {
+        "summary": "Demo Rush",
+        "description": "Send simulated customers to the counter now, one every few seconds.",
+        "operationId": "demo_rush_v1_demo_sites__site_id__rush_post",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoRushInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/demo/sites/{site_id}/simulated": {
+      "delete": {
+        "summary": "Demo Clear",
+        "description": "Remove every simulated customer; real Ring visits are untouched.",
+        "operationId": "demo_clear_v1_demo_sites__site_id__simulated_delete",
+        "parameters": [
+          {
+            "name": "site_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Site Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoStatus"
                 }
               }
             }
@@ -4055,6 +4334,11 @@
           "acknowledged": {
             "type": "boolean",
             "title": "Acknowledged"
+          },
+          "simulated": {
+            "type": "boolean",
+            "title": "Simulated",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -4274,6 +4558,334 @@
           "downstream"
         ],
         "title": "DeletionReceipt"
+      },
+      "DemoCafeInput": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "zones": {
+            "items": {
+              "$ref": "#/components/schemas/DemoZone"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Zones"
+          },
+          "simulated_camera_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "Simulated Camera Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "zones"
+        ],
+        "title": "DemoCafeInput"
+      },
+      "DemoCamera": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "position_m": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position M"
+          },
+          "heading_degrees": {
+            "type": "number",
+            "maximum": 360.0,
+            "minimum": -360.0,
+            "title": "Heading Degrees",
+            "default": 0
+          },
+          "range_m": {
+            "type": "number",
+            "maximum": 30.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Range M",
+            "default": 5
+          },
+          "simulated": {
+            "type": "boolean",
+            "title": "Simulated",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "position_m"
+        ],
+        "title": "DemoCamera"
+      },
+      "DemoHistoryInput": {
+        "properties": {
+          "tz": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz"
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "default": 1
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DemoHistoryInput"
+      },
+      "DemoRoom": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "polygon_xy_m": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 40,
+            "minItems": 3,
+            "title": "Polygon Xy M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "polygon_xy_m"
+        ],
+        "title": "DemoRoom"
+      },
+      "DemoRushInput": {
+        "properties": {
+          "customers": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Customers",
+            "default": 6
+          },
+          "interval_seconds": {
+            "type": "number",
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Interval Seconds",
+            "default": 12
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DemoRushInput"
+      },
+      "DemoSiteInput": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "drawing_png_base64": {
+            "type": "string",
+            "maxLength": 8000000,
+            "minLength": 100,
+            "title": "Drawing Png Base64"
+          },
+          "drawing_origin_xy_m": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Drawing Origin Xy M"
+          },
+          "drawing_width_m": {
+            "type": "number",
+            "maximum": 500.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Drawing Width M"
+          },
+          "drawing_height_m": {
+            "type": "number",
+            "maximum": 500.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Drawing Height M"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/DemoRoom"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Rooms"
+          },
+          "zones": {
+            "items": {
+              "$ref": "#/components/schemas/DemoZone"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Zones"
+          },
+          "cameras": {
+            "items": {
+              "$ref": "#/components/schemas/DemoCamera"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Cameras"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "drawing_png_base64",
+          "drawing_origin_xy_m",
+          "drawing_width_m",
+          "drawing_height_m",
+          "rooms",
+          "zones",
+          "cameras"
+        ],
+        "title": "DemoSiteInput",
+        "description": "A new demo place from a drawing and the matching geometry, in map metres."
+      },
+      "DemoStatus": {
+        "properties": {
+          "simulated_visits": {
+            "type": "integer",
+            "title": "Simulated Visits"
+          },
+          "live_visits": {
+            "type": "integer",
+            "title": "Live Visits"
+          },
+          "rush_active": {
+            "type": "boolean",
+            "title": "Rush Active"
+          },
+          "simulated_camera_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Simulated Camera Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "simulated_visits",
+          "live_visits",
+          "rush_active",
+          "simulated_camera_ids"
+        ],
+        "title": "DemoStatus"
+      },
+      "DemoZone": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "polygon_xy_m": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "maxItems": 40,
+            "minItems": 3,
+            "title": "Polygon Xy M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "polygon_xy_m"
+        ],
+        "title": "DemoZone",
+        "description": "A named business area drawn for the demo, in map metres."
       },
       "Event": {
         "properties": {
@@ -4527,6 +5139,11 @@
             "title": "Tracked",
             "default": 0
           },
+          "simulated": {
+            "type": "integer",
+            "title": "Simulated",
+            "default": 0
+          },
           "estimated": {
             "type": "integer",
             "title": "Estimated",
@@ -4729,6 +5346,11 @@
               }
             ],
             "title": "Reviewed At"
+          },
+          "simulated": {
+            "type": "boolean",
+            "title": "Simulated",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -6329,6 +6951,11 @@
               }
             ],
             "title": "Email"
+          },
+          "demo_tools": {
+            "type": "boolean",
+            "title": "Demo Tools",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -6395,6 +7022,14 @@
             "const": "not_connected",
             "title": "Ring Status",
             "default": "not_connected"
+          },
+          "simulated_camera_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Simulated Camera Ids",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -6490,6 +7125,20 @@
             },
             "type": "array",
             "title": "Layout Changes"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "all",
+              "live"
+            ],
+            "title": "Mode",
+            "default": "all"
+          },
+          "simulated_visits": {
+            "type": "integer",
+            "title": "Simulated Visits",
+            "default": 0
           }
         },
         "additionalProperties": false,

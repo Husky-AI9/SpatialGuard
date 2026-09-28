@@ -47,6 +47,7 @@ import HomeCctv from "./HomeCctv";
 import IncidentReview from "./IncidentReview";
 import Operations from "./Operations";
 import SiteAnalytics from "./SiteAnalytics";
+import DemoTools from "./DemoTools";
 import CrowdAlertBanner, { useCrowdAlert } from "./CrowdAlertBanner";
 import Onboarding, { type AccountPreferences } from "./Onboarding";
 import AccountSecurity from "./AccountSecurity";
@@ -91,11 +92,11 @@ const tabs = [
   { name: "Settings", icon: Settings },
 ] as const;
 type Tab = (typeof tabs)[number]["name"];
-type SettingsPage = "menu" | "account" | "places" | "privacy" | "ring" | "devices" | "display" | "security" | "delete";
+type SettingsPage = "menu" | "account" | "places" | "privacy" | "ring" | "devices" | "display" | "security" | "demo" | "delete";
 const settingsLabels: Record<SettingsPage, string> = {
   menu: "Settings", account: "Account", places: "Places & floor plans",
   privacy: "Privacy & retention", ring: "Ring cameras", devices: "Connected devices",
-  display: "Display & performance", security: "Security & data", delete: "Delete account",
+  display: "Display & performance", security: "Security & data", demo: "Demo mode", delete: "Delete account",
 };
 function time(value: string) {
   return new Date(value).toLocaleTimeString([], {
@@ -364,7 +365,9 @@ export default function App() {
         );
         cursor.current = page.cursor;
         if (page.events.length || !online) await refreshRef.current();
-        if (page.events.some((item) => item.kind === "alert.crowding")) void crowdReload.current();
+        // Demo data changes can add or remove alerts too.
+        if (page.events.some((item) => item.kind === "alert.crowding" || item.kind.startsWith("demo.")))
+          void crowdReload.current();
         if (
           runRef.current &&
           ["queued", "running"].includes(runRef.current.state)
@@ -467,7 +470,8 @@ export default function App() {
   }, [site?.id, planAsset]);
   const sampleLoaded = sites.some((s) => s.name === "Demo home");
   // Hooks must run before the early returns below.
-  const moving = useLiveMotion(incidents, site?.id);
+  const simulatedCameras = site?.simulated_camera_ids ?? [];
+  const moving = useLiveMotion(incidents, site?.id, simulatedCameras);
   const crowd = useCrowdAlert(site?.id);
   const crowdReload = useRef(crowd.reload);
   crowdReload.current = crowd.reload;
@@ -859,6 +863,7 @@ export default function App() {
               viewKey={mapViewKey}
               motion={!lowPower}
               motionCameras={pulsing}
+              simulatedCameras={simulatedCameras}
               fitBuilding={tab === "Home"}
               editable={editable}
               placing={placing}
@@ -876,6 +881,7 @@ export default function App() {
                 markers={markers}
                 evidenceLinks={evidenceLinks}
                 heatmap={heatGrid}
+                simulatedCameras={simulatedCameras}
               />
             </Suspense>
           ) : <CameraWall compact />}
@@ -1036,11 +1042,13 @@ export default function App() {
                   <strong>{incident.title}</strong>
                   <small>
                     {stamp(incident.created_at)} ·{" "}
-                    {incident.evidence_mode === "live"
-                      ? "Live"
-                      : incident.evidence_mode === "simulator"
-                        ? "Simulator"
-                        : "Demo"}
+                    {incident.simulated
+                      ? "Simulated"
+                      : incident.evidence_mode === "live"
+                        ? "Live"
+                        : incident.evidence_mode === "simulator"
+                          ? "Simulator"
+                          : "Demo"}
                   </small>
                   <em className={incident.status === "reviewed" ? "status-chip done" : "status-chip"}>
                     {incident.status === "reviewed" ? "Reviewed" : "Needs review"}
@@ -1300,6 +1308,7 @@ export default function App() {
                     <HomeCctv
                       siteId={site?.id}
                       cameras={cameras}
+                      simulatedCameras={simulatedCameras}
                       selected={activeCamera as PlacedCamera | undefined}
                       onSelect={(cameraId) => {
                         setRoom(cameraId);
@@ -1350,7 +1359,8 @@ export default function App() {
             <div className="settings-page">
               {settingsPage === "menu" ? (
                 <nav className="settings-mobile-menu" aria-label="Settings sections">
-                  {(["account", "places", "privacy", "ring", "devices", "display", "security", "delete"] as SettingsPage[]).map((page) => (
+                  {(["account", "places", "privacy", "ring", "devices", "display", "security",
+                    ...(currentSession?.demo_tools ? ["demo"] : []), "delete"] as SettingsPage[]).map((page) => (
                     <button key={page} className={page === "delete" ? "danger-row" : undefined} onClick={() => setSettingsPage(page)}>
                       <span>{settingsLabels[page]}</span><ChevronRight size={17} />
                     </button>
@@ -1572,6 +1582,7 @@ export default function App() {
               )}
               <p className="app-version">Pathlight version 0.1</p>
               </>}
+              {settingsPage === "demo" && currentSession?.demo_tools && <DemoTools siteId={site?.id} siteName={site?.name} />}
               {settingsPage === "delete" && currentSession?.email && (
                 <section className="danger-zone">
                   <h2>Delete account</h2>

@@ -9,7 +9,7 @@ import { type AnalyticsViewProps, type SiteAnalytics } from "../analytics/Analyt
 import PhoneAnalytics from "../analytics/PhoneAnalytics";
 import type { AlertSettingsInput } from "../analytics/AlertsCard";
 
-export type AnalyticsEmbedState = Omit<AnalyticsViewProps, "onSite" | "onInsight" | "onRetry" | "onAlertSettings" | "onAcknowledge">;
+export type AnalyticsEmbedState = Omit<AnalyticsViewProps, "onSite" | "onInsight" | "onRetry" | "onAlertSettings" | "onAcknowledge" | "onMode">;
 export type AnalyticsEmbedMessage =
   | { type: "ready" }
   | { type: "site"; id: string }
@@ -18,7 +18,8 @@ export type AnalyticsEmbedMessage =
   | { type: "alertSettings"; settings: AlertSettingsInput }
   | { type: "acknowledge"; id: number }
   | { type: "export"; name: string; csv: string }
-  | { type: "pair" };
+  | { type: "pair" }
+  | { type: "mode"; mode: "all" | "live" };
 
 declare global {
   interface Window {
@@ -48,6 +49,7 @@ function csv(data: SiteAnalytics) {
     ["Entrance camera", "Visits", "Last week"], ...data.entrances.map((e) => [e.name, e.visits, e.previous]),
     [],
     ["Tracked", data.quality.tracked, "Positioned", data.quality.positioned, "Estimated", data.quality.estimated],
+    ["Counting", data.mode === "live" ? "Live Ring visits only" : "All visits", "Simulated visits this week", data.simulated_visits],
   ];
   return rows.map((row) => row.map(cell).join(",")).join("\n");
 }
@@ -76,6 +78,7 @@ export default function AnalyticsEmbed() {
         onRetry={() => post({ type: "retry" })}
         onAlertSettings={(settings) => post({ type: "alertSettings", settings })}
         onAcknowledge={(id) => post({ type: "acknowledge", id })}
+        onMode={(mode) => post({ type: "mode", mode })}
       />
     </main>
   );

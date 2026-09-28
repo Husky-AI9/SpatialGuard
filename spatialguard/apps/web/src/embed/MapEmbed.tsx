@@ -33,6 +33,8 @@ export type EmbedState = {
   review: { incident: Incident; step: number; track: Track | null; at: number } | null;
   /** Cameras pulsing now: live detections, or the step being replayed. */
   motionCameras: string[];
+  /** Demo-mode cameras that exist only on the map; labelled SIM. */
+  simulatedCameras?: string[];
   heat: { on: boolean; preset: "1h" | "12h" | "24h"; data: Heatmap | null; loading: boolean; error: string };
 };
 
@@ -118,6 +120,7 @@ export default function MapEmbed() {
           viewKey={viewKey}
           motion
           motionCameras={state.motionCameras}
+          simulatedCameras={state.simulatedCameras ?? []}
           fitBuilding
           background={state.planImage}
         />
@@ -129,6 +132,7 @@ export default function MapEmbed() {
           markers={evidence.markers}
           evidenceLinks={evidence.links}
           heatmap={heatGrid}
+          simulatedCameras={state.simulatedCameras ?? []}
         />
       )}
       {view === "2D" && state.motionCameras.length > 0 && !heat.on && !incident && (

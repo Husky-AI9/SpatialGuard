@@ -17,6 +17,8 @@ import "./analytics.css";
 export type SiteAnalytics = components["schemas"]["SiteAnalytics"];
 export type SiteSummary = components["schemas"]["SiteAnalyticsSummary"];
 export type InsightState = components["schemas"]["SiteInsightState"];
+/** "live" counts only visits seen by Ring cameras; "all" adds simulated ones. */
+export type AnalyticsMode = "all" | "live";
 
 export type AnalyticsViewProps = {
   sites: SiteSummary[];
@@ -35,7 +37,33 @@ export type AnalyticsViewProps = {
   alertsBusy?: boolean;
   onAlertSettings?: (next: AlertSettingsInput) => void;
   onAcknowledge?: (id: number) => void;
+  /** Which visits the figures count; the switch shows only when simulated visits exist. */
+  mode?: AnalyticsMode;
+  onMode?: (mode: AnalyticsMode) => void;
 };
+
+const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n === 1 ? "" : "s"}`;
+
+/** Says plainly how many of the figures are simulated, or that they are hidden. */
+export function simulatedNote(data: SiteAnalytics | null, mode: AnalyticsMode = "all"): string | null {
+  const count = data?.simulated_visits ?? 0;
+  if (mode === "live")
+    return `Live only: visits seen by your Ring cameras.${count ? ` ${plural(count, "simulated visit")} hidden.` : ""}`;
+  return count ? `Includes ${plural(count, "simulated visit")} from demo mode, not seen by any camera.` : null;
+}
+
+/** All data / Live only, shown when the week has simulated visits (or live is already chosen). */
+export function ModeSwitch({ data, mode = "all", onMode, className = "an-mode" }: {
+  data: SiteAnalytics | null; mode?: AnalyticsMode; onMode?: (mode: AnalyticsMode) => void; className?: string;
+}) {
+  if (!onMode || (!data?.simulated_visits && mode !== "live")) return null;
+  return (
+    <div className={className} role="group" aria-label="Which visits to count">
+      <button type="button" aria-pressed={mode !== "live"} onClick={() => onMode("all")}>All data</button>
+      <button type="button" aria-pressed={mode === "live"} onClick={() => onMode("live")}>Live only</button>
+    </div>
+  );
+}
 
 const weekday = (date: string, style: "short" | "long" = "short") =>
   new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: style });
@@ -149,8 +177,16 @@ export default function AnalyticsView(props: AnalyticsViewProps) {
           <h2>Site Analytics</h2>
           <p>{data ? `Last 7 days (${dayLabel(data.daily[0].date)} – ${dayLabel(data.daily[6].date)}) vs the 7 days before · ${data.time_zone.replace("_", " ")}` : "Foot traffic from your Ring cameras"}</p>
         </div>
-        <SiteSwitcher sites={props.sites} siteId={props.siteId} onSite={props.onSite} />
+        <div className="an-toolbar-controls">
+          <ModeSwitch data={data} mode={props.mode} onMode={props.onMode} />
+          <SiteSwitcher sites={props.sites} siteId={props.siteId} onSite={props.onSite} />
+        </div>
       </div>
+      {simulatedNote(data, props.mode) && (
+        <p className={`an-sim-note${props.mode === "live" ? " is-live" : ""}`} role="note">
+          <Info size={14} aria-hidden="true" />{simulatedNote(data, props.mode)}
+        </p>
+      )}
 
       {error && !data && (
         <div className="an-card an-message" role="alert">

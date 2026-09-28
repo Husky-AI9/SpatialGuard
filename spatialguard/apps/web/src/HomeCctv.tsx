@@ -26,6 +26,7 @@ export default function HomeCctv({
   onTestTrack,
   onTestClassification,
   classificationEnabled,
+  simulatedCameras = [],
 }: {
   siteId?: string;
   cameras: CameraStatus[];
@@ -39,6 +40,8 @@ export default function HomeCctv({
   onTestTrack: (track: TestTrack | null) => void;
   onTestClassification: (classification: IncidentClassification | null) => void;
   classificationEnabled: boolean;
+  /** Demo-mode cameras: they exist only on the map and have no feed. */
+  simulatedCameras?: string[];
 }) {
   const [ringState, setRingState] = useState("loading");
   const [devices, setDevices] = useState<Device[]>([]);
@@ -78,12 +81,13 @@ export default function HomeCctv({
 
   if (selected) {
     const ring = mappedDevice(selected.id);
+    const simulated = simulatedCameras.includes(selected.id);
     return (
       <section className="home-cctv home-cctv-open" aria-label="Camera overview">
         <div className="panel-heading">
           <div>
             <h2>{selected.name}</h2>
-            <span>{ring ? "Ring camera" : "Floor-plan camera"}</span>
+            <span>{ring ? "Ring camera" : simulated ? "Simulated camera · demo mode" : "Floor-plan camera"}</span>
           </div>
           <button className="primary" onClick={onClear}>All cameras</button>
         </div>
@@ -126,11 +130,13 @@ export default function HomeCctv({
           ) : (
             <div className="home-cctv-empty">
               {ring ? <Radio size={25} /> : <VideoOff size={25} />}
-              <strong>{ring ? "Live view stopped" : "Demo camera"}</strong>
+              <strong>{ring ? "Live view stopped" : simulated ? "Simulated camera" : "Demo camera"}</strong>
               <span>
                 {ring
                   ? "Select this camera again to reopen its live feed."
-                  : "No Ring feed is mapped to this camera."}
+                  : simulated
+                    ? "This camera exists only on the map. Its visitors are simulated for the demo."
+                    : "No Ring feed is mapped to this camera."}
               </span>
               {ring && (
                 <button onClick={() => setLiveDevice(ring)}>Open live view</button>
@@ -154,6 +160,7 @@ export default function HomeCctv({
       <div className="home-camera-scroll">
         {cameras.map((camera) => {
           const ring = mappedDevice(camera.id);
+          const simulated = simulatedCameras.includes(camera.id);
           return (
             <div className="home-camera-row" key={camera.id}>
               <button
@@ -171,17 +178,19 @@ export default function HomeCctv({
                 />
                 <span>
                   <strong>{camera.name}</strong>
-                  <small>{ring ? "Ring camera" : "Floor-plan camera"}</small>
-                  <em>
+                  <small>{ring ? "Ring camera" : simulated ? "Simulated camera" : "Floor-plan camera"}</small>
+                  <em className={simulated ? "sim-chip" : undefined}>
                     {ring
                       ? "Live available"
-                      : ringState === "loading"
-                        ? "Checking feed"
-                        : "Not paired"}
+                      : simulated
+                        ? "SIM · demo mode"
+                        : ringState === "loading"
+                          ? "Checking feed"
+                          : "Not paired"}
                   </em>
                 </span>
               </button>
-              {!ring && ringState !== "loading" && (
+              {!ring && !simulated && ringState !== "loading" && (
                 <button className="pair-camera-button" onClick={() => onPairCamera(camera)}>Pair</button>
               )}
               {onRemoveCamera && (

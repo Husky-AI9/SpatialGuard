@@ -42,13 +42,13 @@ import LivePlayer from "./LivePlayer";
 import { Snapshot, EventRecording } from "./Media";
 import Timeline, { eventTime } from "./Timeline";
 import { SvgXml } from "react-native-svg";
-import { Operations, RingSettings } from "./Settings";
+import { DemoSettings, Operations, RingSettings } from "./Settings";
 import AnalyticsScreen from "./Analytics";
 import type { components } from "../../web/src/generated";
 type Preferences = components["schemas"]["AccountPreferences"];
 type CrowdAlert = components["schemas"]["CrowdAlert"];
 type Tab = "Home" | "Activity" | "Cameras" | "Analytics" | "Operations" | "Settings";
-type Section = "" | "Account" | "Places & floor plans" | "Privacy" | "Ring cameras" | "Delete account";
+type Section = "" | "Account" | "Places & floor plans" | "Privacy" | "Ring cameras" | "Demo mode" | "Delete account";
 const tabs: { name: Tab; icon: IconName }[] = [
   { name: "Home", icon: "house" },
   { name: "Activity", icon: "history" },
@@ -65,7 +65,8 @@ const uuid = () =>
   });
 const stamp = (value: string) =>
   new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-const mode = (m: Incident["evidence_mode"]) => (m === "live" ? "Live" : m === "replay" ? "Demo" : "Simulator");
+const mode = (i: Incident) =>
+  i.simulated ? "Simulated" : i.evidence_mode === "live" ? "Live" : i.evidence_mode === "replay" ? "Demo" : "Simulator";
 
 export default function Workspace({ onSignout }: { onSignout: () => void }) {
   const [tab, setTab] = useState<Tab>("Home"),
@@ -186,7 +187,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           const next = await page();
           eventCursor.current = next.cursor;
           if (stopped) return;
-          if (next.events.some((e) => e.kind === "alert.crowding")) void loadCrowd(id);
+          if (next.events.some((e) => e.kind === "alert.crowding" || e.kind.startsWith("demo."))) void loadCrowd(id);
           if (next.events.some((e) => !e.kind.startsWith("incident") && !e.kind.startsWith("alert"))) await load(id);
           else if (next.events.length) {
             const latest = await request<components["schemas"]["IncidentPage"]>(`/v1/sites/${id}/incidents`);
@@ -408,6 +409,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       />
       {cameras.map((camera) => {
         const ring = mapped(camera.id);
+        const simulated = !!site?.simulated_camera_ids?.includes(camera.id);
         const included = !!site?.monitoring.camera_ids.includes(camera.id);
         return (
           <View key={camera.id} style={{ borderRadius: 14, backgroundColor: "#f6f5fc", borderWidth: 1, borderColor: device?.id && ring?.id === device.id ? "#bdb8f1" : "transparent" }}>
@@ -416,7 +418,9 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${camera.name}`}
                 style={[s.row, { flex: 1 }]}
-                onPress={() => (ring ? setDevice(ring) : setPairFor({ id: camera.id, name: camera.name }))}
+                onPress={() => (ring ? setDevice(ring) : simulated
+                  ? Alert.alert("Simulated camera", "This camera exists only on the map. Its visitors are simulated for the demo.")
+                  : setPairFor({ id: camera.id, name: camera.name }))}
               >
                 {ring ? (
                   <Snapshot device={ring} />
@@ -427,13 +431,13 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
                 )}
                 <View style={{ flex: 1, gap: 1 }}>
                   <Label style={s.strong} numberOfLines={1}>{camera.name}</Label>
-                  <Label style={[s.muted, { fontSize: 13 }]}>{ring ? "Ring camera" : "Floor-plan camera"}</Label>
-                  <Label style={{ fontSize: 12, fontFamily: "SourceSansBold", color: ring ? "#1f7a45" : colors.purple }}>
-                    {ring ? "● Live available" : "Not paired"}
+                  <Label style={[s.muted, { fontSize: 13 }]}>{ring ? "Ring camera" : simulated ? "Simulated camera" : "Floor-plan camera"}</Label>
+                  <Label style={{ fontSize: 12, fontFamily: "SourceSansBold", color: ring ? "#1f7a45" : simulated ? "#8a5a00" : colors.purple }}>
+                    {ring ? "● Live available" : simulated ? "SIM · demo mode" : "Not paired"}
                   </Label>
                 </View>
               </Pressable>
-              {!ring && <Button small title="Pair" onPress={() => setPairFor({ id: camera.id, name: camera.name })} />}
+              {!ring && !simulated && <Button small title="Pair" onPress={() => setPairFor({ id: camera.id, name: camera.name })} />}
               <IconButton icon="trash" label={`Remove ${camera.name}`} color={colors.muted} tint="transparent" onPress={() => removeCamera(camera)} />
             </View>
             {withSwitches && site && (
@@ -492,7 +496,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
             <Icon name="pin" size={20} color="#e59a9a" />
             <View style={{ flex: 1, gap: 2 }}>
               <Label style={s.strong} numberOfLines={1}>{i.classification?.display_label || i.title}</Label>
-              <Label style={[s.muted, { fontSize: 13 }]}>{stamp(i.started_at)} · {mode(i.evidence_mode)}</Label>
+              <Label style={[s.muted, { fontSize: 13 }]}>{stamp(i.started_at)} · {mode(i)}</Label>
               <Chip text={i.status === "reviewed" ? "Reviewed" : "Needs review"} tone={i.status === "reviewed" ? "muted" : "accent"} />
             </View>
           </Pressable>
@@ -538,7 +542,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       <Card>
         <Label style={s.title}>{selected.classification?.display_label || selected.title}</Label>
         <Label style={s.muted}>
-          {eventTime(reviewObservation?.observed_at ?? selected.created_at)} · {reviewCamera?.name ?? "Camera unavailable"} · {mode(selected.evidence_mode)}
+          {eventTime(reviewObservation?.observed_at ?? selected.created_at)} · {reviewCamera?.name ?? "Camera unavailable"} · {mode(selected)}
         </Label>
         <View style={s.row}>
           <Button
@@ -640,9 +644,11 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           ["Timestamp", reviewObservation ? eventTime(reviewObservation.observed_at) : "Unavailable"],
           ["Camera", reviewCamera?.name ?? "Unknown camera"],
           ["Person", `${selected.classification?.display_label ?? "Unknown"} · identity unconfirmed`],
-          ["Evidence mode", selected.evidence_mode === "live" ? "Live Ring event" : "Demo (sample data)"],
+          ["Evidence mode", selected.simulated ? "Simulated customer (demo mode)"
+            : selected.evidence_mode === "live" ? "Live Ring event" : "Demo (sample data)"],
           ["Trigger", selected.rule],
-          ["Certainty", selected.evidence_mode === "live" ? "Camera event. Movement is estimated."
+          ["Certainty", selected.simulated ? "Generated position. No camera saw this visit."
+            : selected.evidence_mode === "live" ? "Camera event. Movement is estimated."
             : reviewObservation?.location.kind === "unknown" ? "Unknown location \u2014 coverage gap" : "Illustrative demo position"],
         ] as const).map(([name, value]) => (
           <View key={name} style={{ paddingVertical: 6, borderTopWidth: 1, borderColor: colors.line }}>
@@ -727,6 +733,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         </Card>
       );
     if (section === "Delete account") return <DeleteAccount onDeleted={onSignout} />;
+    if (section === "Demo mode" && me?.demo_tools) return <DemoSettings siteId={site?.id} siteName={site?.name} />;
     return (
       <Card>
         <Label style={s.heading}>Account</Label>
@@ -788,7 +795,8 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
               {crowdAlert.kind === "queue" ? `Queue building at ${crowdAlert.zone}` : `${crowdAlert.zone} is getting crowded`}
             </Label>
             <Label style={{ color: "#7a4a2e", fontSize: 13 }}>
-              {crowdAlert.count} {crowdAlert.count === 1 ? "person" : "people"} in the last {crowdAlert.window_minutes} min · limit {crowdAlert.limit}
+              {crowdAlert.count} {crowdAlert.count === 1 ? "person" : "people"} in the last {crowdAlert.window_minutes} min
+              {crowdAlert.simulated ? " · simulated" : ""} · limit {crowdAlert.limit}
             </Label>
           </View>
           <Pressable
@@ -874,7 +882,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           settingsSection()
         ) : (
           <Card style={{ padding: 0, gap: 0, overflow: "hidden" }}>
-            {sections.map((name, i) => (
+            {(me?.demo_tools ? [...sections.slice(0, -1), "Demo mode" as Section, sections[sections.length - 1]] : sections).map((name, i) => (
               <Pressable
                 key={name}
                 accessibilityRole="button"

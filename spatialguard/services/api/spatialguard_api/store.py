@@ -220,6 +220,9 @@ class Store:
                 detail TEXT NOT NULL, at TEXT NOT NULL
             );
             ''')
+            alert_columns = {row['name'] for row in db.execute('PRAGMA table_info(site_alerts)')}
+            if 'simulated' not in alert_columns:
+                db.execute('ALTER TABLE site_alerts ADD COLUMN simulated INTEGER NOT NULL DEFAULT 0')
             account_columns = {row['name'] for row in db.execute('PRAGMA table_info(accounts)')}
             if 'email_verified' not in account_columns:
                 db.execute('ALTER TABLE accounts ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0')

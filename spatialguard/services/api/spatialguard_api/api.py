@@ -29,6 +29,7 @@ from . import models as m
 from . import engine as tf
 from .engine import LayoutRejected, client, normalize_cameras, publish_layout
 from .release import capabilities, require_feature
+from . import demo
 from .mail import send as send_mail
 
 COOKIE = "spatialguard_session"
@@ -196,9 +197,11 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 account = lookup.execute("SELECT email FROM accounts WHERE id=?", (row["owner"],)).fetchone()
         else:
             account = db.execute("SELECT email FROM accounts WHERE id=?", (row["owner"],)).fetchone()
+        email = account["email"] if account else None
         return m.Session(
             id=row["id"], name=row["name"], kind=row["kind"],
-            expires_at=row["expires"], email=account["email"] if account else None,
+            expires_at=row["expires"], email=email,
+            demo_tools=demo.allowed(email, row["owner"]),
         )
 
     def issue(db, owner, kind, name):
@@ -209,6 +212,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         return m.SessionToken(token=token, session=m.Session(
             id=sid, name=name, kind=kind, expires_at=expires,
             email=account["email"] if account else None,
+            demo_tools=demo.allowed(account["email"] if account else None, owner),
         ))
 
     def set_browser_cookie(response, token):
@@ -918,7 +922,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         return [m.CameraStatus(id=c["id"], name=c["name"], selected=c["id"] in site["monitoring"]["camera_ids"],
             state='live_connected' if c['id'] in mapped else 'replay_only',
             calibration='Not calibrated; Ring event positions are unknown' if c['id'] in mapped else 'Synthetic coordinates; no real-camera calibration',
-            last_observed_at=max((o["observed_at"] for i in incidents for o in i["observations"] if o["source_id"]==c["id"] and (o["location"]["kind"]!="unknown" or i.get('evidence_mode')=='live')), default=None)) for c in site["layout"]["cameras"]]
+            last_observed_at=max((o["observed_at"] for i in incidents if not i.get("simulated") for o in i["observations"] if o["source_id"]==c["id"] and (o["location"]["kind"]!="unknown" or i.get('evidence_mode')=='live')), default=None)) for c in site["layout"]["cameras"]]
 
     OWNER_PLACED = ("Placed by the site owner in SpatialGuard. Synthetic coordinates; "
                     "no measured camera calibration.")
@@ -949,6 +953,8 @@ def create_app(db_path=None, engine=None, ring_service=None):
                 raise HTTPException(409, "The workspace changed while saving. Reload and retry.")
             current["revision_id"] = revision["revision_id"]
             current["layout"] = revision["layout"]
+            on_map = {cam["id"] for cam in revision["layout"]["cameras"]}
+            current["simulated_camera_ids"] = [c for c in current.get("simulated_camera_ids", []) if c in on_map]
             kept = [c for c in current["monitoring"]["camera_ids"]
                     if c in {cam["id"] for cam in revision["layout"]["cameras"]}]
             if kept != current["monitoring"]["camera_ids"]:
@@ -1212,24 +1218,28 @@ def create_app(db_path=None, engine=None, ring_service=None):
             paths = tracks.load(db, site_id)
         return hm.build_heatmap(site, [json.loads(r["data"]) for r in rows], start, end, paths)
 
-    def site_analytics(db, site, tz):
+    def site_analytics(db, site, tz, mode="all"):
         from . import analytics, tracks
         rows = db.execute("SELECT data FROM incidents WHERE site_id=?", (site["id"],)).fetchall()
         since = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
         changes = [r["at"] for r in db.execute(
             "SELECT at FROM audit WHERE owner=? AND action='layout.changed' AND at>=? ORDER BY at", (site["owner_id"], since))]
         return analytics.build(site, [json.loads(r["data"]) for r in rows], tracks.load(db, site["id"]), tz,
-                               layout_changes=changes)
+                               layout_changes=changes, mode=mode)
 
     def owned_for_analytics(db, site_id, p):
         site = owned(db, site_id, p)
         return {**site, "owner_id": p["owner"]}
 
     @app.get("/v1/sites/{site_id}/analytics", response_model=m.SiteAnalytics)
-    def analytics_for_site(site_id: str, tz: str | None = Query(None, max_length=64), p=Depends(principal)):
-        """Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone."""
+    def analytics_for_site(site_id: str, tz: str | None = Query(None, max_length=64),
+                           mode: str = Query("all", pattern="^(all|live)$"), p=Depends(principal)):
+        """Foot traffic for one site: last 7 local days against the 7 before, in the owner's time zone.
+
+        ``mode=live`` counts only visits seen by Ring cameras, leaving out simulated ones.
+        """
         with store.connect() as db:
-            return site_analytics(db, owned_for_analytics(db, site_id, p), tz)
+            return site_analytics(db, owned_for_analytics(db, site_id, p), tz, mode)
 
     @app.get("/v1/analytics/sites", response_model=list[m.SiteAnalyticsSummary])
     def analytics_overview(tz: str | None = Query(None, max_length=64), p=Depends(principal)):
@@ -1394,6 +1404,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             rows = db.execute("SELECT * FROM events WHERE site_id=? AND seq>? ORDER BY seq LIMIT 100", (site_id, after)).fetchall()
             return m.EventPage(events=[m.Event(sequence=r["seq"], kind=r["kind"], resource_id=r["resource"]) for r in rows], cursor=rows[-1]["seq"] if rows else after)
 
+    demo.install(app, store, principal, owned, geometry_edit, lambda: engine or client())
     from .ring_routes import install
     install(app, store, principal, ring_service)
     from .test_video_routes import install as install_test_videos

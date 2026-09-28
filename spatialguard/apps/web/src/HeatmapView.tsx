@@ -15,6 +15,8 @@ export type Heatmap = HeatGrid & {
   samples: number;
   /** Camera events with no position, spread across that camera's view. */
   estimated: number;
+  /** Visits drawn here that were simulated (demo mode) or replayed, not seen by a camera. */
+  simulated?: number;
   estimated_cameras: { camera_id: string; events: number }[];
   unpositioned: { camera_id: string; events: number }[];
 };
@@ -87,6 +89,11 @@ export function HeatmapPanel({
           {data.samples ? `${data.estimated} ${data.estimated === 1 ? "is an estimate" : "are estimates"}` : "Estimated"}{" "}
           from where {names(data.estimated_cameras.map((item) => cameraName(item.camera_id)))}{" "}
           {data.estimated_cameras.length === 1 ? "is" : "are"} looking.
+        </p>
+      )}
+      {!!data?.simulated && (
+        <p className="heatmap-note heatmap-estimate">
+          Includes {data.simulated} simulated {data.simulated === 1 ? "visit" : "visits"} from demo mode.
         </p>
       )}
       {missing > 0 && (

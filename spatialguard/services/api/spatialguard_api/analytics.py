@@ -18,6 +18,11 @@ Definitions:
   saw it first.
 * **Zones** are the map's zones and rooms; areas with the same name (two
   "Porch" zones) are combined. A point in no area counts as "Outside".
+  When the owner has drawn business areas (zones with the purpose
+  ``analytics``, such as Counter or Seating), only those are reported, so a
+  shop in a mixed-use building is not described by its other rooms.
+* A visit is **simulated** when it was not seen by a Ring camera: demo-mode
+  customers and replays. ``mode="live"`` leaves them out entirely.
 * **Dwell** is the time between consecutive sightings of the same visit in
   the same zone, ignoring gaps longer than 15 seconds.
 
@@ -49,10 +54,18 @@ def zone_info(name: str | None) -> ZoneInfo | timezone:
         return timezone.utc
 
 
+ANALYTICS_PURPOSE = "analytics"
+
+
 def _areas(layout: dict) -> list[tuple[str, list[list[tuple[float, float]]]]]:
-    """(name, polygons) with zones before rooms, since zones are the more specific areas."""
+    """(name, polygons) with zones before rooms, since zones are the more specific areas.
+
+    Owner-drawn business areas replace the building's rooms and other zones.
+    """
+    zones = layout.get("zones", [])
+    business = [zone for zone in zones if zone.get("purpose") == ANALYTICS_PURPOSE]
     grouped: dict[str, list] = {}
-    for area in [*layout.get("zones", []), *layout.get("rooms", [])]:
+    for area in business or [*zones, *layout.get("rooms", [])]:
         polygon = [(float(x), float(y)) for x, y in area["polygon_xy_m"]]
         grouped.setdefault(area["name"].strip() or "Unnamed area", []).append(polygon)
     return list(grouped.items())
@@ -108,7 +121,8 @@ def visits(site: dict, incidents: list[dict], tracks: dict) -> list[dict]:
         counted.sort(key=lambda item: item[0])
         samples.sort(key=lambda item: item[0])
         kind = "tracked" if "tracked" in kinds else "positioned" if "positioned" in kinds else "estimated"
-        result.append({"start": counted[0][0], "entrance": counted[0][1], "samples": samples, "kind": kind})
+        result.append({"start": counted[0][0], "entrance": counted[0][1], "samples": samples, "kind": kind,
+                       "simulated": incident.get("evidence_mode") != "live"})
     return result
 
 
@@ -152,7 +166,7 @@ def _period_stats(period: list[dict], zone_names: list[str], tz) -> dict:
 
 
 def build(site: dict, incidents: list[dict], tracks: dict, tz_name: str | None = None,
-          now: datetime | None = None, layout_changes: list[str] | None = None) -> dict:
+          now: datetime | None = None, layout_changes: list[str] | None = None, mode: str = "all") -> dict:
     tz = zone_info(tz_name)
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     # Whole local days: this period is the 7 days ending with today.
@@ -162,6 +176,9 @@ def build(site: dict, incidents: list[dict], tracks: dict, tz_name: str | None =
     previous_start = start - timedelta(days=PERIOD_DAYS)
     end = now
     everything = visits(site, incidents, tracks)
+    simulated_visits = sum(1 for v in everything if v["simulated"] and start <= v["start"] <= end)
+    if mode == "live":
+        everything = [v for v in everything if not v["simulated"]]
     current = [v for v in everything if start <= v["start"] <= end]
     previous = [v for v in everything if previous_start <= v["start"] < start]
 
@@ -197,6 +214,7 @@ def build(site: dict, incidents: list[dict], tracks: dict, tz_name: str | None =
     } for name in names if name != OUTSIDE or this["zone_visits"].get(name) or last["zone_visits"].get(name)]
     zones.sort(key=lambda zone: (-zone["visits"], zone["name"]))
     active = [zone for zone in zones if zone["visits"]]
+    named = [zone for zone in zones if zone["name"] != OUTSIDE]
 
     camera_names = {c["id"]: c["name"] for c in site["layout"].get("cameras", [])}
     entrance_ids = list(dict.fromkeys([*this["entrances"], *last["entrances"]]))
@@ -233,7 +251,8 @@ def build(site: dict, incidents: list[dict], tracks: dict, tz_name: str | None =
             "peak_hour": peak,
             "peak_hour_visits": this["hourly"][peak] if peak is not None else 0,
             "busiest_zone": active[0]["name"] if active else None,
-            "quietest_zone": min(zones, key=lambda z: (z["visits"], z["name"]))["name"] if len(zones) > 1 else None,
+            # "Outside" is not a place the owner can act on, so it is never the quietest zone.
+            "quietest_zone": min(named, key=lambda z: (z["visits"], z["name"]))["name"] if len(named) > 1 else None,
             "first_hour": quiet_hours[0] if quiet_hours else None,
             "last_hour": quiet_hours[-1] if quiet_hours else None,
         },
@@ -249,6 +268,8 @@ def build(site: dict, incidents: list[dict], tracks: dict, tz_name: str | None =
         "entrances": entrances,
         "quality": {"tracked": quality["tracked"], "positioned": quality["positioned"], "estimated": quality["estimated"]},
         "layout_changes": sorted(layout_changes or []),
+        "mode": "live" if mode == "live" else "all",
+        "simulated_visits": simulated_visits,
     }
 
 
