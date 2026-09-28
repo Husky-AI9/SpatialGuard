@@ -82,6 +82,7 @@ export default function Map2D({
   onZoomChange,
   viewKey = 0,
   motion = false,
+  motionCameras = [],
   heatmap = null,
 }: {
   layout: Layout;
@@ -102,8 +103,10 @@ export default function Map2D({
   onZoomChange?: (zoom: number) => void;
   /** Change to recentre the view (for a "fit" control). */
   viewKey?: number;
-  /** Show pulsing motion waves across every camera's coverage. */
+  /** Motion-detection mode: cameras in `motionCameras` pulse. */
   motion?: boolean;
+  /** Cameras that detected motion just now; only these pulse. */
+  motionCameras?: string[];
   /** People heatmap grid to draw over the floor, or null for none. */
   heatmap?: HeatGrid | null;
 }) {
@@ -455,11 +458,11 @@ export default function Map2D({
       </g>}
       <g className="map-coverage" pointerEvents="none">
         {cameras.map(c => <path key={c.id} className="camera-coverage" d={coveragePath(c)}
-          fill="#5B4FE8" fillOpacity={selected === c.id ? .24 : motion ? .12 : .05} />)}
+          fill="#5B4FE8" fillOpacity={selected === c.id ? .24 : motion && motionCameras.includes(c.id) ? .16 : .05} />)}
       </g>
-      {motion && (
+      {motion && motionCameras.length > 0 && (
         <g className="motion-waves" pointerEvents="none" aria-hidden="true">
-          {cameras.map((c) => (
+          {cameras.filter((c) => motionCameras.includes(c.id)).map((c) => (
             <g key={c.id} transform={`translate(${c.position_m[0]} ${-c.position_m[1]})`}>
               {[0, 1, 2].map((i) => (
                 <g key={i} opacity="0">

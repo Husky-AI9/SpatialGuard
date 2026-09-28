@@ -35,7 +35,8 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView
-        edges={page === "landing" ? ["top", "left", "right"] : undefined}
+        // The workspace tab bar paints under the home indicator itself.
+        edges={page === "landing" || page === "workspace" ? ["top", "left", "right"] : undefined}
         style={{
           flex: 1,
           backgroundColor: page === "landing" ? colors.purple : colors.page,

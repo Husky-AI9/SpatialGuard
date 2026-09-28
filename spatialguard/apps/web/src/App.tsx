@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Map2D from "@twinforge/spatial-view/Map2D";
 import MapControls from "./MapControls";
+import { useLiveMotion } from "./liveMotion";
 import { HeatmapLegend, HeatmapPanel, usePeopleHeatmap, type HeatRange } from "./PeopleHeatmap";
 import type { EvidenceLink, Marker } from "@twinforge/spatial-view/Map2D";
 import type { CameraChange } from "@twinforge/spatial-view/cameraGlyph";
@@ -146,7 +147,6 @@ export default function App() {
     [view, setView] = useState("2D"),
     [mapZoom, setMapZoom] = useState(1),
     [mapViewKey, setMapViewKey] = useState(0),
-    [motionMode, setMotionMode] = useState(false),
     [heatmapOn, setHeatmapOn] = useState(false),
     [heatRange, setHeatRange] = useState<HeatRange>({ preset: "24h" }),
     [lowPower, setLowPower] = useState(() => {
@@ -461,6 +461,12 @@ export default function App() {
   }, [site?.id, planAsset]);
   const sampleLoaded = sites.some((s) => s.name === "Demo home");
   // Hooks must run before the early returns below.
+  const moving = useLiveMotion(incidents, site?.id);
+  // Motion waves follow the cameras: live detections on the home map, and the
+  // camera of the current step while an incident is replayed.
+  const pulsing = selected
+    ? observation && observation.category !== "coverage_gap" ? [observation.source_id] : []
+    : moving;
   const heat = usePeopleHeatmap(site?.id, heatmapOn && !selected, heatRange, incidents[0]?.id);
   const rememberSite = (id: string) =>
     void request("/v1/preferences", "PUT", { active_site_id: id }).catch(
@@ -880,7 +886,8 @@ export default function App() {
               zoom={mapZoom}
               onZoomChange={setMapZoom}
               viewKey={mapViewKey}
-              motion={motionMode && !lowPower}
+              motion={!lowPower}
+              motionCameras={pulsing}
               fitBuilding={tab === "Home"}
               editable={editable}
               placing={placing}
@@ -901,6 +908,12 @@ export default function App() {
               />
             </Suspense>
           ) : <CameraWall compact />}
+          {view === "2D" && moving.length > 0 && !heatmapOn && !selected && (
+            <p className="motion-status motion-status-live" role="status">
+              <span aria-hidden="true" />
+              {`Motion · ${moving.map((id) => place.layout.cameras.find((c) => c.id === id)?.name ?? "Camera").join(", ")}`}
+            </p>
+          )}
           {(view === "2D" || view === "3D") && heatmapOn && !selected && (
             <>
               <HeatmapPanel
@@ -917,9 +930,7 @@ export default function App() {
           {view === "3D" && !selected && (
             <MapControls
               compact
-              motion={motionMode}
               people={heatmapOn}
-              onMotion={() => setMotionMode((on) => !on)}
               onPeople={() => setHeatmapOn((on) => !on)}
               canZoomIn={false}
               canZoomOut={false}
@@ -930,9 +941,7 @@ export default function App() {
           )}
           {view === "2D" && !selected && (
             <MapControls
-              motion={motionMode}
               people={heatmapOn}
-              onMotion={() => setMotionMode((on) => !on)}
               onPeople={() => setHeatmapOn((on) => !on)}
               canZoomIn={mapZoom < 4}
               canZoomOut={mapZoom > 0.65}

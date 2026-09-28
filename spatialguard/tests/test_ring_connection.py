@@ -313,6 +313,23 @@ def test_jsonapi_inventory_and_site_mapping_isolation(service):
     with pytest.raises(HTTPException):service.mapping('owner','unauthorized-device','site_demo','camera_hall')
 
 
+def test_pairing_a_ring_camera_selects_it_for_monitoring(service):
+    mapped(service)
+    with service.store.connect() as db:
+        site=json.loads(db.execute("SELECT data FROM sites WHERE id='site_demo'").fetchone()[0])
+        site['monitoring']['camera_ids']=[]
+        db.execute("UPDATE sites SET data=? WHERE id='site_demo'",(dump(site),))
+    service.mapping('owner','device-a','site_demo','camera_hall')
+    with service.store.connect() as db:
+        site=json.loads(db.execute("SELECT data FROM sites WHERE id='site_demo'").fetchone()[0])
+    assert site['monitoring']['camera_ids']==['camera_hall']
+    assert site['monitoring_version']==1
+    service.mapping('owner','device-a','site_demo','camera_hall')
+    with service.store.connect() as db:
+        again=json.loads(db.execute("SELECT data FROM sites WHERE id='site_demo'").fetchone()[0])
+    assert again['monitoring']['camera_ids']==['camera_hall'] and again['monitoring_version']==1
+
+
 def test_legacy_cached_device_refreshes_before_media_use(service):
     mapped(service)
     with service.store.connect() as db:
@@ -891,3 +908,31 @@ def test_recording_route_requires_session_and_does_not_cache(service, monkeypatc
     with service.store.connect() as db:
         db.execute('UPDATE ring_accounts SET generation=generation+1')
     assert client.get(track_path, headers={'Authorization':'Bearer clip-token'}).status_code == 404
+
+
+def test_analyzed_recording_keeps_only_the_first_foot_point_for_the_heatmap(service, monkeypatch):
+    mapped(service)
+    service.webhook(*delivery(service))
+    process_one(service, Engine())
+    with service.store.connect() as db:
+        data=json.loads(db.execute('SELECT data FROM incidents').fetchone()[0])
+        db.execute('INSERT INTO sessions VALUES (?,?,?,?,?,?)',('clip-test','owner',digest('clip-token'),'test','android',time.time()+600))
+    observation=data['observations'][0]['observation_id']
+    path=f"/v1/incidents/{data['id']}/observations/{observation}/clip"
+    client=TestClient(create_app(service.store.path,ring_service=service))
+    auth={'Authorization':'Bearer clip-token'}
+    service.provider.clip=lambda *args:(b'\x00\x00\x00\x18ftypisomvideo',{})
+    clip_digest=client.get(path,headers=auth).headers['x-spatialguard-clip-digest']
+    from spatialguard_api.models import TestTrackPoint, TestVideoTrack
+    from spatialguard_api import incident_tracking
+    points=[TestTrackPoint(t_seconds=t, foot_x_norm=x, foot_y_norm=.8, confidence=.9) for t, x in ((0, .3), (1, .6))]
+    monkeypatch.setattr(incident_tracking, 'track_video', lambda identity, path:
+                        TestVideoTrack(video_id=identity, detector='test', points=points))
+    tracked=client.get(path.removesuffix('/clip')+'/track?clip_digest='+clip_digest, headers=auth)
+    assert tracked.status_code==200 and len(tracked.json()['points'])==2
+    with service.store.connect() as db:
+        rows=[tuple(r) for r in db.execute('SELECT incident_id,observation_id,site_id,foot_x,foot_y FROM observation_footpoints')]
+    assert rows==[(data['id'], observation, 'site_demo', .3, .8)]
+    assert client.delete(f"/v1/incidents/{data['id']}", headers=auth).status_code==204
+    with service.store.connect() as db:
+        assert db.execute('SELECT COUNT(*) FROM observation_footpoints').fetchone()[0]==0

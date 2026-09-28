@@ -768,7 +768,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             engine_call(tf.delete_site, engine_site)
             with store.connect() as db:
                 db.execute("BEGIN IMMEDIATE")
-                for table in ("incidents", "evidence", "runs", "events"):
+                for table in ("incidents", "evidence", "runs", "events", "observation_footpoints"):
                     db.execute(f"DELETE FROM {table} WHERE site_id=?", (engine_site,))
                 db.execute("DELETE FROM sites WHERE id=? AND owner=?", (engine_site, p["owner"]))
                 db.execute("DELETE FROM plans WHERE engine_site=? AND owner=?", (engine_site, p["owner"]))
@@ -778,7 +778,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             for site_id in site_ids:
-                for table in ("incidents", "evidence", "runs", "events"):
+                for table in ("incidents", "evidence", "runs", "events", "observation_footpoints"):
                     db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             for table in (
                 "sites", "plans", "sessions", "pairing", "audit", "account_preferences",
@@ -895,7 +895,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             engine_call(tf.delete_site, site_id)
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            for table in ("incidents", "evidence", "runs", "events"):
+            for table in ("incidents", "evidence", "runs", "events", "observation_footpoints"):
                 db.execute(f"DELETE FROM {table} WHERE site_id=?", (site_id,))
             db.execute("DELETE FROM sites WHERE id=? AND owner=?", (site_id, p["owner"]))
             db.execute("DELETE FROM settings WHERE key=? AND value=?", (active_key(p), site_id))
@@ -1202,7 +1202,9 @@ def create_app(db_path=None, engine=None, ring_service=None):
         with store.connect() as db:
             site = owned(db, site_id, p)
             rows = db.execute("SELECT data FROM incidents WHERE site_id=?", (site_id,)).fetchall()
-        return hm.build_heatmap(site, [json.loads(r["data"]) for r in rows], start, end)
+            feet = {(r["incident_id"], r["observation_id"]): (r["foot_x"], r["foot_y"], r["confidence"])
+                    for r in db.execute("SELECT * FROM observation_footpoints WHERE site_id=?", (site_id,))}
+        return hm.build_heatmap(site, [json.loads(r["data"]) for r in rows], start, end, feet)
 
     def incident_row(db, incident_id, p):
         row = db.execute("SELECT * FROM incidents WHERE id=?", (incident_id,)).fetchone()
@@ -1254,6 +1256,7 @@ def create_app(db_path=None, engine=None, ring_service=None):
             # record that the owner took this action.
             db.execute("DELETE FROM events WHERE site_id=? AND resource=?", (row["site_id"], incident_id))
             db.execute("DELETE FROM live_incident_accounts WHERE incident_id=?", (incident_id,))
+            db.execute("DELETE FROM observation_footpoints WHERE incident_id=?", (incident_id,))
             db.execute("DELETE FROM incidents WHERE id=?", (incident_id,))
             db.execute("DELETE FROM runs WHERE id=? AND site_id=?", (row["run_id"], row["site_id"]))
             event(db, row["site_id"], "incident.deleted", incident_id)

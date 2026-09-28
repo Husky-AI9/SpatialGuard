@@ -2,6 +2,7 @@
 .data/
 node_modules/
 dist/
+dist-embed/
 build/
 coverage/
 htmlcov/

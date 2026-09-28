@@ -34,6 +34,7 @@ import {
   styles as s,
   type IconName,
 } from "./ui";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FloorMap from "./Map";
 import LivePlayer from "./LivePlayer";
 import { Snapshot, Recording } from "./Media";
@@ -74,7 +75,10 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [pairFor, setPairFor] = useState<{ id: string; name: string } | null>(null),
-    [ringState, setRingState] = useState("");
+    [ringState, setRingState] = useState(""),
+    // The map is using a touch (pan, pinch, orbit): the page must not scroll.
+    [mapTouch, setMapTouch] = useState(false);
+  const insets = useSafeAreaInsets();
   const activeId = useRef(""),
     alive = useRef(true),
     loading = useRef(false);
@@ -126,6 +130,56 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       if (alive.current) setBusy(false);
     }
   };
+  // Follow new activity while the app is open, like the web app: new incidents
+  // arrive without a manual refresh and drive the live motion waves.
+  const eventCursor = useRef(0);
+  useEffect(() => {
+    const id = site?.id;
+    if (!id) return;
+    let stopped = false,
+      timer: ReturnType<typeof setTimeout> | undefined;
+    type EventPage = { events: { kind: string }[]; cursor: number };
+    const page = () => request<EventPage>(`/v1/sites/${id}/events?after=${eventCursor.current}`);
+    const tick = async () => {
+      if (stopped) return;
+      try {
+        if (AppState.currentState === "active" && !loading.current) {
+          const next = await page();
+          eventCursor.current = next.cursor;
+          if (stopped) return;
+          if (next.events.some((e) => !e.kind.startsWith("incident"))) await load(id);
+          else if (next.events.length) {
+            const latest = await request<components["schemas"]["IncidentPage"]>(`/v1/sites/${id}/incidents`);
+            if (!stopped && alive.current && activeId.current === id) {
+              setIncidents(latest.incidents);
+              setCursor(latest.next_cursor ?? null);
+            }
+          }
+        }
+      } catch {
+        // A missed poll is retried on the next tick.
+      }
+      if (!stopped) timer = setTimeout(() => void tick(), 4000);
+    };
+    eventCursor.current = 0;
+    void (async () => {
+      try {
+        // Skip history: only activity from now on counts as new.
+        for (let n = 0; n < 50; n++) {
+          const next = await page();
+          eventCursor.current = next.cursor;
+          if (next.events.length < 100 || stopped) break;
+        }
+      } catch {
+        // Polling below still recovers.
+      }
+      if (!stopped) timer = setTimeout(() => void tick(), 4000);
+    })();
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [site?.id]);
   useEffect(() => {
     alive.current = true;
     void load();
@@ -152,11 +206,15 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
     setPrefs(await request<Preferences>("/v1/account/preferences", "PATCH", values));
   const mapped = (cameraId: string) =>
     devices.find((d) => d.site_id === site?.id && d.camera_id === cameraId);
+  // A camera on the map opens its live view right here, as on the web app.
   const pick = (id: string) => {
     const d = mapped(id);
     if (d) {
       setDevice(d);
-      setTab("Cameras");
+      if (selected) {
+        setSelected(null);
+        setTab("Home");
+      }
     } else {
       const camera = site?.layout.cameras?.find((c) => c.id === id);
       if (camera) setPairFor({ id: camera.id, name: camera.name });
@@ -270,7 +328,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${camera.name}`}
                 style={[s.row, { flex: 1 }]}
-                onPress={() => (ring ? (setDevice(ring), setTab("Cameras")) : setPairFor({ id: camera.id, name: camera.name }))}
+                onPress={() => (ring ? setDevice(ring) : setPairFor({ id: camera.id, name: camera.name }))}
               >
                 {ring ? (
                   <Snapshot device={ring} />
@@ -318,6 +376,19 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           <Label style={s.muted}>No cameras placed yet.</Label>
         </View>
       )}
+    </Card>
+  );
+
+  const liveCard = device && (
+    <Card style={{ padding: 0, overflow: "hidden", gap: 0 }}>
+      <View style={[s.row, { padding: 14 }]}>
+        <View style={{ flex: 1 }}>
+          <Label style={s.strong}>{cameras.find((c) => c.id === device.camera_id)?.name ?? device.name}</Label>
+          <Label style={[s.muted, { fontSize: 13 }]}>{device.name} · Ring live view</Label>
+        </View>
+        <Button small variant="secondary" title="Close" onPress={() => setDevice(null)} />
+      </View>
+      <LivePlayer key={device.id} device={device} />
     </Card>
   );
 
@@ -393,7 +464,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
       </Card>
       {site && selected.revision_id === site.revision_id && (
         <Card>
-          <FloorMap site={site} incident={selected} onCamera={pick} />
+          <FloorMap site={site} incidents={incidents} incident={selected} onCamera={pick} onCapture={setMapTouch} />
         </Card>
       )}
       {selected.classification && (
@@ -542,6 +613,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         </View>
       )}
       <ScrollView
+        scrollEnabled={!mapTouch}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={busy} onRefresh={() => void load()} tintColor={colors.purple} />}
         contentContainerStyle={s.content}
@@ -554,8 +626,15 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
               {monitorCard}
               {ringBanner}
               <Card>
-                <FloorMap site={site} selected={device?.camera_id || undefined} onCamera={pick} />
+                <FloorMap
+                  site={site}
+                  incidents={incidents}
+                  selected={device?.camera_id || undefined}
+                  onCamera={pick}
+                  onCapture={setMapTouch}
+                />
               </Card>
+              {device && liveCard}
               {cameraList(false)}
               {incidentList("Recent incidents")}
             </>
@@ -570,16 +649,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
         ) : tab === "Cameras" ? (
           <>
             {device ? (
-              <Card style={{ padding: 0, overflow: "hidden", gap: 0 }}>
-                <View style={[s.row, { padding: 14 }]}>
-                  <View style={{ flex: 1 }}>
-                    <Label style={s.strong}>{device.name}</Label>
-                    <Label style={[s.muted, { fontSize: 13 }]}>Ring live view</Label>
-                  </View>
-                  <Button small variant="secondary" title="Close" onPress={() => setDevice(null)} />
-                </View>
-                <LivePlayer key={device.id} device={device} />
-              </Card>
+              liveCard
             ) : (
               <Card style={{ alignItems: "center", backgroundColor: "#1d1f2e", borderColor: "#1d1f2e", paddingVertical: 36 }}>
                 <Icon name="camera" size={30} color="#b9bdd6" />
@@ -614,7 +684,7 @@ export default function Workspace({ onSignout }: { onSignout: () => void }) {
           </Card>
         )}
       </ScrollView>
-      <View style={{ flexDirection: "row", backgroundColor: colors.card, borderTopWidth: 1, borderColor: colors.line }}>
+      <View style={{ flexDirection: "row", backgroundColor: colors.card, borderTopWidth: 1, borderColor: colors.line, paddingBottom: insets.bottom }}>
         {tabs.map((t) => {
           const active = tab === t.name;
           return (

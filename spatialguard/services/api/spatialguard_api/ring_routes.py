@@ -225,7 +225,19 @@ def install(app, store, principal, service=None):
         require_feature('classification')
         require_ring_consent(p['owner'])
         response.headers['Cache-Control'] = 'private, no-store'
-        return tracker.analyze(ring, p['owner'], incident_id, observation_id, clip_digest)
+        result = tracker.analyze(ring, p['owner'], incident_id, observation_id, clip_digest)
+        if result.points:
+            # Keep only where the person first appeared, to place this event on
+            # the people heatmap; the track itself is not stored.
+            first = result.points[0]
+            with store.connect() as db:
+                row = db.execute('SELECT site_id FROM incidents WHERE id=?', (incident_id,)).fetchone()
+                if row:
+                    db.execute(
+                        'INSERT OR REPLACE INTO observation_footpoints VALUES (?,?,?,?,?,?)',
+                        (incident_id, observation_id, row['site_id'], first.foot_x_norm, first.foot_y_norm, first.confidence),
+                    )
+        return result
 
     @app.post('/v1/incidents/{incident_id}/classify', response_model=Incident)
     def classify_incident(incident_id: str, p=Depends(principal)):

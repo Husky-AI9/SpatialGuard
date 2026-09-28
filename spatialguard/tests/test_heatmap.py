@@ -1,3 +1,4 @@
+import math
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -42,8 +43,9 @@ def test_peak_sits_on_the_sighting_and_values_are_normalised():
     result = hm.build_heatmap(SITE, [incident(NOW, [point(NOW, 3, 4)])], NOW - timedelta(hours=1), NOW + timedelta(seconds=1))
     assert result["samples"] == 1
     assert len(result["values"]) == result["rows"] * result["columns"]
-    assert max(result["values"]) == 1
-    assert cell_of(result, 3, 4) > 0.95
+    # Contour scale: one sighting's centre is orange-red (0.8), never more than 1.
+    assert 0.75 < max(result["values"]) <= 1
+    assert cell_of(result, 3, 4) > 0.75
     assert cell_of(result, 8, 6) == 0
 
 
@@ -51,8 +53,9 @@ def test_more_sightings_make_a_hotter_spot():
     busy = [point(NOW, 2, 2) for _ in range(5)]
     quiet = [point(NOW, 8, 6)]
     result = hm.build_heatmap(SITE, [incident(NOW, busy + quiet)], NOW - timedelta(hours=1), NOW + timedelta(seconds=1))
-    assert cell_of(result, 2, 2) == pytest.approx(1, abs=0.02)
-    assert 0.15 < cell_of(result, 8, 6) < 0.25
+    # Five overlapping sightings saturate to red; a single one stays a clear dot.
+    assert cell_of(result, 2, 2) > 0.99
+    assert 0.7 < cell_of(result, 8, 6) < 0.85
 
 
 def test_only_sightings_inside_the_window_count():
@@ -98,25 +101,54 @@ def test_events_from_cameras_off_the_map_are_reported_not_drawn():
     assert result["unpositioned"] == [{"camera_id": "front", "events": 2}]
 
 
-def test_unpositioned_camera_events_are_estimated_across_its_view():
-    result = hm.build_heatmap(CAMERA_SITE, [incident(NOW, [motion("front"), motion("front")])],
-                              NOW - timedelta(hours=1), NOW + timedelta(seconds=1))
-    assert result["samples"] == 0 and result["estimated"] == 2
-    assert result["estimated_cameras"] == [{"camera_id": "front", "events": 2}] and result["unpositioned"] == []
-    assert max(result["values"]) == 1
-    assert cell_of(result, 3, 4) > 0.8          # straight ahead, inside the view
-    assert cell_of(result, 3, 5.5) > 0.5        # off-axis but inside the wedge
-    assert cell_of(result, 0.5, 4) == 0         # behind the camera
-    assert cell_of(result, 1.5, 7.5) == 0       # outside the 110 degree wedge
-    assert cell_of(result, 8.5, 4) == 0         # beyond its range
+def lit_cells(result: dict, threshold: float = 0.2) -> list[tuple[float, float]]:
+    """Centres of cells above the threshold, in metres."""
+    ox, oy = result["origin_xy_m"]
+    cell, columns = result["cell_m"], result["columns"]
+    return [(ox + (i % columns + 0.5) * cell, oy + (i // columns + 0.5) * cell)
+            for i, v in enumerate(result["values"]) if v > threshold]
 
 
-def test_positioned_sightings_outweigh_an_estimate():
-    events = [motion("front"), point(NOW, 3, 4)]
+def test_unpositioned_camera_events_become_dots_inside_its_view():
+    events = [dict(motion("front"), observation_id=f"obs_{i}") for i in range(6)]
     result = hm.build_heatmap(CAMERA_SITE, [incident(NOW, events)], NOW - timedelta(hours=1), NOW + timedelta(seconds=1))
-    assert result["samples"] == 1 and result["estimated"] == 1
-    assert cell_of(result, 3, 4) == pytest.approx(1, abs=0.05)
-    assert 0.1 < cell_of(result, 4.5, 5) < 0.5
+    assert result["samples"] == 0 and result["estimated"] == 6
+    assert result["estimated_cameras"] == [{"camera_id": "front", "events": 6}] and result["unpositioned"] == []
+    assert max(result["values"]) > 0.75
+    lit = lit_cells(result)
+    # Dots, not the whole view: a small share of the 5 m, 110 degree wedge (~24 m2).
+    assert 0 < len(lit) * result["cell_m"] ** 2 < 8
+    for x, y in lit:
+        distance = math.hypot(x - 1, y - 4)
+        bearing = math.degrees(math.atan2(y - 4, x - 1))
+        # Inside the reach, and inside the wedge once clear of the dot blur at the lens.
+        assert distance < 5 + 1.2 and (distance < 1.5 or abs(bearing) < 55 + 20)
+
+
+def test_estimated_dots_stay_put_between_refreshes():
+    events = [dict(motion("front"), observation_id="obs_a")]
+    window = (NOW - timedelta(hours=1), NOW + timedelta(seconds=1))
+    first = hm.build_heatmap(CAMERA_SITE, [incident(NOW, events)], *window)
+    again = hm.build_heatmap(CAMERA_SITE, [incident(NOW, events)], *window)
+    assert first["values"] == again["values"]
+
+
+def test_a_detected_first_foot_point_places_the_dot():
+    event = dict(motion("front"), observation_id="obs_a")
+    record = {**incident(NOW, [event]), "id": "inc_a"}
+    window = (NOW - timedelta(hours=1), NOW + timedelta(seconds=1))
+    # Feet at the bottom centre of the image: just in front of the camera.
+    near = hm.build_heatmap(CAMERA_SITE, [record], *window, {("inc_a", "obs_a"): (0.5, 1.0, 0.9)})
+    # Feet high in the image: far away, straight ahead at the camera's range.
+    far = hm.build_heatmap(CAMERA_SITE, [record], *window, {("inc_a", "obs_a"): (0.5, 0.35, 0.9)})
+    assert cell_of(near, 1.75, 4) > 0.7 and cell_of(near, 6, 4) < 0.05
+    assert cell_of(far, 6, 4) > 0.7 and cell_of(far, 1.75, 4) < 0.05
+
+
+def test_project_foot_matches_the_web_movement_estimate():
+    x, y = hm.project_foot(FRONT, 0.0, 0.35)  # left edge of the image, far
+    assert math.hypot(x - 1, y - 4) == pytest.approx(5)
+    assert math.degrees(math.atan2(y - 4, x - 1)) == pytest.approx(55)
 
 
 def test_uncertain_positions_spread_wider():
@@ -153,7 +185,7 @@ def test_heatmap_endpoint_after_a_replay(setup):  # noqa: F811
     for window in ("1h", "12h", "24h"):
         body = client.get(f"/v1/sites/site_demo/heatmap?window={window}").json()
         assert body["samples"] == positioned > 0
-        assert max(body["values"]) == 1
+        assert 0.75 < max(body["values"]) <= 1
     assert client.get("/v1/sites/site_demo/heatmap?window=7d").status_code == 422
 
 

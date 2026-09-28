@@ -118,6 +118,24 @@ test("replay to incident, evidence, review, map and monitoring", async ({
   expect(errors).toEqual([]);
 });
 
+test("motion waves play only when a camera reports motion, and during a replay", async ({ page }) => {
+  await openDemo(page);
+  if (await page.getByRole("button", { name: "Resume monitoring", exact: true }).count())
+    await page.getByRole("button", { name: "Resume monitoring", exact: true }).click();
+  // There is no motion mode to switch on: the waves follow the cameras.
+  await expect(page.getByRole("button", { name: "Motion detection" })).toHaveCount(0);
+  const status = page.locator(".motion-status");
+  if (!(await status.count())) await expect(page.locator(".motion-waves")).toHaveCount(0);
+  await page.locator(".monitor-bar").getByRole("button", { name: "Run replay", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Activity observed near the entry" })).toBeVisible({ timeout: 45000 });
+  // Replaying the incident pulses the camera of the current step.
+  await expect(page.locator(".motion-waves > g")).toHaveCount(1);
+  await page.getByRole("button", { name: "Home", exact: true }).first().click();
+  // Back on the home map, the new activity pulses its cameras for a short while.
+  await expect(status).toContainText("Motion ·");
+  await expect(page.locator(".motion-waves > g")).not.toHaveCount(0);
+});
+
 test("home keeps CCTV and incidents in one right rail beside a full green 2D map", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await openDemo(page);

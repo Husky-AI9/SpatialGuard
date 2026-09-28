@@ -548,6 +548,15 @@ class RingService:
             if not db.execute('UPDATE ring_devices SET site=?,camera=? WHERE account=? AND device=?', (site, camera, a['account'], device)).rowcount:
                 raise HTTPException(404, 'Authorized Ring device not found')
             event(db, site, 'ring.camera_mapped', camera)
+            # Pairing is the owner asking to watch this camera: select it for
+            # monitoring, or its motion events are dropped as unmonitored.
+            data = json.loads(s[0])
+            selected = data['monitoring']['camera_ids']
+            if camera not in selected and len(selected) < 8:
+                selected.append(camera)
+                data['monitoring_version'] = data.get('monitoring_version', 0) + 1
+                db.execute('UPDATE sites SET data=? WHERE id=?', (dump(data), site))
+                event(db, site, 'monitoring.changed', site)
 
     def authorize_incident_recording(self, owner, incident_id, observation_id):
         with self.store.connect() as db:

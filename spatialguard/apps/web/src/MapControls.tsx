@@ -1,25 +1,8 @@
 import { Maximize, Users, ZoomIn, ZoomOut } from "lucide-react";
 
-/** Running figure with speed lines: the motion-detection mode. */
-function RunningIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="15.5" cy="4" r="2" />
-      <path d="M13.5 8.5 10 12l3 2.5-1.5 5.5" />
-      <path d="M13.5 8.5 17 11l3-1" />
-      <path d="M10 12 7.5 10.5 5 12" />
-      <path d="M13 14.5 16.5 17l1 3.5" />
-      <path d="M2 15h4M3 18.5h3.5M4 8.5h3" />
-    </svg>
-  );
-}
-
 export default function MapControls({
   compact = false,
-  motion,
   people,
-  onMotion,
   onPeople,
   onZoomIn,
   onZoomOut,
@@ -27,29 +10,18 @@ export default function MapControls({
   canZoomIn,
   canZoomOut,
 }: {
-  motion: boolean;
   people: boolean;
-  onMotion: () => void;
   onPeople: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFit: () => void;
   canZoomIn: boolean;
   canZoomOut: boolean;
-  /** 3D has its own orbit controls and no motion layer: only the heatmap toggle. */
+  /** 3D has its own orbit controls: only the heatmap toggle. */
   compact?: boolean;
 }) {
   return (
     <div className="map-controls" role="toolbar" aria-label="Map controls">
-      {!compact && <button
-        className="map-control-round"
-        aria-pressed={motion}
-        aria-label="Motion detection"
-        title={motion ? "Hide motion detection" : "Show motion detection"}
-        onClick={onMotion}
-      >
-        <RunningIcon />
-      </button>}
       <button
         className="map-control-round"
         aria-pressed={people}

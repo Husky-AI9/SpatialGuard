@@ -30,13 +30,27 @@ SpatialGuard sign-in inside the app is separate from the Expo account.
 - Native Home, Cameras, Incidents, Operations and Settings navigation.
 - Account session in secure native storage; sign-out revokes the server session.
 - Home inventory, monitoring pause/resume and explicit last-refresh timestamp.
-- 2D SVG map with camera selection, coverage, room labels and zoom.
-- Local Expo GL 3D geometry using shared TwinForge wall/door-opening geometry.
+- Home map identical to the web app: the web's own 2D map, 3D scene, map controls,
+  people heatmap and motion mode, built into a local page (`src/mapEmbedHtml.ts`)
+  shown in a WebView. The page has no network access and never sees the session
+  token; the native screen fetches the layout, floor-plan drawing and heatmap and
+  pushes them in. Tapping a camera opens its live view on Home.
+- New activity is polled every few seconds while the app is open, so incidents and
+  the motion waves update without a manual refresh.
 - Camera thumbnails, camera selection and live-player lifecycle handling.
 - Incident pagination, evidence details, classification labels, review and deletion.
 - Authorized recorded clips played with expo-video.
 - Separate Ring pairing/mapping, home selection, privacy and account pages.
 - Read-only camera health, alerts and time-lapse project summary.
+
+## Rebuilding the map page
+
+`src/mapEmbedHtml.ts` is generated from `apps/web/src/embed`. After changing the web
+map (`packages/spatial-view`, `MapControls`, `HeatmapView` or the map CSS), run:
+
+```powershell
+node scripts/build-map-embed.mjs
+```
 
 ## Live-video exception
 
