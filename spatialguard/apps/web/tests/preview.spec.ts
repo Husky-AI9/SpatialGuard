@@ -2,6 +2,19 @@ import { test, expect } from "@playwright/test";
 import path from "node:path";
 const output = path.resolve("../../../.data/spatialguard");
 
+/**
+ * The delivery recordings are private footage kept in .data/test-ring-video and never
+ * committed, so a fresh server (CI) has none; tests that play them skip there.
+ */
+async function skipWithoutRecordings(request: import("@playwright/test").APIRequestContext) {
+  const origin = new URL(test.info().project.use.baseURL ?? "http://127.0.0.1:8010").origin;
+  const headers = { "X-SpatialGuard-Local": "1", Origin: origin };
+  await request.post("/v1/local-session", { headers });
+  const response = await request.get("/v1/test-videos", { headers });
+  const videos: unknown[] = response.ok() ? await response.json() : [];
+  test.skip(!videos.length, "Needs the private delivery recordings in .data/test-ring-video (never committed)");
+}
+
 async function allowProviderFeatures(page: import("@playwright/test").Page) {
   await page.route("**/v1/account/preferences", async route => {
     const body = route.request().method() === "PATCH"
@@ -335,7 +348,8 @@ test("low-power mode keeps 2D evidence available and disables WebGL", async ({ p
   await expect(page.locator(".spatial-map")).toBeVisible();
 });
 
-test("private day and night clips animate an approximate 2D and 3D movement trail", async ({ page }) => {
+test("private day and night clips animate an approximate 2D and 3D movement trail", async ({ page, request }) => {
+  await skipWithoutRecordings(request);
   await page.setViewportSize({ width: 1440, height: 900 });
   await allowProviderFeatures(page);
   const classificationRequests: string[] = [];
@@ -447,7 +461,8 @@ test("private day and night clips animate an approximate 2D and 3D movement trai
   await page.screenshot({ path: `${output}/person-left-camera-view.png`, fullPage: true });
   expect(classificationRequests).toHaveLength(2);
 });
-test("classification icons distinguish activities without turning person tracks into objects", async ({ page }) => {
+test("classification icons distinguish activities without turning person tracks into objects", async ({ page, request }) => {
+  await skipWithoutRecordings(request);
   await allowProviderFeatures(page);
   let label = "face_covering_visible";
   await page.route("**/v1/test-videos/*/classify", route => route.fulfill({ json: {
@@ -498,7 +513,8 @@ test("classification icons distinguish activities without turning person tracks 
   }
 });
 
-test("person exit preserves the path through gaps, seeking, view changes and replay end", async ({ page }) => {
+test("person exit preserves the path through gaps, seeking, view changes and replay end", async ({ page, request }) => {
+  await skipWithoutRecordings(request);
   await allowProviderFeatures(page);
   await page.route("**/v1/test-videos/*/classify", route => route.fulfill({ status: 503, json: { detail: "Classification disabled in this tracking test" } }));
   await page.route("**/v1/test-videos/*/track", route => route.fulfill({ json: {

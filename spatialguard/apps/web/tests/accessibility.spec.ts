@@ -25,7 +25,8 @@ test("the primary desktop and phone workspaces have no automated WCAG AA violati
     await page.goto("/workspace");
     const sample = page.getByRole("button", { name: "Load sample", exact: true });
     const map = page.getByRole("region", { name: "Home map" });
-    await expect(sample.or(map)).toBeVisible({ timeout: 30_000 });
+    // An empty workspace shows both the map panel and "Load sample".
+    await expect(sample.or(map).first()).toBeVisible({ timeout: 30_000 });
     if (await sample.count()) await sample.click();
     await expect(map).toBeVisible({ timeout: 30_000 });
     await expectWcagAA(page);

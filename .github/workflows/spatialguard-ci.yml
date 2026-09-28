@@ -22,7 +22,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: |
           docker build -t spatialguard-ci .
-          docker run -d --name spatialguard-ci -p 8010:8010 \
+          # Host networking: the browser tests sign in as the local owner, which the
+          # server only allows from 127.0.0.1 (a port mapping would arrive from the bridge).
+          docker run -d --name spatialguard-ci --network host \
             -e SPATIALGUARD_ALLOWED_HOSTS=127.0.0.1:8010 \
             -e SPATIALGUARD_ORIGIN=http://127.0.0.1:8010 spatialguard-ci
           for attempt in $(seq 1 30); do curl -fsS http://127.0.0.1:8010/health && break; sleep 2; done
